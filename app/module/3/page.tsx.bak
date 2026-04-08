@@ -1,0 +1,1071 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { createBrowserClient } from '@supabase/ssr'
+
+type Step = 'objections' | 'bonuses' | 'offer' | 'salespage' | 'complete'
+
+interface Objection {
+  objection: string
+  underlying_fear: string
+}
+
+interface Bonus {
+  bonus_name: string
+  description: string
+  format: string
+  value_peso: number
+  objection_addressed: string
+  loading?: boolean
+}
+
+interface SalesPageSections {
+  headline: string
+  problem_section: string
+  solution_section: string
+  proof_section: string
+  offer_section: string
+  guarantee_section: string
+  cta_section: string
+}
+
+interface ClarityData {
+  target_market: string
+  core_problem: string
+  unique_mechanism: string
+  full_sentence: string
+}
+
+const STEP_LABELS = ['Objections', 'Bonuses', 'Offer', 'Sales Page']
+const STEP_KEYS: Step[] = ['objections', 'bonuses', 'offer', 'salespage']
+
+// ── SVG Icons ────────────────────────────────────────────────────
+const CheckIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="20 6 9 17 4 12" />
+  </svg>
+)
+
+const BackIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="15 18 9 12 15 6" />
+  </svg>
+)
+
+const CopyIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+  </svg>
+)
+
+const RefreshIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="23 4 23 10 17 10" />
+    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+  </svg>
+)
+
+const EditIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+  </svg>
+)
+
+const GUARANTEE_OPTIONS = [
+  '30-day money-back guarantee — no questions asked',
+  '7-day full refund guarantee',
+  '100% satisfaction guarantee or your money back',
+  "Try it for 14 days — if it doesn't help, get a full refund",
+]
+
+export default function Module3Page() {
+  const router = useRouter()
+  const [step, setStep] = useState<Step>('objections')
+  const [clarity, setClarity] = useState<ClarityData | null>(null)
+  const [ebookTitle, setEbookTitle] = useState('')
+  const [clarityLoading, setClarityLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  // Objections step
+  const [objectionsLoading, setObjectionsLoading] = useState(false)
+  const [objections, setObjections] = useState<Objection[]>([])
+  const [selectedObjections, setSelectedObjections] = useState<number[]>([])
+
+  // Bonuses step
+  const [bonuses, setBonuses] = useState<Bonus[]>([])
+  const [bonusesLoading, setBonusesLoading] = useState(false)
+  const [ebookValuePeso, setEbookValuePeso] = useState('997')
+
+  // Offer step
+  const [sellingPrice, setSellingPrice] = useState('297')
+  const [guarantee, setGuarantee] = useState(GUARANTEE_OPTIONS[0])
+  const [customGuarantee, setCustomGuarantee] = useState(false)
+
+  // Sales page step
+  const [salesPageLoading, setSalesPageLoading] = useState(false)
+  const [salesPage, setSalesPage] = useState<SalesPageSections | null>(null)
+  const [editingSection, setEditingSection] = useState<string | null>(null)
+  const [editedSections, setEditedSections] = useState<Partial<SalesPageSections>>({})
+  const [regeneratingSection, setRegeneratingSection] = useState<string | null>(null)
+  const [salesPageUrl, setSalesPageUrl] = useState('')
+  const [copiedSection, setCopiedSection] = useState<string | null>(null)
+
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
+
+  // ── Load data on mount ───────────────────────────────────────
+  useEffect(() => {
+    async function loadData() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) { router.push('/login'); return }
+
+      const { data: clarityData } = await supabase
+        .from('clarity_sentences')
+        .select('target_market, core_problem, unique_mechanism, full_sentence')
+        .eq('user_id', user.id)
+        .single()
+
+      if (!clarityData) { router.push('/module/1'); return }
+      setClarity(clarityData)
+
+      const { data: ebookData } = await supabase
+        .from('ebooks')
+        .select('title')
+        .eq('user_id', user.id)
+        .single()
+
+      if (!ebookData?.title) { router.push('/module/2'); return }
+      setEbookTitle(ebookData.title)
+
+      // Restore existing offer + sales page if any
+      const { data: offerData } = await supabase
+        .from('offers')
+        .select('*')
+        .eq('user_id', user.id)
+        .single()
+
+      if (offerData) {
+        setBonuses(offerData.bonuses || [])
+        setSellingPrice(String(offerData.selling_price || '297'))
+        setGuarantee(offerData.guarantee || GUARANTEE_OPTIONS[0])
+
+        const { data: spData } = await supabase
+          .from('sales_pages')
+          .select('*')
+          .eq('user_id', user.id)
+          .single()
+
+        if (spData?.full_copy) {
+          setSalesPage({
+            headline: (spData.problem_section || '').split('\n')[0] || '',
+            problem_section: spData.problem_section || '',
+            solution_section: spData.solution_section || '',
+            proof_section: spData.proof_section || '',
+            offer_section: spData.offer_section || '',
+            guarantee_section: spData.guarantee_section || '',
+            cta_section: spData.cta_section || '',
+          })
+          setSalesPageUrl(spData.published_url || '')
+          setStep('salespage')
+        } else {
+          setStep('offer')
+        }
+      }
+
+      setClarityLoading(false)
+    }
+    loadData()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const currentStepIndex = STEP_KEYS.indexOf(
+    step === 'complete' ? 'salespage' : step
+  )
+
+  // ── Helpers ──────────────────────────────────────────────────
+
+  function goBack() {
+    const prev: Record<Step, Step | null> = {
+      objections: null,
+      bonuses: 'objections',
+      offer: 'bonuses',
+      salespage: 'offer',
+      complete: 'salespage',
+    }
+    const prevStep = prev[step]
+    if (prevStep) setStep(prevStep)
+    else router.push('/dashboard')
+  }
+
+  const totalValue =
+    (parseInt(ebookValuePeso) || 0) +
+    bonuses.reduce((sum, b) => sum + (b.value_peso || 0), 0)
+
+  // ── Objections ───────────────────────────────────────────────
+
+  async function handleGenerateObjections() {
+    if (!clarity) return
+    setError('')
+    setObjectionsLoading(true)
+    try {
+      const res = await fetch('/api/generate/objections', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          target_market: clarity.target_market,
+          problem: clarity.core_problem,
+          mechanism: clarity.unique_mechanism,
+          ebook_title: ebookTitle,
+        }),
+      })
+      const { data, error: apiErr } = await res.json()
+      if (apiErr) throw new Error(apiErr)
+      setObjections(Array.isArray(data) ? data : [])
+    } catch {
+      setError('Could not load objections. Please try again.')
+    } finally {
+      setObjectionsLoading(false)
+    }
+  }
+
+  function toggleObjection(index: number) {
+    setSelectedObjections(prev => {
+      if (prev.includes(index)) return prev.filter(i => i !== index)
+      if (prev.length >= 5) return prev
+      return [...prev, index]
+    })
+  }
+
+  // ── Bonuses ──────────────────────────────────────────────────
+
+  async function handleGenerateBonuses() {
+    if (!clarity || selectedObjections.length === 0) return
+    setError('')
+    setBonusesLoading(true)
+    setStep('bonuses')
+
+    const skeleton: Bonus[] = selectedObjections.map(i => ({
+      bonus_name: '',
+      description: '',
+      format: '',
+      value_peso: 0,
+      objection_addressed: objections[i].objection,
+      loading: true,
+    }))
+    setBonuses(skeleton)
+
+    for (let idx = 0; idx < selectedObjections.length; idx++) {
+      const objIndex = selectedObjections[idx]
+      try {
+        const res = await fetch('/api/generate/bonus', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ebook_title: ebookTitle,
+            target_market: clarity.target_market,
+            problem: clarity.core_problem,
+            objection: objections[objIndex].objection,
+          }),
+        })
+        const { data, error: apiErr } = await res.json()
+        if (apiErr) throw new Error(apiErr)
+        setBonuses(prev => {
+          const updated = [...prev]
+          updated[idx] = {
+            ...data,
+            value_peso: 0,
+            objection_addressed: objections[objIndex].objection,
+            loading: false,
+          }
+          return updated
+        })
+      } catch {
+        setBonuses(prev => {
+          const updated = [...prev]
+          updated[idx] = {
+            ...updated[idx],
+            bonus_name: 'Bonus Document',
+            description: 'A helpful resource for your audience.',
+            format: 'guide',
+            loading: false,
+          }
+          return updated
+        })
+      }
+    }
+    setBonusesLoading(false)
+  }
+
+  function updateBonus(index: number, field: keyof Bonus, value: string | number) {
+    setBonuses(prev => {
+      const updated = [...prev]
+      updated[index] = { ...updated[index], [field]: value }
+      return updated
+    })
+  }
+
+  // ── Sales Page ───────────────────────────────────────────────
+
+  async function handleGenerateSalesPage() {
+    if (!clarity) return
+    setError('')
+    setSalesPageLoading(true)
+    setStep('salespage')
+
+    try {
+      const res = await fetch('/api/generate/sales-page', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          target_market: clarity.target_market,
+          problem: clarity.core_problem,
+          mechanism: clarity.unique_mechanism,
+          ebook_title: ebookTitle,
+          bonuses: bonuses.map(b => ({
+            bonus_name: b.bonus_name,
+            description: b.description,
+            format: b.format,
+            value_peso: b.value_peso,
+            objection_addressed: b.objection_addressed,
+          })),
+          total_value: totalValue,
+          selling_price: parseInt(sellingPrice) || 297,
+          guarantee,
+        }),
+      })
+      const { data, error: apiErr } = await res.json()
+      if (apiErr) throw new Error(apiErr)
+      setSalesPage(data)
+      setEditedSections({})
+    } catch {
+      setError('Could not generate sales page. Please try again.')
+      setStep('offer')
+    } finally {
+      setSalesPageLoading(false)
+    }
+  }
+
+  async function handleRegenerateSection(sectionKey: keyof SalesPageSections) {
+    if (!clarity) return
+    setRegeneratingSection(sectionKey)
+    try {
+      const res = await fetch('/api/generate/sales-page', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          target_market: clarity.target_market,
+          problem: clarity.core_problem,
+          mechanism: clarity.unique_mechanism,
+          ebook_title: ebookTitle,
+          bonuses,
+          total_value: totalValue,
+          selling_price: parseInt(sellingPrice) || 297,
+          guarantee,
+        }),
+      })
+      const { data, error: apiErr } = await res.json()
+      if (apiErr) throw new Error(apiErr)
+      setSalesPage(prev => prev ? { ...prev, [sectionKey]: data[sectionKey] } : prev)
+      setEditedSections(prev => {
+        const updated = { ...prev }
+        delete updated[sectionKey]
+        return updated
+      })
+    } catch {
+      setError('Could not regenerate this section. Please try again.')
+    } finally {
+      setRegeneratingSection(null)
+    }
+  }
+
+  function getSection(key: keyof SalesPageSections): string {
+    return editedSections[key] ?? salesPage?.[key] ?? ''
+  }
+
+  function buildFullSalesPage(): string {
+    if (!salesPage) return ''
+    const sp = { ...salesPage, ...editedSections }
+    return [
+      sp.headline, '',
+      sp.problem_section, '',
+      sp.solution_section, '',
+      sp.proof_section, '',
+      sp.offer_section, '',
+      sp.guarantee_section, '',
+      sp.cta_section,
+    ].join('\n')
+  }
+
+  function copyToClipboard(text: string, label: string) {
+    navigator.clipboard.writeText(text).catch(() => {})
+    setCopiedSection(label)
+    setTimeout(() => setCopiedSection(null), 2000)
+  }
+
+  // ── Mark Complete ────────────────────────────────────────────
+
+  async function handleMarkComplete() {
+    if (!clarity || !salesPage) return
+    setError('')
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      const sp = { ...salesPage, ...editedSections }
+      const fullCopy = buildFullSalesPage()
+
+      // offers — no unique constraint on user_id, so use delete + insert
+      await supabase.from('offers').delete().eq('user_id', user.id)
+      const { error: offerErr } = await supabase.from('offers').insert({
+        user_id: user.id,
+        objections: selectedObjections.map(i => objections[i]?.objection).filter(Boolean),
+        bonuses,
+        total_value: totalValue,
+        selling_price: parseInt(sellingPrice) || 297,
+        guarantee,
+      })
+      if (offerErr) throw offerErr
+
+      // sales_pages — same pattern
+      await supabase.from('sales_pages').delete().eq('user_id', user.id)
+      const { error: spErr } = await supabase.from('sales_pages').insert({
+        user_id: user.id,
+        problem_section: sp.problem_section,
+        solution_section: sp.solution_section,
+        proof_section: sp.proof_section,
+        offer_section: sp.offer_section,
+        guarantee_section: sp.guarantee_section,
+        cta_section: sp.cta_section,
+        full_copy: fullCopy,
+        published_url: salesPageUrl || null,
+      })
+      if (spErr) throw spErr
+
+      await supabase.from('module_progress').upsert(
+        {
+          user_id: user.id,
+          module_number: 3,
+          status: 'complete',
+          completed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'user_id, module_number' }
+      )
+
+      setStep('complete')
+    } catch {
+      setError('Could not save. Please try again.')
+    }
+  }
+
+  // ── Progress Dots Component ──────────────────────────────────
+
+  function ProgressDots() {
+    return (
+      <div className="flex items-center justify-center mb-6 px-2">
+        {STEP_LABELS.map((label, i) => {
+          const isDone = i < currentStepIndex
+          const isActive = i === currentStepIndex
+          return (
+            <div key={label} className="flex items-center">
+              <div className="flex flex-col items-center">
+                <div
+                  className="w-7 h-7 rounded-full flex items-center justify-center"
+                  style={{ background: isDone ? '#10B981' : isActive ? '#F4B942' : '#D1D5DB' }}
+                >
+                  {isDone ? (
+                    <span className="text-white"><CheckIcon /></span>
+                  ) : (
+                    <span className="text-xs font-bold" style={{ color: isActive ? '#1A1F36' : '#9CA3AF' }}>
+                      {i + 1}
+                    </span>
+                  )}
+                </div>
+                <span
+                  className="text-[10px] mt-1 font-medium whitespace-nowrap"
+                  style={{ color: isDone ? '#10B981' : isActive ? '#F4B942' : '#9CA3AF' }}
+                >
+                  {label}
+                </span>
+              </div>
+              {i < STEP_LABELS.length - 1 && (
+                <div
+                  className="h-0.5 w-6 mb-4 mx-1"
+                  style={{ background: i < currentStepIndex ? '#10B981' : '#D1D5DB' }}
+                />
+              )}
+            </div>
+          )
+        })}
+      </div>
+    )
+  }
+
+  // ── Loading screen ───────────────────────────────────────────
+
+  if (clarityLoading) {
+    return (
+      <div className="min-h-screen bg-[#F8F9FA] flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-10 h-10 border-4 border-[#F4B942] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-sm text-gray-500">Loading your progress…</p>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Complete Screen ──────────────────────────────────────────
+
+  if (step === 'complete') {
+    return (
+      <div className="min-h-screen bg-[#F8F9FA]">
+        <div className="max-w-[430px] mx-auto px-4 pt-6 pb-32">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: '#F4B942' }}>
+              <span className="font-bold text-[#1A1F36] text-sm">3</span>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Module 3</p>
+              <h1 className="text-base font-bold text-[#1A1F36]">Offer &amp; Sales Page</h1>
+            </div>
+          </div>
+
+          <div className="rounded-xl px-4 py-4 mb-5 flex items-start gap-3" style={{ background: '#D1FAE5', border: '1px solid #10B981' }}>
+            <div className="w-6 h-6 rounded-full flex items-center justify-center mt-0.5 flex-shrink-0" style={{ background: '#10B981' }}>
+              <span className="text-white"><CheckIcon /></span>
+            </div>
+            <div>
+              <p className="font-bold text-[#065F46]">Module 3 Complete!</p>
+              <p className="text-sm text-[#065F46] mt-0.5">Your offer and sales page are saved.</p>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl p-4 mb-4" style={{ border: '1px solid #E5E7EB' }}>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Your Offer Stack</p>
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-sm text-gray-700 truncate pr-2">{ebookTitle}</span>
+              <span className="text-sm font-medium text-[#1A1F36] flex-shrink-0">₱{parseInt(ebookValuePeso).toLocaleString()}</span>
+            </div>
+            {bonuses.map((b, i) => (
+              <div key={i} className="flex justify-between items-center mb-2">
+                <span className="text-sm text-gray-700 truncate pr-2">Bonus {i + 1}: {b.bonus_name}</span>
+                <span className="text-sm font-medium text-[#1A1F36] flex-shrink-0">₱{b.value_peso.toLocaleString()}</span>
+              </div>
+            ))}
+            <div className="border-t border-gray-100 mt-3 pt-3 flex justify-between">
+              <span className="text-sm font-bold text-[#1A1F36]">Total Value</span>
+              <span className="text-sm font-bold text-[#1A1F36]">₱{totalValue.toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between mt-1">
+              <span className="text-sm font-bold" style={{ color: '#F4B942' }}>Your Price</span>
+              <span className="text-sm font-bold" style={{ color: '#F4B942' }}>₱{parseInt(sellingPrice).toLocaleString()}</span>
+            </div>
+          </div>
+
+          <div className="rounded-xl p-4 mb-4" style={{ background: '#1A1F36', border: '2px solid #F4B942' }}>
+            <p className="text-xs font-medium mb-1" style={{ color: '#F4B942' }}>Up Next</p>
+            <p className="text-white font-bold">Module 4 — 7-Day Email Sequence</p>
+            <p className="text-gray-300 text-sm mt-1">Write 7 emails that warm up your audience and sell your ebook.</p>
+            <button
+              onClick={() => router.push('/module/4')}
+              className="mt-3 w-full py-2.5 rounded-lg font-bold text-sm"
+              style={{ background: '#F4B942', color: '#1A1F36' }}
+            >
+              Start Module 4
+            </button>
+          </div>
+
+          <button
+            onClick={() => router.push('/dashboard')}
+            className="w-full text-center text-sm text-gray-400 underline py-2"
+          >
+            Back to Dashboard
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Main Wizard ──────────────────────────────────────────────
+
+  return (
+    <div className="min-h-screen bg-[#F8F9FA]">
+      <div className="max-w-[430px] mx-auto px-4 pt-6 pb-36">
+
+        {/* Header */}
+        <div className="flex items-center gap-3 mb-5">
+          <button
+            onClick={goBack}
+            className="w-8 h-8 flex items-center justify-center rounded-full flex-shrink-0"
+            style={{ background: '#F4B942' }}
+            aria-label="Go back"
+          >
+            <span style={{ color: '#1A1F36' }}><BackIcon /></span>
+          </button>
+          <div>
+            <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Module 3</p>
+            <h1 className="text-base font-bold text-[#1A1F36]">Offer &amp; Sales Page Builder</h1>
+          </div>
+        </div>
+
+        <ProgressDots />
+
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 mb-4">
+            {error}
+          </div>
+        )}
+
+        {/* ── Objections Step ────────────────────────────────── */}
+        {step === 'objections' && (
+          <div>
+            <div className="bg-white rounded-xl p-4 mb-4" style={{ border: '1px solid #E5E7EB' }}>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Your Ebook</p>
+              <p className="text-sm font-semibold text-[#1A1F36]">{ebookTitle}</p>
+              {clarity && <p className="text-xs text-gray-400 mt-0.5">For: {clarity.target_market}</p>}
+            </div>
+
+            {!objectionsLoading && objections.length === 0 && (
+              <div className="text-center py-8">
+                <p className="text-sm text-gray-500 mb-1">Before someone buys your ebook, they have doubts.</p>
+                <p className="text-sm text-gray-500">We&apos;ll find those doubts — then build bonuses that answer them.</p>
+              </div>
+            )}
+
+            {objectionsLoading && (
+              <div className="text-center py-14">
+                <div className="w-10 h-10 border-4 border-[#F4B942] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                <p className="text-sm font-medium text-[#1A1F36]">Finding what holds your buyers back…</p>
+                <p className="text-xs text-gray-400 mt-1">This takes about 10 seconds</p>
+              </div>
+            )}
+
+            {!objectionsLoading && objections.length > 0 && (
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-sm font-semibold text-[#1A1F36]">Pick 3 to 5 objections</p>
+                  <span
+                    className="text-xs px-2 py-1 rounded-full font-medium"
+                    style={{
+                      background: selectedObjections.length >= 3 ? '#D1FAE5' : '#FEF3C7',
+                      color: selectedObjections.length >= 3 ? '#065F46' : '#92400E',
+                    }}
+                  >
+                    {selectedObjections.length} / 5
+                  </span>
+                </div>
+                <div className="space-y-2">
+                  {objections.map((obj, i) => {
+                    const isSelected = selectedObjections.includes(i)
+                    return (
+                      <button
+                        key={i}
+                        onClick={() => toggleObjection(i)}
+                        className="w-full text-left rounded-xl p-3 transition-all"
+                        style={{
+                          background: isSelected ? '#FFFBEB' : 'white',
+                          border: `2px solid ${isSelected ? '#F4B942' : '#E5E7EB'}`,
+                        }}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div
+                            className="w-5 h-5 rounded flex items-center justify-center flex-shrink-0 mt-0.5"
+                            style={{
+                              background: isSelected ? '#F4B942' : 'white',
+                              border: `2px solid ${isSelected ? '#F4B942' : '#D1D5DB'}`,
+                            }}
+                          >
+                            {isSelected && <span className="text-[#1A1F36]"><CheckIcon /></span>}
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-[#1A1F36]">{obj.objection}</p>
+                            <p className="text-xs text-gray-400 mt-0.5">{obj.underlying_fear}</p>
+                          </div>
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Bonuses Step ───────────────────────────────────── */}
+        {step === 'bonuses' && (
+          <div>
+            <p className="text-sm text-gray-500 mb-4">
+              Each bonus answers one of your buyer&apos;s doubts. Set a peso value for each — this builds your offer stack.
+            </p>
+
+            {/* Ebook value input */}
+            <div className="bg-white rounded-xl p-4 mb-4" style={{ border: '1px solid #E5E7EB' }}>
+              <div className="flex items-center justify-between">
+                <div className="flex-1 min-w-0 pr-3">
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">Main Ebook</p>
+                  <p className="text-sm font-semibold text-[#1A1F36] truncate">{ebookTitle}</p>
+                </div>
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <span className="text-sm text-gray-500">₱</span>
+                  <input
+                    type="number"
+                    value={ebookValuePeso}
+                    onChange={e => setEbookValuePeso(e.target.value)}
+                    className="w-20 text-right border rounded-lg px-2 py-1.5 text-sm font-bold text-[#1A1F36] focus:outline-none focus:ring-2"
+                    style={{ borderColor: '#E5E7EB' }}
+                    placeholder="997"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Bonus cards */}
+            <div className="space-y-4 mb-4">
+              {bonuses.map((bonus, i) => (
+                <div key={i} className="bg-white rounded-xl p-4" style={{ border: '1px solid #E5E7EB' }}>
+                  {bonus.loading ? (
+                    <div className="flex items-center gap-3 py-2">
+                      <div className="w-5 h-5 border-2 border-[#F4B942] border-t-transparent rounded-full animate-spin flex-shrink-0" />
+                      <p className="text-sm text-gray-400 truncate">
+                        Creating bonus for: &ldquo;{bonus.objection_addressed.substring(0, 45)}…&rdquo;
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#F4B942' }}>
+                          Bonus {i + 1} &middot; {bonus.format}
+                        </p>
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          <span className="text-sm text-gray-500">₱</span>
+                          <input
+                            type="number"
+                            value={bonus.value_peso || ''}
+                            onChange={e => updateBonus(i, 'value_peso', parseInt(e.target.value) || 0)}
+                            className="w-20 text-right border rounded-lg px-2 py-1.5 text-sm font-bold text-[#1A1F36] focus:outline-none focus:ring-2"
+                            style={{ borderColor: '#E5E7EB' }}
+                            placeholder="0"
+                          />
+                        </div>
+                      </div>
+                      <input
+                        type="text"
+                        value={bonus.bonus_name}
+                        onChange={e => updateBonus(i, 'bonus_name', e.target.value)}
+                        className="w-full text-sm font-semibold text-[#1A1F36] border-b border-dashed pb-1 mb-2 focus:outline-none bg-transparent"
+                        style={{ borderColor: '#D1D5DB' }}
+                      />
+                      <p className="text-xs text-gray-500 mb-2">{bonus.description}</p>
+                      <p className="text-xs text-gray-300 italic truncate">
+                        Answers: &ldquo;{bonus.objection_addressed.substring(0, 55)}…&rdquo;
+                      </p>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Running total */}
+            {!bonusesLoading && (
+              <div className="rounded-xl p-4 text-center" style={{ background: '#1A1F36' }}>
+                <p className="text-xs text-gray-400 mb-1">Total Perceived Value</p>
+                <p className="text-2xl font-bold text-white">₱{totalValue.toLocaleString()}</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Offer Stack Step ───────────────────────────────── */}
+        {step === 'offer' && (
+          <div>
+            <p className="text-sm text-gray-500 mb-4">
+              Set your selling price. The bigger the gap between total value and your price, the more irresistible your offer.
+            </p>
+
+            {/* Offer summary */}
+            <div className="bg-white rounded-xl p-4 mb-4" style={{ border: '1px solid #E5E7EB' }}>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Offer Summary</p>
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm text-gray-600 truncate pr-2">{ebookTitle}</span>
+                <span className="text-sm font-medium text-[#1A1F36] flex-shrink-0">₱{parseInt(ebookValuePeso).toLocaleString()}</span>
+              </div>
+              {bonuses.map((b, i) => (
+                <div key={i} className="flex justify-between items-center mb-2">
+                  <span className="text-sm text-gray-600 truncate pr-2">Bonus {i + 1}: {b.bonus_name}</span>
+                  <span className="text-sm font-medium text-[#1A1F36] flex-shrink-0">₱{b.value_peso.toLocaleString()}</span>
+                </div>
+              ))}
+              <div className="border-t border-gray-100 mt-3 pt-3 flex justify-between">
+                <span className="text-sm font-bold text-[#1A1F36]">Total Value</span>
+                <span className="text-sm font-bold text-[#1A1F36]">₱{totalValue.toLocaleString()}</span>
+              </div>
+            </div>
+
+            {/* Selling price */}
+            <div className="bg-white rounded-xl p-4 mb-4" style={{ border: '1px solid #E5E7EB' }}>
+              <label className="block text-sm font-semibold text-[#1A1F36] mb-2">Your Selling Price (₱)</label>
+              <div className="flex items-center gap-2">
+                <span className="text-lg text-gray-400 font-medium">₱</span>
+                <input
+                  type="number"
+                  value={sellingPrice}
+                  onChange={e => setSellingPrice(e.target.value)}
+                  className="flex-1 border rounded-xl px-4 py-3 text-xl font-bold text-[#1A1F36] focus:outline-none focus:ring-2"
+                  style={{ borderColor: '#E5E7EB' }}
+                  placeholder="297"
+                />
+              </div>
+              {parseInt(sellingPrice) > 0 && totalValue > 0 && (
+                <p className="text-xs mt-2 font-medium leading-relaxed" style={{ color: '#F4B942' }}>
+                  &ldquo;Total value: ₱{totalValue.toLocaleString()} — yours today for only ₱{parseInt(sellingPrice).toLocaleString()}&rdquo;
+                </p>
+              )}
+            </div>
+
+            {/* Guarantee */}
+            <div className="bg-white rounded-xl p-4 mb-4" style={{ border: '1px solid #E5E7EB' }}>
+              <label className="block text-sm font-semibold text-[#1A1F36] mb-3">Your Guarantee</label>
+              <div className="space-y-2 mb-3">
+                {GUARANTEE_OPTIONS.map(opt => (
+                  <button
+                    key={opt}
+                    onClick={() => { setGuarantee(opt); setCustomGuarantee(false) }}
+                    className="w-full text-left rounded-lg px-3 py-2.5 text-sm transition-all"
+                    style={{
+                      background: guarantee === opt && !customGuarantee ? '#FFFBEB' : 'white',
+                      border: `1.5px solid ${guarantee === opt && !customGuarantee ? '#F4B942' : '#E5E7EB'}`,
+                      color: '#374151',
+                    }}
+                  >
+                    {opt}
+                  </button>
+                ))}
+                <button
+                  onClick={() => { setCustomGuarantee(true); setGuarantee('') }}
+                  className="w-full text-left rounded-lg px-3 py-2.5 text-sm transition-all"
+                  style={{
+                    background: customGuarantee ? '#FFFBEB' : 'white',
+                    border: `1.5px solid ${customGuarantee ? '#F4B942' : '#E5E7EB'}`,
+                    color: '#374151',
+                  }}
+                >
+                  Write my own guarantee…
+                </button>
+              </div>
+              {customGuarantee && (
+                <textarea
+                  value={guarantee}
+                  onChange={e => setGuarantee(e.target.value)}
+                  rows={3}
+                  className="w-full border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2"
+                  style={{ borderColor: '#F4B942' }}
+                  placeholder="Describe your guarantee here…"
+                />
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ── Sales Page Step ────────────────────────────────── */}
+        {step === 'salespage' && (
+          <div>
+            {salesPageLoading && (
+              <div className="text-center py-16">
+                <div className="w-12 h-12 border-4 border-[#F4B942] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                <p className="text-sm font-medium text-[#1A1F36]">Writing your sales page…</p>
+                <p className="text-xs text-gray-400 mt-1">This takes about 15 seconds</p>
+              </div>
+            )}
+
+            {!salesPageLoading && salesPage && (
+              <div>
+                {(
+                  [
+                    { key: 'headline' as keyof SalesPageSections, label: 'Headline' },
+                    { key: 'problem_section' as keyof SalesPageSections, label: 'Problem Section' },
+                    { key: 'solution_section' as keyof SalesPageSections, label: 'Solution Section' },
+                    { key: 'proof_section' as keyof SalesPageSections, label: 'Proof Section' },
+                    { key: 'offer_section' as keyof SalesPageSections, label: 'Offer Section' },
+                    { key: 'guarantee_section' as keyof SalesPageSections, label: 'Guarantee' },
+                    { key: 'cta_section' as keyof SalesPageSections, label: 'Call to Action' },
+                  ]
+                ).map(({ key, label }) => (
+                  <div key={key} className="bg-white rounded-xl p-4 mb-3" style={{ border: '1px solid #E5E7EB' }}>
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">{label}</p>
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => setEditingSection(editingSection === key ? null : key)}
+                          className="flex items-center gap-1 text-xs text-gray-400 hover:text-[#1A1F36]"
+                        >
+                          <EditIcon />
+                          <span>{editingSection === key ? 'Done' : 'Edit'}</span>
+                        </button>
+                        <button
+                          onClick={() => handleRegenerateSection(key)}
+                          disabled={regeneratingSection !== null}
+                          className="flex items-center gap-1 text-xs text-gray-400 hover:text-[#F4B942] disabled:opacity-40"
+                        >
+                          <RefreshIcon />
+                          <span>{regeneratingSection === key ? '…' : 'Redo'}</span>
+                        </button>
+                        <button
+                          onClick={() => copyToClipboard(getSection(key), key)}
+                          className="flex items-center gap-1 text-xs text-gray-400 hover:text-[#1A1F36]"
+                        >
+                          <CopyIcon />
+                          <span>{copiedSection === key ? 'Copied!' : 'Copy'}</span>
+                        </button>
+                      </div>
+                    </div>
+                    {editingSection === key ? (
+                      <textarea
+                        value={getSection(key)}
+                        onChange={e => setEditedSections(prev => ({ ...prev, [key]: e.target.value }))}
+                        rows={6}
+                        className="w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2"
+                        style={{ borderColor: '#F4B942' }}
+                      />
+                    ) : (
+                      <p className="text-sm text-[#1A1F36] leading-relaxed whitespace-pre-wrap">
+                        {getSection(key)}
+                      </p>
+                    )}
+                  </div>
+                ))}
+
+                {/* Copy full page */}
+                <button
+                  onClick={() => copyToClipboard(buildFullSalesPage(), 'all')}
+                  className="w-full py-3 rounded-xl font-semibold text-sm mb-4 flex items-center justify-center gap-2 transition-all"
+                  style={{ background: copiedSection === 'all' ? '#10B981' : '#F4B942', color: '#1A1F36' }}
+                >
+                  <CopyIcon />
+                  {copiedSection === 'all' ? 'Copied to Clipboard!' : 'Copy Full Sales Page'}
+                </button>
+
+                {/* Systeme.io URL */}
+                <div className="bg-white rounded-xl p-4 mb-4" style={{ border: '1px solid #E5E7EB' }}>
+                  <label className="block text-sm font-semibold text-[#1A1F36] mb-1">
+                    Your Systeme.io Sales Page URL
+                    <span className="text-gray-400 font-normal ml-1">(optional for now)</span>
+                  </label>
+                  <p className="text-xs text-gray-400 mb-2">
+                    Paste this after publishing. We&apos;ll use it in your email sequence.
+                  </p>
+                  <input
+                    type="url"
+                    value={salesPageUrl}
+                    onChange={e => setSalesPageUrl(e.target.value)}
+                    className="w-full border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2"
+                    style={{ borderColor: '#E5E7EB' }}
+                    placeholder="https://yourpage.systeme.io/ebook"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+      </div>
+
+      {/* ── Fixed Bottom Action Bar ──────────────────────────── */}
+      {step !== 'complete' && (
+        <div
+          className="fixed bottom-0 bg-white px-4 py-4"
+          style={{
+            borderTop: '1px solid #E5E7EB',
+            width: '100%',
+            maxWidth: '430px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+          }}
+        >
+          {/* Objections — before generating */}
+          {step === 'objections' && objections.length === 0 && (
+            <button
+              onClick={handleGenerateObjections}
+              disabled={objectionsLoading}
+              className="w-full py-4 rounded-xl font-bold text-base disabled:opacity-60 transition-all"
+              style={{ background: '#1A1F36', color: '#F4B942' }}
+            >
+              {objectionsLoading ? 'Finding Objections…' : "Find My Buyers' Objections"}
+            </button>
+          )}
+
+          {/* Objections — after generating */}
+          {step === 'objections' && objections.length > 0 && (
+            <button
+              onClick={handleGenerateBonuses}
+              disabled={selectedObjections.length < 3}
+              className="w-full py-4 rounded-xl font-bold text-base disabled:opacity-40 transition-all"
+              style={{
+                background: selectedObjections.length >= 3 ? '#F4B942' : '#E5E7EB',
+                color: '#1A1F36',
+              }}
+            >
+              {selectedObjections.length < 3
+                ? `Select ${3 - selectedObjections.length} more to continue`
+                : 'Build My Bonuses Around These'}
+            </button>
+          )}
+
+          {/* Bonuses */}
+          {step === 'bonuses' && (
+            <button
+              onClick={() => {
+                const allValued = bonuses.every(b => !b.loading && b.value_peso > 0)
+                if (!allValued) { setError('Please set a value (₱) for each bonus.'); return }
+                setError('')
+                setStep('offer')
+              }}
+              disabled={bonusesLoading || bonuses.some(b => b.loading)}
+              className="w-full py-4 rounded-xl font-bold text-base disabled:opacity-60 transition-all"
+              style={{ background: '#F4B942', color: '#1A1F36' }}
+            >
+              {bonuses.some(b => b.loading) ? 'Creating Your Bonuses…' : 'Build My Offer Stack'}
+            </button>
+          )}
+
+          {/* Offer */}
+          {step === 'offer' && (
+            <button
+              onClick={handleGenerateSalesPage}
+              disabled={!sellingPrice || parseInt(sellingPrice) <= 0}
+              className="w-full py-4 rounded-xl font-bold text-base disabled:opacity-40 transition-all"
+              style={{ background: '#F4B942', color: '#1A1F36' }}
+            >
+              Write My Sales Page
+            </button>
+          )}
+
+          {/* Sales page — loading */}
+          {step === 'salespage' && salesPageLoading && (
+            <div
+              className="w-full py-4 rounded-xl font-bold text-base flex items-center justify-center gap-2 opacity-60"
+              style={{ background: '#E5E7EB', color: '#9CA3AF' }}
+            >
+              <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+              Writing your page…
+            </div>
+          )}
+
+          {/* Sales page — ready */}
+          {step === 'salespage' && !salesPageLoading && salesPage && (
+            <button
+              onClick={handleMarkComplete}
+              className="w-full py-4 rounded-xl font-bold text-base transition-all"
+              style={{ background: '#F4B942', color: '#1A1F36' }}
+            >
+              Save &amp; Complete Module 3
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
