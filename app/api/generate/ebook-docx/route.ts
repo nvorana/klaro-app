@@ -83,7 +83,8 @@ function spacer(pts = 160): Paragraph {
 // ─── Document builder ─────────────────────────────────────────────────────────
 
 function buildDocument(ebook: EbookData): Document {
-  const children: Paragraph[] = []
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const children: any[] = []
 
   // ── Cover page ──────────────────────────────────────────────────────────────
   children.push(spacer(2880))
@@ -126,11 +127,10 @@ function buildDocument(ebook: EbookData): Document {
     spacing: { after: 320 },
   }))
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   children.push(new TableOfContents('Table of Contents', {
     hyperlink: true,
     headingStyleRange: '1-2',
-  }) as any)
+  }))
 
   children.push(new Paragraph({ children: [new PageBreak()] }))
 
