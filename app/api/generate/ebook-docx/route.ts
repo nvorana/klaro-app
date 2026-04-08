@@ -119,7 +119,7 @@ function buildDocument(ebook: EbookData): Document {
   // Page break after cover
   children.push(new Paragraph({ children: [new PageBreak()] }))
 
-  // ── Table of Contents ───────────────────────────────────────────────────────
+  // ── Table of Contents (plain heading, no TOC field) ─────────────────────────
   children.push(new Paragraph({
     heading: HeadingLevel.HEADING_1,
     children: [new TextRun({ text: 'Table of Contents', font: 'Arial', size: 36, bold: true, color: '1a1a2e' })],
