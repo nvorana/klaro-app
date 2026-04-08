@@ -13,7 +13,6 @@ import {
   LevelFormat,
   PageBreak,
   ShadingType,
-  TableOfContents,
 } from 'docx'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -127,10 +126,6 @@ function buildDocument(ebook: EbookData): Document {
     spacing: { after: 320 },
   }))
 
-  children.push(new TableOfContents('Table of Contents', {
-    hyperlink: true,
-    headingStyleRange: '1-2',
-  }))
 
   children.push(new Paragraph({ children: [new PageBreak()] }))
 
