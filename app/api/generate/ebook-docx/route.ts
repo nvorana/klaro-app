@@ -50,13 +50,30 @@ interface EbookData {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-// Split a long paragraph into chunks of max 3 sentences
+// Split a long paragraph into chunks of max 3 sentences.
+// Uses a smarter regex that avoids splitting on common abbreviations.
 function splitIntoShortParagraphs(text: string): string[] {
-  // Split on sentence-ending punctuation followed by a space and capital letter
-  const sentences = text.match(/[^.!?]+[.!?]+[\s]*/g) || [text]
+  if (!text.trim()) return []
+
+  // Temporarily protect common abbreviations from being treated as sentence ends
+  const protected$ = text
+    .replace(/\b(Mr|Mrs|Ms|Dr|Prof|Sr|Jr|St|Ave|Blvd|vs|etc|e\.g|i\.e|Ph\.D|No|Vol|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\./gi, '$1§')
+    .replace(/\bStep\s+\d+\./gi, match => match.replace('.', '§'))
+    .replace(/\b\d+\./g, match => match.replace('.', '§')) // numbered list items
+
+  // Split on sentence boundaries: end punctuation followed by space + capital letter (or end of string)
+  const sentenceRegex = /[^.!?]*[.!?]+(?:\s+(?=[A-ZÁÉÍÓÚ])|$)/g
+  const sentences = protected$.match(sentenceRegex) || [protected$]
+
+  // Restore protected periods
+  const cleaned = sentences.map(s => s.replace(/§/g, '.').trim()).filter(Boolean)
+
+  if (cleaned.length === 0) return [text]
+
+  // Group into chunks of 3 sentences
   const chunks: string[] = []
-  for (let i = 0; i < sentences.length; i += 3) {
-    const chunk = sentences.slice(i, i + 3).join('').trim()
+  for (let i = 0; i < cleaned.length; i += 3) {
+    const chunk = cleaned.slice(i, i + 3).join(' ').trim()
     if (chunk) chunks.push(chunk)
   }
   return chunks.length > 0 ? chunks : [text]
@@ -66,13 +83,14 @@ function splitIntoShortParagraphs(text: string): string[] {
 function textToParagraphs(text: string, extraSpacing = false): Paragraph[] {
   if (!text) return []
   const lines = text
-    .split('\n')
+    .split(/\n+/)
     .map(line => line.trim())
     .filter(line => line.length > 0)
 
   const paragraphs: Paragraph[] = []
   for (const line of lines) {
-    const chunks = splitIntoShortParagraphs(line)
+    // Only apply sentence splitting to longer lines (short ones are already a single sentence)
+    const chunks = line.split(' ').length > 30 ? splitIntoShortParagraphs(line) : [line]
     for (const chunk of chunks) {
       paragraphs.push(new Paragraph({
         children: [new TextRun({ text: chunk, size: 24, font: 'Georgia' })],
@@ -240,10 +258,7 @@ function buildDocument(ebook: EbookData): Document {
         }))
         // What to do
         if (step.what_to_do) {
-          children.push(new Paragraph({
-            children: [new TextRun({ text: step.what_to_do, size: 24, font: 'Georgia' })],
-            spacing: { after: 100 },
-          }))
+          children.push(...textToParagraphs(step.what_to_do))
         }
         // Why it matters
         if (step.why_it_matters) {
