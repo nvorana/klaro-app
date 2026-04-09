@@ -239,6 +239,7 @@ export default function Module1Page() {
           setTargetMarket(data.target_market)
           setSelectedProblem({ rank: 1, problem: data.core_problem })
           setSelectedMechanism({ name: data.unique_mechanism })
+          setClaritySentence(data.full_sentence || `I help ${data.target_market} who struggle with ${data.core_problem} through ${data.unique_mechanism}.`)
           setStep('complete')
         } else {
           // Fresh visit but existing work found — show warning first
@@ -252,11 +253,8 @@ export default function Module1Page() {
   }, [])
 
   const currentStepIndex = STEP_KEYS.indexOf(step)
-
-  const claritySentence =
-    targetMarket && selectedProblem && selectedMechanism
-      ? `I help ${targetMarket} who struggle with ${selectedProblem.problem} through ${selectedMechanism.name}.`
-      : ''
+  const [claritySentence, setClaritySentence] = useState('')
+  const [polishingClarity, setPolishingClarity] = useState(false)
 
   async function handleMarketNext() {
     if (!targetMarket.trim()) return
@@ -331,17 +329,36 @@ export default function Module1Page() {
     setLoading(true)
     setLoadingMessage('Analyzing your idea against the Philippine market…')
     try {
-      const res = await fetch('/api/generate/validate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          target_market: targetMarket.trim(),
-          problem: selectedProblem?.problem,
-          mechanism: selectedMechanism.name,
+      // Run validation + polish in parallel
+      const [validateRes, polishRes] = await Promise.all([
+        fetch('/api/generate/validate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            target_market: targetMarket.trim(),
+            problem: selectedProblem?.problem,
+            mechanism: selectedMechanism.name,
+          }),
         }),
-      })
-      const { data, error: apiErr } = await res.json()
+        fetch('/api/generate/clarity', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            target_market: targetMarket.trim(),
+            step: 'polish',
+            problem: selectedProblem?.problem,
+            current_solution: selectedMechanism.name,
+          }),
+        }),
+      ])
+      const { data, error: apiErr } = await validateRes.json()
       if (apiErr) throw new Error(apiErr)
+      const polished = await polishRes.json()
+      // Use polished sentence if available, fall back to raw format
+      setClaritySentence(
+        polished.sentence ||
+        `I help ${targetMarket.trim()} who struggle with ${selectedProblem?.problem} through ${selectedMechanism.name}.`
+      )
       setValidation(data)
       setStep('validate')
     } catch {
@@ -463,6 +480,7 @@ export default function Module1Page() {
               setTargetMarket(existingClarity.target_market)
               setSelectedProblem({ rank: 1, problem: existingClarity.core_problem })
               setSelectedMechanism({ name: existingClarity.unique_mechanism })
+              setClaritySentence(existingClarity.full_sentence || `I help ${existingClarity.target_market} who struggle with ${existingClarity.core_problem} through ${existingClarity.unique_mechanism}.`)
               setStep('complete')
             }}
             className="w-full bg-[#F4B942] text-[#1A1F36] font-bold py-4 rounded-xl text-sm mb-3"

@@ -40,7 +40,10 @@ export async function POST(request: NextRequest) {
     let prompt = ''
 
     if (step === 'problems') {
-      prompt = `I want to create a highly marketable e-book for ${target_market}.
+      prompt = `I want to create a highly marketable e-book for this target market: "${target_market}"
+
+NOTE: The student's input may include a problem description mixed into the market (e.g. "OFWs who struggle to save money"). If so, extract the core market group and use any mentioned problem as ONE of the options — but still identify the full range of the top 10 most urgent and marketable problems for this market.
+
 Identify the top 10 problems this market is actively trying to solve RIGHT NOW — specifically problems where people are already spending money, searching online, or buying courses, services, or tools.
 For each problem, provide:
 1. Specific Problem Statement (clear, tangible, not vague)
@@ -133,6 +136,36 @@ Return a JSON object with this EXACT structure — the key must be "items":
 
 Return exactly 5 items. Make them simple, emotionally compelling, and easy to explain to a beginner.
 ${BANNED_WORDS_RULE}`
+    }
+
+    if (step === 'polish') {
+      if (!problem) return NextResponse.json({ error: 'Missing problem' }, { status: 400 })
+      prompt = `You are a professional copywriter. A student has built a clarity sentence from three components:
+- Target Market: ${target_market}
+- Core Problem: ${problem}
+- Unique Mechanism: ${current_solution}
+
+Write ONE clean, polished clarity sentence using this format:
+"I help [TARGET MARKET] who [PROBLEM] through [MECHANISM]."
+
+STRICT RULES:
+1. Remove ALL redundancy — if the target market already mentions the problem (e.g. "OFWs who struggle to save money"), do NOT repeat the problem in the second clause.
+2. Fix grammar — the sentence must read naturally in English.
+3. The market should describe WHO they are (demographic/group), not their problem.
+4. The problem clause should start with "who struggle with..." or "who want to..." — pick the most natural phrasing.
+5. Keep it under 25 words total.
+6. Do NOT use any banned marketing language (unlock, unleash, transform, revolutionize, etc.)
+
+Return JSON: { "sentence": "..." }`
+
+      const polishCompletion = await openai.chat.completions.create({
+        model: AI_MODEL,
+        messages: [{ role: 'user', content: prompt }],
+        response_format: { type: 'json_object' },
+        temperature: 0.3,
+      })
+      const polished = JSON.parse(polishCompletion.choices[0].message.content || '{}')
+      return NextResponse.json({ sentence: polished.sentence || '' })
     }
 
     const completion = await openai.chat.completions.create({
