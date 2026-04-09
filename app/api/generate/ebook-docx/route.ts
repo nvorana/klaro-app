@@ -43,6 +43,7 @@ interface ChapterDraft {
 interface EbookData {
   title: string
   subtitle: string
+  authorName?: string
   introduction: string
   conclusion: string
   chapters: ChapterDraft[]
@@ -139,18 +140,13 @@ function buildDocument(ebook: EbookData): Document {
     }))
   }
 
-  children.push(spacer(1440))
-
-  children.push(new Paragraph({
-    alignment: AlignmentType.CENTER,
-    children: [new TextRun({ text: 'Negosyo University', size: 22, font: 'Arial', color: '888888' })],
-    spacing: { after: 80 },
-  }))
-
-  children.push(new Paragraph({
-    alignment: AlignmentType.CENTER,
-    children: [new TextRun({ text: new Date().getFullYear().toString(), size: 20, font: 'Arial', color: 'aaaaaa' })],
-  }))
+  if (ebook.authorName) {
+    children.push(new Paragraph({
+      alignment: AlignmentType.CENTER,
+      children: [new TextRun({ text: `by ${ebook.authorName}`, size: 26, font: 'Georgia', color: '333333' })],
+      spacing: { after: 160 },
+    }))
+  }
 
   // Page break after cover
   children.push(new Paragraph({ children: [new PageBreak()] }))
@@ -392,12 +388,29 @@ function buildDocument(ebook: EbookData): Document {
       },
       footers: {
         default: new Footer({
-          children: [new Paragraph({
-            alignment: AlignmentType.CENTER,
-            children: [
-              new TextRun({ children: [PageNumber.CURRENT], size: 18, font: 'Arial', color: 'aaaaaa' }),
-            ],
-          })],
+          children: [
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              border: { top: { style: BorderStyle.SINGLE, size: 4, color: 'dddddd', space: 4 } },
+              children: [
+                new TextRun({ children: [PageNumber.CURRENT], size: 18, font: 'Arial', color: 'aaaaaa' }),
+              ],
+              spacing: { after: 60 },
+            }),
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              children: [
+                new TextRun({
+                  text: ebook.authorName
+                    ? `\u00A9 ${new Date().getFullYear()} ${ebook.authorName}. All rights reserved.`
+                    : `\u00A9 ${new Date().getFullYear()}. All rights reserved.`,
+                  size: 14,
+                  font: 'Arial',
+                  color: 'cccccc',
+                }),
+              ],
+            }),
+          ],
         }),
       },
       children,
