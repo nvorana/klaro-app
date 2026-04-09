@@ -1023,32 +1023,54 @@ export default function Module1Page() {
                 </div>
               </div>
 
-              {/* GO / REFINE badge */}
-              <div className={`rounded-xl p-4 mb-4 ${
-                validation.recommendation === 'GO'
-                  ? 'bg-[#ECFDF5] border border-[#10B981]/30'
-                  : 'bg-[#FFF7ED] border border-[#F59E0B]/30'
-              }`}>
-                <div className="flex items-center gap-2 mb-2">
-                  <span className={`px-3 py-1 rounded-full text-xs font-black tracking-wide ${
-                    validation.recommendation === 'GO' ? 'bg-[#10B981] text-white' : 'bg-[#F59E0B] text-white'
+              {/* Recommendation badge */}
+              {(() => {
+                const avg = Math.round((validation.urgency_score + validation.market_demand_score) / 2)
+                const isStrong = avg >= 7
+                const isSolid = avg >= 5 && avg < 7
+                const isWeak = avg < 5
+                return (
+                  <div className={`rounded-xl p-4 mb-4 ${
+                    isStrong ? 'bg-[#ECFDF5] border border-[#10B981]/30'
+                    : isSolid ? 'bg-[#F0FDF4] border border-[#10B981]/20'
+                    : 'bg-[#FFF7ED] border border-[#F59E0B]/30'
                   }`}>
-                    {validation.recommendation}
-                  </span>
-                </div>
-                <p className="text-sm text-gray-700 leading-relaxed">{validation.recommendation_reason}</p>
-              </div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className={`px-3 py-1 rounded-full text-xs font-black tracking-wide ${
+                        isStrong ? 'bg-[#10B981] text-white'
+                        : isSolid ? 'bg-[#10B981] text-white'
+                        : 'bg-[#F59E0B] text-white'
+                      }`}>
+                        {isStrong ? '✓ Strong Signal' : isSolid ? '✓ Solid Starting Point' : 'Rethink the Angle'}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-700 leading-relaxed">{validation.recommendation_reason}</p>
+                  </div>
+                )
+              })()}
 
-              {/* Red flags */}
+              {/* Red flags — only shown prominently for weak scores, as heads-up for solid/strong */}
               {validation.red_flags && validation.red_flags.toLowerCase() !== 'none' && (
-                <div className="bg-red-50 border border-red-100 rounded-xl p-4 mb-4">
-                  <p className="text-xs font-semibold text-red-500 uppercase tracking-wide mb-1">Watch Out</p>
-                  <p className="text-sm text-red-700 leading-relaxed">{validation.red_flags}</p>
+                <div className={`rounded-xl p-4 mb-4 ${
+                  Math.round((validation.urgency_score + validation.market_demand_score) / 2) < 5
+                    ? 'bg-red-50 border border-red-100'
+                    : 'bg-gray-50 border border-gray-100'
+                }`}>
+                  <p className={`text-xs font-semibold uppercase tracking-wide mb-1 ${
+                    Math.round((validation.urgency_score + validation.market_demand_score) / 2) < 5
+                      ? 'text-red-500' : 'text-gray-400'
+                  }`}>
+                    {Math.round((validation.urgency_score + validation.market_demand_score) / 2) < 5 ? 'Watch Out' : 'Heads Up'}
+                  </p>
+                  <p className={`text-sm leading-relaxed ${
+                    Math.round((validation.urgency_score + validation.market_demand_score) / 2) < 5
+                      ? 'text-red-700' : 'text-gray-600'
+                  }`}>{validation.red_flags}</p>
                 </div>
               )}
 
-              {/* Refinement suggestion */}
-              {validation.recommendation === 'REFINE' && validation.refinement_suggestion && (
+              {/* Refinement suggestion — only for weak scores */}
+              {Math.round((validation.urgency_score + validation.market_demand_score) / 2) < 5 && validation.refinement_suggestion && (
                 <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 mb-4">
                   <p className="text-xs font-semibold text-amber-600 uppercase tracking-wide mb-1">Suggestion</p>
                   <p className="text-sm text-amber-800 leading-relaxed">{validation.refinement_suggestion}</p>
@@ -1056,7 +1078,7 @@ export default function Module1Page() {
               )}
 
               {/* Market insights */}
-              <div className="bg-white rounded-xl border border-gray-100 p-4 mb-2">
+              <div className="bg-white rounded-xl border border-gray-100 p-4 mb-4">
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Market Insights</p>
                 <div className="space-y-3">
                   <div>
@@ -1073,6 +1095,11 @@ export default function Module1Page() {
                   </div>
                 </div>
               </div>
+
+              {/* Nudge line */}
+              <p className="text-xs text-center text-gray-400 leading-relaxed px-2 mb-2">
+                The real validation happens when you put it in front of people. This score is your starting map — not the finish line.
+              </p>
             </div>
           )}
 

@@ -76,6 +76,12 @@ Return a JSON object with this EXACT structure — the key must be "items":
 }
 
 Return exactly 10 items, ranked #1 = most profitable/likely to convert.
+
+LANGUAGE RULES — follow strictly:
+1. "problem" field MUST be in English. It is a headline/title that will be displayed prominently — it must be clear, punchy, and marketable in English.
+2. "urgency", "proof_of_demand", "buying_behavior" fields should be natural conversational Taglish — the way a real Filipino actually talks. Mix English and Tagalog naturally.
+3. "common_phrases" should sound like something a Filipino would literally say or type — natural Taglish is perfect here.
+4. NEVER use deep, formal, or literary Tagalog anywhere (e.g. "nahihirapan", "kakulangan", "pangangailangan", "nakatuon"). Use everyday words any Pinoy would say out loud.
 ${BANNED_WORDS_RULE}`
     }
 
@@ -135,6 +141,12 @@ Return a JSON object with this EXACT structure — the key must be "items":
 }
 
 Return exactly 5 items. Make them simple, emotionally compelling, and easy to explain to a beginner.
+
+LANGUAGE RULES — follow strictly:
+1. "name" and "positioning_line" MUST be in English. These are product/brand names and marketing statements — they must be universally marketable.
+2. All other fields (old_way_fails, new_belief, steps, aha_statements) should be written in natural, conversational Taglish — the way a real Filipino actually talks. Mix English and Tagalog naturally, like how someone would say it in a casual conversation.
+3. NEVER use deep, formal, or literary Tagalog (e.g. "kapansin-pansin", "pagkakataon", "pangangailangan", "nakatuon", "natutumbok"). Use everyday Filipino words that any Pinoy would say out loud.
+4. A good test: if a Filipino would feel awkward saying it out loud in conversation, rewrite it.
 ${BANNED_WORDS_RULE}`
     }
 
