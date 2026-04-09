@@ -102,6 +102,8 @@ export default function Module2Page() {
   const [chapterDrafts, setChapterDrafts] = useState<ChapterDraft[]>([])
   const [currentDraft, setCurrentDraft] = useState<ChapterDraft | null>(null)
   const [regenerating, setRegenerating] = useState(false)
+  // regenCounts tracks how many regenerations per chapter index
+  const [regenCounts, setRegenCounts] = useState<Record<number, number>>({})
 
   // Frontmatter
   const [introduction, setIntroduction] = useState('')
@@ -224,6 +226,7 @@ export default function Module2Page() {
 
     if (isRegenerate) {
       setRegenerating(true)
+      setRegenCounts(prev => ({ ...prev, [index]: (prev[index] ?? 0) + 1 }))
     } else {
       setStep('writing_chapter')
     }
@@ -739,23 +742,43 @@ export default function Module2Page() {
                 ? `Approve → Write Chapter ${currentChapterIndex + 2}`
                 : 'Approve → Finish E-Book'}
             </button>
-            <button
-              onClick={() => writeChapter(currentChapterIndex, true)}
-              disabled={regenerating}
-              className="w-full bg-white border border-gray-200 text-gray-600 font-semibold py-3 rounded-xl text-sm disabled:opacity-50"
-            >
-              {regenerating
-                ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
-                      <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
-                    </svg>
-                    Regenerating…
-                  </span>
-                )
-                : '↺ Regenerate This Chapter'}
-            </button>
+            {(() => {
+              const usedRegens = regenCounts[currentChapterIndex] ?? 0
+              const regenLimit = 2
+              const regenLeft = regenLimit - usedRegens
+              const regenDisabled = regenerating || regenLeft <= 0
+              return (
+                <button
+                  onClick={() => writeChapter(currentChapterIndex, true)}
+                  disabled={regenDisabled}
+                  className="w-full bg-white border border-gray-200 text-gray-600 font-semibold py-3 rounded-xl text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {regenerating
+                    ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
+                          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                        </svg>
+                        Regenerating…
+                      </span>
+                    )
+                    : regenLeft <= 0
+                      ? 'Regeneration limit reached for this chapter'
+                      : (
+                        <span className="flex items-center justify-center gap-2">
+                          ↺ Regenerate This Chapter
+                          {usedRegens > 0 && (
+                            <span className={`text-xs font-normal px-1.5 py-0.5 rounded-full ${regenLeft === 1 ? 'bg-amber-100 text-amber-600' : 'bg-gray-100 text-gray-400'}`}>
+                              {regenLeft} left
+                            </span>
+                          )}
+                        </span>
+                      )
+                  }
+                </button>
+              )
+            })()}
           </div>
         </div>
       )}

@@ -15,7 +15,8 @@ WRITING RULES — follow these strictly:
 - Do NOT use hype, exaggerated claims, or fake testimonials.
 - Do NOT include advanced strategies — keep it simple and executable.
 - Do NOT use academic or formal language. Write conversationally.
-- Use short paragraphs. Use simple words.
+- Use short paragraphs. Maximum 3 sentences per paragraph. After every 3 sentences, start a new paragraph with a blank line.
+- Use simple words.
 - Clarity over cleverness. Done beats perfect.
 - Use English as the primary language. Add light, natural Taglish warmth where a Filipino reader would feel immediately understood — never forced, just real.
 - TITLES AND SUBTITLES must be 100% English — no Tagalog or Filipino words whatsoever. Titles are product names and must be universally marketable.

@@ -52,17 +52,37 @@ interface EbookData {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-// Split a block of text into Paragraphs (one per line break)
+// Split a long paragraph into chunks of max 3 sentences
+function splitIntoShortParagraphs(text: string): string[] {
+  // Split on sentence-ending punctuation followed by a space and capital letter
+  const sentences = text.match(/[^.!?]+[.!?]+[\s]*/g) || [text]
+  const chunks: string[] = []
+  for (let i = 0; i < sentences.length; i += 3) {
+    const chunk = sentences.slice(i, i + 3).join('').trim()
+    if (chunk) chunks.push(chunk)
+  }
+  return chunks.length > 0 ? chunks : [text]
+}
+
+// Split a block of text into Paragraphs (one per line break, max 3 sentences each)
 function textToParagraphs(text: string, extraSpacing = false): Paragraph[] {
   if (!text) return []
-  return text
+  const lines = text
     .split('\n')
     .map(line => line.trim())
     .filter(line => line.length > 0)
-    .map(line => new Paragraph({
-      children: [new TextRun({ text: line, size: 24, font: 'Georgia' })],
-      spacing: { after: extraSpacing ? 200 : 140, line: 320 },
-    }))
+
+  const paragraphs: Paragraph[] = []
+  for (const line of lines) {
+    const chunks = splitIntoShortParagraphs(line)
+    for (const chunk of chunks) {
+      paragraphs.push(new Paragraph({
+        children: [new TextRun({ text: chunk, size: 24, font: 'Georgia' })],
+        spacing: { after: extraSpacing ? 200 : 140, line: 320 },
+      }))
+    }
+  }
+  return paragraphs
 }
 
 // Section label (e.g. "Story Starter")
@@ -119,13 +139,36 @@ function buildDocument(ebook: EbookData): Document {
   // Page break after cover
   children.push(new Paragraph({ children: [new PageBreak()] }))
 
-  // ── Table of Contents (plain heading, no TOC field) ─────────────────────────
+  // ── Table of Contents ───────────────────────────────────────────────────────
   children.push(new Paragraph({
     heading: HeadingLevel.HEADING_1,
     children: [new TextRun({ text: 'Table of Contents', font: 'Arial', size: 36, bold: true, color: '1a1a2e' })],
-    spacing: { after: 320 },
+    spacing: { after: 400 },
   }))
 
+  // Introduction entry
+  children.push(new Paragraph({
+    children: [new TextRun({ text: 'Introduction', size: 24, font: 'Georgia', color: '333333' })],
+    spacing: { after: 160 },
+    indent: { left: 0 },
+  }))
+
+  // Chapter entries
+  for (const ch of ebook.chapters) {
+    children.push(new Paragraph({
+      children: [
+        new TextRun({ text: `Chapter ${ch.number}  `, size: 22, font: 'Arial', bold: true, color: 'C49A00' }),
+        new TextRun({ text: ch.title, size: 24, font: 'Georgia', color: '1a1a2e' }),
+      ],
+      spacing: { after: 160 },
+    }))
+  }
+
+  // Conclusion entry
+  children.push(new Paragraph({
+    children: [new TextRun({ text: 'Conclusion', size: 24, font: 'Georgia', color: '333333' })],
+    spacing: { after: 160 },
+  }))
 
   children.push(new Paragraph({ children: [new PageBreak()] }))
 
@@ -388,3 +431,4 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to generate document' }, { status: 500 })
   }
 }
+                                                            
