@@ -18,6 +18,9 @@ WRITING RULES — follow these strictly:
 - Use short paragraphs. Use simple words.
 - Clarity over cleverness. Done beats perfect.
 - Use English as the primary language. Add light, natural Taglish warmth where a Filipino reader would feel immediately understood — never forced, just real.
+- TITLES AND SUBTITLES must be 100% English — no Tagalog or Filipino words whatsoever. Titles are product names and must be universally marketable.
+- Chapter titles must also be 100% English.
+- Body content and examples may use natural conversational Taglish where it adds warmth.
 
 WHAT READERS BUY: People don't buy information. They buy relief. They buy clarity, speed, and confidence. Every section must make the reader feel: "I can do this."
 

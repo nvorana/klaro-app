@@ -24,6 +24,9 @@ Task 1: Generate 3 clear, outcome-driven ebook title options. Each title should:
 - Appeal to a Filipino audience
 - Be simple and easy to understand
 - Imply a clear result the reader will achieve
+- Be written in 100% English — no Tagalog or Filipino words in titles or subtitles
+
+Each title option must also include a subtitle. Format: "Title: Subtitle"
 
 Task 2: For the BEST of the 3 titles, create a table of contents with 6 to 8 chapters. For each chapter include:
 - Chapter number

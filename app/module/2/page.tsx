@@ -394,17 +394,17 @@ export default function Module2Page() {
   // ─── Render ───────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white flex flex-col">
+    <div className="min-h-screen bg-[#F8F9FA] text-[#1A1F36] flex flex-col">
       <GoldConfetti trigger={showConfetti} onDone={() => setShowConfetti(false)} />
       <div className="w-full max-w-[430px] md:max-w-3xl mx-auto flex flex-col min-h-screen">
 
       {/* Header */}
-      <div className="px-6 pt-8 pb-4">
-        <button onClick={() => router.push('/dashboard')} className="text-gray-500 hover:text-gray-300 text-sm mb-4 flex items-center gap-1">
+      <div className="bg-[#1A1F36] px-6 pt-8 pb-5">
+        <button onClick={() => router.push('/dashboard')} className="text-gray-400 hover:text-gray-200 text-sm mb-4 flex items-center gap-1">
           ← Dashboard
         </button>
         <div className="flex items-center gap-3 mb-1">
-          <span className="bg-yellow-500 text-black text-xs font-bold px-2 py-1 rounded">MODULE 2</span>
+          <span className="bg-[#F4B942] text-[#1A1F36] text-xs font-bold px-2 py-1 rounded">MODULE 2</span>
           <h1 className="text-xl font-bold text-white">Create Your E-Book</h1>
         </div>
         <p className="text-gray-400 text-sm">AI writes. You direct. Your knowledge becomes a product.</p>
@@ -416,17 +416,17 @@ export default function Module2Page() {
           <div className="flex items-center gap-2">
             {PROGRESS_STEPS.map((label, i) => (
               <div key={label} className="flex items-center gap-2">
-                <div className={`flex items-center gap-1.5 ${i <= progressIndex ? 'text-yellow-400' : 'text-gray-600'}`}>
+                <div className={`flex items-center gap-1.5 ${i <= progressIndex ? 'text-[#F4B942]' : 'text-gray-400'}`}>
                   <div className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold border
-                    ${i < progressIndex ? 'bg-yellow-400 text-black border-yellow-400' :
-                      i === progressIndex ? 'border-yellow-400 text-yellow-400' :
-                      'border-gray-700 text-gray-600'}`}>
+                    ${i < progressIndex ? 'bg-[#F4B942] text-[#1A1F36] border-[#F4B942]' :
+                      i === progressIndex ? 'border-[#F4B942] text-[#F4B942]' :
+                      'border-gray-300 text-gray-400'}`}>
                     {i < progressIndex ? '✓' : i + 1}
                   </div>
                   <span className="text-xs font-medium hidden sm:block">{label}</span>
                 </div>
                 {i < PROGRESS_STEPS.length - 1 && (
-                  <div className={`h-px w-6 sm:w-12 ${i < progressIndex ? 'bg-yellow-400' : 'bg-gray-700'}`} />
+                  <div className={`h-px w-6 sm:w-12 ${i < progressIndex ? 'bg-[#F4B942]' : 'bg-gray-200'}`} />
                 )}
               </div>
             ))}
@@ -445,15 +445,15 @@ export default function Module2Page() {
                 <div
                   key={ch.number}
                   className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border
-                    ${isDone ? 'bg-yellow-400 text-black border-yellow-400' :
-                      isCurrent ? 'border-yellow-400 text-yellow-400' :
-                      'border-gray-700 text-gray-600'}`}
+                    ${isDone ? 'bg-[#F4B942] text-[#1A1F36] border-[#F4B942]' :
+                      isCurrent ? 'border-[#F4B942] text-[#F4B942]' :
+                      'border-gray-300 text-gray-400'}`}
                 >
                   {isDone ? '✓' : ch.number}
                 </div>
               )
             })}
-            <span className="text-gray-500 text-xs ml-1">
+            <span className="text-gray-400 text-xs ml-1">
               {chapterDrafts.length} of {chapterOutlines.length} chapters done
             </span>
           </div>
@@ -462,7 +462,7 @@ export default function Module2Page() {
 
       {/* Error */}
       {error && (
-        <div className="mx-6 mb-4 bg-red-900/40 border border-red-700 text-red-300 rounded-lg px-4 py-3 text-sm">
+        <div className="mx-6 mb-4 bg-red-50 border border-red-200 text-red-600 rounded-lg px-4 py-3 text-sm">
           {error}
         </div>
       )}
@@ -470,7 +470,7 @@ export default function Module2Page() {
       {/* ── LOAD ── */}
       {step === 'load' && (
         <div className="flex-1 flex items-center justify-center">
-          <div className="text-gray-400 text-sm animate-pulse">Loading your profile...</div>
+          <div className="text-gray-500 text-sm animate-pulse">Loading your profile...</div>
         </div>
       )}
 
@@ -479,23 +479,23 @@ export default function Module2Page() {
         <div className="flex-1 px-6 pb-10">
 
           {clarity && (
-            <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 mb-6">
-              <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Your Clarity Sentence</p>
-              <p className="text-yellow-300 text-sm font-medium">{clarity.full_sentence}</p>
+            <div className="bg-[#1A1F36] border border-[#1A1F36] rounded-xl p-4 mb-6">
+              <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Your Clarity Sentence</p>
+              <p className="text-[#F4B942] text-sm font-medium">{clarity.full_sentence}</p>
             </div>
           )}
 
           {titleOptions.length === 0 ? (
             <div className="text-center py-10">
               <div className="text-4xl mb-4">📖</div>
-              <h2 className="text-lg font-bold text-white mb-2">Ready to create your e-book?</h2>
-              <p className="text-gray-400 text-sm mb-8 max-w-sm mx-auto">
+              <h2 className="text-lg font-bold text-[#1A1F36] mb-2">Ready to create your e-book?</h2>
+              <p className="text-gray-500 text-sm mb-8 max-w-sm mx-auto">
                 The AI will generate 3 title options and an 8–10 chapter outline based on your clarity sentence.
               </p>
               <button
                 onClick={generateOutline}
                 disabled={generatingOutline}
-                className="bg-yellow-400 text-black font-bold px-8 py-3 rounded-xl disabled:opacity-50"
+                className="bg-[#F4B942] text-[#1A1F36] font-bold px-8 py-3 rounded-xl disabled:opacity-50"
               >
                 {generatingOutline
                   ? <span className="flex items-center gap-2"><span className="animate-spin inline-block">⏳</span> Generating outline...</span>
@@ -504,7 +504,7 @@ export default function Module2Page() {
             </div>
           ) : (
             <div>
-              <h2 className="text-base font-bold text-white mb-4">Choose a Title</h2>
+              <h2 className="text-base font-bold text-[#1A1F36] mb-4">Choose a Title</h2>
               <div className="space-y-3 mb-8">
                 {titleOptions.map((option, i) => (
                   <button
@@ -512,34 +512,34 @@ export default function Module2Page() {
                     onClick={() => setSelectedTitleIndex(i)}
                     className={`w-full text-left p-4 rounded-xl border transition-all ${
                       selectedTitleIndex === i
-                        ? 'border-yellow-400 bg-yellow-400/10'
-                        : 'border-gray-700 bg-gray-900 hover:border-gray-500'
+                        ? 'border-[#F4B942] bg-[#F4B942]/10'
+                        : 'border-gray-200 bg-white hover:border-gray-300'
                     }`}
                   >
                     <div className="flex items-start gap-3">
                       <div className={`w-5 h-5 rounded-full border-2 mt-0.5 flex-shrink-0 flex items-center justify-center
-                        ${selectedTitleIndex === i ? 'border-yellow-400' : 'border-gray-600'}`}>
-                        {selectedTitleIndex === i && <div className="w-2.5 h-2.5 rounded-full bg-yellow-400" />}
+                        ${selectedTitleIndex === i ? 'border-[#F4B942]' : 'border-gray-300'}`}>
+                        {selectedTitleIndex === i && <div className="w-2.5 h-2.5 rounded-full bg-[#F4B942]" />}
                       </div>
                       <div>
-                        <p className="font-bold text-white text-sm">{option.title}</p>
-                        <p className="text-gray-400 text-xs mt-0.5">{option.subtitle}</p>
+                        <p className="font-bold text-[#1A1F36] text-sm">{option.title}</p>
+                        <p className="text-gray-500 text-xs mt-0.5">{option.subtitle}</p>
                       </div>
                     </div>
                   </button>
                 ))}
               </div>
 
-              <h2 className="text-base font-bold text-white mb-3">Your {chapterOutlines.length}-Chapter Outline</h2>
+              <h2 className="text-base font-bold text-[#1A1F36] mb-3">Your {chapterOutlines.length}-Chapter Outline</h2>
               <div className="space-y-2 mb-8">
                 {chapterOutlines.map((ch) => (
-                  <div key={ch.number} className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+                  <div key={ch.number} className="bg-white border border-gray-100 rounded-xl p-4">
                     <div className="flex items-start gap-3">
-                      <span className="bg-gray-800 text-yellow-400 text-xs font-bold px-2 py-0.5 rounded mt-0.5 flex-shrink-0">CH {ch.number}</span>
+                      <span className="bg-gray-100 text-[#F4B942] text-xs font-bold px-2 py-0.5 rounded mt-0.5 flex-shrink-0">CH {ch.number}</span>
                       <div>
-                        <p className="text-white text-sm font-semibold">{ch.title}</p>
+                        <p className="text-[#1A1F36] text-sm font-semibold">{ch.title}</p>
                         <p className="text-gray-500 text-xs mt-1">{ch.goal}</p>
-                        <p className="text-yellow-600 text-xs mt-1">⚡ {ch.quick_win_outcome}</p>
+                        <p className="text-[#F4B942] text-xs mt-1">⚡ {ch.quick_win_outcome}</p>
                       </div>
                     </div>
                   </div>
@@ -548,7 +548,7 @@ export default function Module2Page() {
 
               <button
                 onClick={startWriting}
-                className="w-full bg-yellow-400 text-black font-bold py-4 rounded-xl text-base"
+                className="w-full bg-[#F4B942] text-[#1A1F36] font-bold py-4 rounded-xl text-base"
               >
                 Start Writing Chapter by Chapter →
               </button>
@@ -605,17 +605,17 @@ export default function Module2Page() {
             ))}
           </div>
 
-          <h2 className="text-base font-bold text-white mb-2 tracking-wide">
+          <h2 className="text-base font-bold text-[#1A1F36] mb-2 tracking-wide">
             {regenerating
               ? `Rewriting Chapter ${currentChapterIndex + 1}…`
               : `Writing Chapter ${currentChapterIndex + 1} of ${chapterOutlines.length}`}
           </h2>
           {chapterOutlines[currentChapterIndex] && (
-            <p className="text-yellow-400/70 text-sm mb-3 font-medium">
+            <p className="text-[#F4B942] text-sm mb-3 font-medium">
               &ldquo;{chapterOutlines[currentChapterIndex].title}&rdquo;
             </p>
           )}
-          <p className="text-gray-600 text-xs max-w-xs leading-relaxed">
+          <p className="text-gray-500 text-xs max-w-xs leading-relaxed">
             {regenerating
               ? 'Generating a fresh version — this takes about 20–30 seconds…'
               : 'Writing all 5 sections — this takes about 20–30 seconds…'}
@@ -639,9 +639,9 @@ export default function Module2Page() {
         <div className="flex-1 px-6 pb-10">
 
           {/* Chapter header */}
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 mb-5">
+          <div className="bg-[#1A1F36] rounded-xl p-4 mb-5">
             <div className="flex items-center gap-2 mb-1">
-              <span className="bg-yellow-400 text-black text-xs font-bold px-2 py-0.5 rounded">
+              <span className="bg-[#F4B942] text-[#1A1F36] text-xs font-bold px-2 py-0.5 rounded">
                 CH {currentDraft.number}
               </span>
               <span className="text-gray-400 text-xs">of {chapterOutlines.length}</span>
@@ -651,29 +651,29 @@ export default function Module2Page() {
 
           {/* Opening Quote */}
           {currentDraft.quote && (
-            <div className="mb-5 border-l-4 border-yellow-400 pl-4">
-              <p className="text-gray-200 text-base italic leading-relaxed">&ldquo;{currentDraft.quote.text}&rdquo;</p>
-              <p className="text-yellow-500 text-xs font-semibold mt-2">— {currentDraft.quote.author}</p>
+            <div className="mb-5 border-l-4 border-[#F4B942] pl-4">
+              <p className="text-gray-700 text-base italic leading-relaxed">&ldquo;{currentDraft.quote.text}&rdquo;</p>
+              <p className="text-[#F4B942] text-xs font-semibold mt-2">— {currentDraft.quote.author}</p>
             </div>
           )}
 
           {/* Section: Story Starter */}
           <div className="mb-5">
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-yellow-500 text-xs font-bold uppercase tracking-wide">📖 Introduction</span>
+              <span className="text-[#F4B942] text-xs font-bold uppercase tracking-wide">📖 Introduction</span>
             </div>
-            <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
-              <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-line">{currentDraft.story_starter}</p>
+            <div className="bg-white border border-gray-100 rounded-xl p-4">
+              <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-line">{currentDraft.story_starter}</p>
             </div>
           </div>
 
           {/* Section: Core Lessons */}
           <div className="mb-5">
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-blue-400 text-xs font-bold uppercase tracking-wide">💡 Core Lessons</span>
+              <span className="text-blue-500 text-xs font-bold uppercase tracking-wide">💡 Core Lessons</span>
             </div>
-            <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
-              <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-line">{currentDraft.core_lessons}</p>
+            <div className="bg-white border border-gray-100 rounded-xl p-4">
+              <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-line">{currentDraft.core_lessons}</p>
             </div>
           </div>
 
@@ -681,15 +681,15 @@ export default function Module2Page() {
           {currentDraft.practical_steps?.length > 0 && (
             <div className="mb-5">
               <div className="flex items-center gap-2 mb-2">
-                <span className="text-green-400 text-xs font-bold uppercase tracking-wide">🪜 Practical Steps</span>
+                <span className="text-green-600 text-xs font-bold uppercase tracking-wide">🪜 Practical Steps</span>
               </div>
               <div className="space-y-3">
                 {currentDraft.practical_steps.map((s) => (
-                  <div key={s.step_number} className="bg-gray-900 border border-gray-800 rounded-xl p-4">
-                    <p className="text-white text-sm font-semibold mb-1">Step {s.step_number}: {s.title}</p>
-                    <p className="text-gray-300 text-sm">{s.what_to_do}</p>
-                    <p className="text-gray-500 text-xs mt-1 italic">Why: {s.why_it_matters}</p>
-                    <p className="text-red-400 text-xs mt-1">⚠️ Common mistake: {s.common_mistake}</p>
+                  <div key={s.step_number} className="bg-white border border-gray-100 rounded-xl p-4">
+                    <p className="text-[#1A1F36] text-sm font-semibold mb-1">Step {s.step_number}: {s.title}</p>
+                    <p className="text-gray-600 text-sm">{s.what_to_do}</p>
+                    <p className="text-gray-400 text-xs mt-1 italic">Why: {s.why_it_matters}</p>
+                    <p className="text-red-500 text-xs mt-1">⚠️ Common mistake: {s.common_mistake}</p>
                   </div>
                 ))}
               </div>
@@ -700,20 +700,20 @@ export default function Module2Page() {
           {currentDraft.quick_win && (
             <div className="mb-5">
               <div className="flex items-center gap-2 mb-2">
-                <span className="text-yellow-400 text-xs font-bold uppercase tracking-wide">⚡ Quick Win</span>
+                <span className="text-[#F4B942] text-xs font-bold uppercase tracking-wide">⚡ Quick Win</span>
               </div>
-              <div className="bg-yellow-400/5 border border-yellow-400/20 rounded-xl p-4">
-                <p className="text-yellow-300 text-sm font-medium mb-2">{currentDraft.quick_win.goal}</p>
+              <div className="bg-[#F4B942]/5 border border-[#F4B942]/20 rounded-xl p-4">
+                <p className="text-[#1A1F36] text-sm font-medium mb-2">{currentDraft.quick_win.goal}</p>
                 <ul className="space-y-1 mb-2">
                   {currentDraft.quick_win.instructions?.map((inst, i) => (
-                    <li key={i} className="text-gray-300 text-sm flex items-start gap-2">
-                      <span className="text-yellow-500 font-bold flex-shrink-0">{i + 1}.</span>
+                    <li key={i} className="text-gray-600 text-sm flex items-start gap-2">
+                      <span className="text-[#F4B942] font-bold flex-shrink-0">{i + 1}.</span>
                       <span>{inst}</span>
                     </li>
                   ))}
                 </ul>
                 {currentDraft.quick_win.immediate_result && (
-                  <p className="text-green-400 text-xs italic">✓ Result: {currentDraft.quick_win.immediate_result}</p>
+                  <p className="text-green-600 text-xs italic">✓ Result: {currentDraft.quick_win.immediate_result}</p>
                 )}
               </div>
             </div>
@@ -722,10 +722,10 @@ export default function Module2Page() {
           {/* Section: Confidence Close */}
           <div className="mb-8">
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-purple-400 text-xs font-bold uppercase tracking-wide">🎯 Confidence Close</span>
+              <span className="text-purple-500 text-xs font-bold uppercase tracking-wide">🎯 Confidence Close</span>
             </div>
-            <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
-              <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-line">{currentDraft.confidence_close}</p>
+            <div className="bg-white border border-gray-100 rounded-xl p-4">
+              <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-line">{currentDraft.confidence_close}</p>
             </div>
           </div>
 
@@ -733,7 +733,7 @@ export default function Module2Page() {
           <div className="space-y-3">
             <button
               onClick={approveChapter}
-              className="w-full bg-yellow-400 text-black font-bold py-4 rounded-xl text-base"
+              className="w-full bg-[#F4B942] text-[#1A1F36] font-bold py-4 rounded-xl text-base"
             >
               {currentChapterIndex + 1 < chapterOutlines.length
                 ? `Approve → Write Chapter ${currentChapterIndex + 2}`
@@ -742,7 +742,7 @@ export default function Module2Page() {
             <button
               onClick={() => writeChapter(currentChapterIndex, true)}
               disabled={regenerating}
-              className="w-full bg-gray-800 border border-gray-700 text-gray-300 font-semibold py-3 rounded-xl text-sm disabled:opacity-50"
+              className="w-full bg-white border border-gray-200 text-gray-600 font-semibold py-3 rounded-xl text-sm disabled:opacity-50"
             >
               {regenerating
                 ? (
@@ -800,9 +800,9 @@ export default function Module2Page() {
             ))}
           </div>
 
-          <h2 className="text-base font-bold text-white mb-2 tracking-wide">Almost there…</h2>
-          <p className="text-yellow-400/70 text-sm mb-3 font-medium">Writing your Introduction &amp; Conclusion</p>
-          <p className="text-gray-600 text-xs max-w-xs leading-relaxed">Putting the finishing touches on your e-book — just a few more seconds.</p>
+          <h2 className="text-base font-bold text-[#1A1F36] mb-2 tracking-wide">Almost there…</h2>
+          <p className="text-[#F4B942] text-sm mb-3 font-medium">Writing your Introduction &amp; Conclusion</p>
+          <p className="text-gray-500 text-xs max-w-xs leading-relaxed">Putting the finishing touches on your e-book — just a few more seconds.</p>
         </div>
       )}
 
@@ -811,10 +811,10 @@ export default function Module2Page() {
         <div className="flex-1 px-6 pb-10">
 
           {selectedTitle && (
-            <div className="bg-yellow-400/10 border border-yellow-400/30 rounded-xl p-4 mb-6">
-              <p className="text-xs text-yellow-600 uppercase tracking-wide mb-1">Your E-Book</p>
-              <p className="text-yellow-300 font-bold text-lg leading-tight">{selectedTitle.title}</p>
-              <p className="text-yellow-500/80 text-sm mt-1">{selectedTitle.subtitle}</p>
+            <div className="bg-[#1A1F36] rounded-xl p-4 mb-6">
+              <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Your E-Book</p>
+              <p className="text-[#F4B942] font-bold text-lg leading-tight">{selectedTitle.title}</p>
+              <p className="text-gray-300 text-sm mt-1">{selectedTitle.subtitle}</p>
             </div>
           )}
 
@@ -823,17 +823,17 @@ export default function Module2Page() {
             <div className="mb-3">
               <button
                 onClick={() => setExpandedChapter(expandedChapter === -1 ? null : -1)}
-                className="w-full text-left bg-gray-900 border border-gray-800 rounded-xl p-4 flex items-center justify-between"
+                className="w-full text-left bg-white border border-gray-100 rounded-xl p-4 flex items-center justify-between"
               >
                 <div className="flex items-center gap-3">
-                  <span className="bg-gray-800 text-gray-400 text-xs font-bold px-2 py-0.5 rounded">INTRO</span>
-                  <span className="text-white text-sm font-semibold">Book Introduction</span>
+                  <span className="bg-gray-100 text-gray-500 text-xs font-bold px-2 py-0.5 rounded">INTRO</span>
+                  <span className="text-[#1A1F36] text-sm font-semibold">Book Introduction</span>
                 </div>
-                <span className="text-gray-500 text-xs">{expandedChapter === -1 ? '▲' : '▼'}</span>
+                <span className="text-gray-400 text-xs">{expandedChapter === -1 ? '▲' : '▼'}</span>
               </button>
               {expandedChapter === -1 && (
-                <div className="bg-gray-900/50 border border-gray-800 border-t-0 rounded-b-xl p-4">
-                  <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-line">{introduction}</p>
+                <div className="bg-gray-50 border border-gray-100 border-t-0 rounded-b-xl p-4">
+                  <p className="text-gray-600 text-sm leading-relaxed whitespace-pre-line">{introduction}</p>
                 </div>
               )}
             </div>
@@ -845,41 +845,41 @@ export default function Module2Page() {
               <div key={ch.number}>
                 <button
                   onClick={() => setExpandedChapter(expandedChapter === ch.number ? null : ch.number)}
-                  className="w-full text-left bg-gray-900 border border-gray-800 rounded-xl p-4 flex items-center justify-between"
+                  className="w-full text-left bg-white border border-gray-100 rounded-xl p-4 flex items-center justify-between"
                 >
                   <div className="flex items-center gap-3">
-                    <span className="bg-gray-800 text-yellow-400 text-xs font-bold px-2 py-0.5 rounded">CH {ch.number}</span>
-                    <span className="text-white text-sm font-semibold">{ch.title}</span>
+                    <span className="bg-gray-100 text-[#F4B942] text-xs font-bold px-2 py-0.5 rounded">CH {ch.number}</span>
+                    <span className="text-[#1A1F36] text-sm font-semibold">{ch.title}</span>
                   </div>
-                  <span className="text-gray-500 text-xs">{expandedChapter === ch.number ? '▲' : '▼'}</span>
+                  <span className="text-gray-400 text-xs">{expandedChapter === ch.number ? '▲' : '▼'}</span>
                 </button>
 
                 {expandedChapter === ch.number && (
-                  <div className="bg-gray-900/50 border border-gray-800 border-t-0 rounded-b-xl p-4 space-y-4">
+                  <div className="bg-gray-50 border border-gray-100 border-t-0 rounded-b-xl p-4 space-y-4">
                     {ch.quote && (
-                      <div className="border-l-4 border-yellow-400 pl-3">
-                        <p className="text-gray-200 text-sm italic leading-relaxed">&ldquo;{ch.quote.text}&rdquo;</p>
-                        <p className="text-yellow-500 text-xs font-semibold mt-1">— {ch.quote.author}</p>
+                      <div className="border-l-4 border-[#F4B942] pl-3">
+                        <p className="text-gray-700 text-sm italic leading-relaxed">&ldquo;{ch.quote.text}&rdquo;</p>
+                        <p className="text-[#F4B942] text-xs font-semibold mt-1">— {ch.quote.author}</p>
                       </div>
                     )}
                     <div>
-                      <p className="text-xs text-yellow-500 font-bold uppercase tracking-wide mb-1">📖 Introduction</p>
-                      <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-line">{ch.story_starter}</p>
+                      <p className="text-xs text-[#F4B942] font-bold uppercase tracking-wide mb-1">📖 Introduction</p>
+                      <p className="text-gray-600 text-sm leading-relaxed whitespace-pre-line">{ch.story_starter}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-blue-400 font-bold uppercase tracking-wide mb-1">💡 Core Lessons</p>
-                      <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-line">{ch.core_lessons}</p>
+                      <p className="text-xs text-blue-500 font-bold uppercase tracking-wide mb-1">💡 Core Lessons</p>
+                      <p className="text-gray-600 text-sm leading-relaxed whitespace-pre-line">{ch.core_lessons}</p>
                     </div>
                     {ch.practical_steps?.length > 0 && (
                       <div>
-                        <p className="text-xs text-green-400 font-bold uppercase tracking-wide mb-2">🪜 Practical Steps</p>
+                        <p className="text-xs text-green-600 font-bold uppercase tracking-wide mb-2">🪜 Practical Steps</p>
                         <div className="space-y-2">
                           {ch.practical_steps.map((s) => (
-                            <div key={s.step_number} className="bg-gray-800/60 rounded-lg p-3">
-                              <p className="text-white text-sm font-semibold">Step {s.step_number}: {s.title}</p>
-                              <p className="text-gray-300 text-xs mt-1">{s.what_to_do}</p>
+                            <div key={s.step_number} className="bg-white border border-gray-100 rounded-lg p-3">
+                              <p className="text-[#1A1F36] text-sm font-semibold">Step {s.step_number}: {s.title}</p>
+                              <p className="text-gray-600 text-xs mt-1">{s.what_to_do}</p>
                               <p className="text-gray-400 text-xs mt-1 italic">Why: {s.why_it_matters}</p>
-                              <p className="text-red-400 text-xs mt-1">⚠️ {s.common_mistake}</p>
+                              <p className="text-red-500 text-xs mt-1">⚠️ {s.common_mistake}</p>
                             </div>
                           ))}
                         </div>
@@ -887,25 +887,25 @@ export default function Module2Page() {
                     )}
                     {ch.quick_win && (
                       <div>
-                        <p className="text-xs text-yellow-400 font-bold uppercase tracking-wide mb-2">⚡ Quick Win</p>
-                        <div className="bg-yellow-400/5 border border-yellow-400/20 rounded-lg p-3">
-                          <p className="text-yellow-300 text-sm font-medium mb-1">{ch.quick_win.goal}</p>
+                        <p className="text-xs text-[#F4B942] font-bold uppercase tracking-wide mb-2">⚡ Quick Win</p>
+                        <div className="bg-[#F4B942]/5 border border-[#F4B942]/20 rounded-lg p-3">
+                          <p className="text-[#1A1F36] text-sm font-medium mb-1">{ch.quick_win.goal}</p>
                           <ul className="space-y-0.5">
                             {ch.quick_win.instructions?.map((inst, i) => (
-                              <li key={i} className="text-gray-300 text-xs flex gap-2">
-                                <span className="text-yellow-500 font-bold">{i + 1}.</span> {inst}
+                              <li key={i} className="text-gray-600 text-xs flex gap-2">
+                                <span className="text-[#F4B942] font-bold">{i + 1}.</span> {inst}
                               </li>
                             ))}
                           </ul>
                           {ch.quick_win.immediate_result && (
-                            <p className="text-green-400 text-xs mt-1 italic">✓ {ch.quick_win.immediate_result}</p>
+                            <p className="text-green-600 text-xs mt-1 italic">✓ {ch.quick_win.immediate_result}</p>
                           )}
                         </div>
                       </div>
                     )}
                     <div>
-                      <p className="text-xs text-purple-400 font-bold uppercase tracking-wide mb-1">🎯 Confidence Close</p>
-                      <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-line">{ch.confidence_close}</p>
+                      <p className="text-xs text-purple-500 font-bold uppercase tracking-wide mb-1">🎯 Confidence Close</p>
+                      <p className="text-gray-600 text-sm leading-relaxed whitespace-pre-line">{ch.confidence_close}</p>
                     </div>
                   </div>
                 )}
@@ -918,17 +918,17 @@ export default function Module2Page() {
             <div className="mb-8">
               <button
                 onClick={() => setExpandedChapter(expandedChapter === -2 ? null : -2)}
-                className="w-full text-left bg-gray-900 border border-gray-800 rounded-xl p-4 flex items-center justify-between"
+                className="w-full text-left bg-white border border-gray-100 rounded-xl p-4 flex items-center justify-between"
               >
                 <div className="flex items-center gap-3">
-                  <span className="bg-gray-800 text-gray-400 text-xs font-bold px-2 py-0.5 rounded">END</span>
-                  <span className="text-white text-sm font-semibold">Conclusion</span>
+                  <span className="bg-gray-100 text-gray-500 text-xs font-bold px-2 py-0.5 rounded">END</span>
+                  <span className="text-[#1A1F36] text-sm font-semibold">Conclusion</span>
                 </div>
-                <span className="text-gray-500 text-xs">{expandedChapter === -2 ? '▲' : '▼'}</span>
+                <span className="text-gray-400 text-xs">{expandedChapter === -2 ? '▲' : '▼'}</span>
               </button>
               {expandedChapter === -2 && (
-                <div className="bg-gray-900/50 border border-gray-800 border-t-0 rounded-b-xl p-4">
-                  <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-line">{conclusion}</p>
+                <div className="bg-gray-50 border border-gray-100 border-t-0 rounded-b-xl p-4">
+                  <p className="text-gray-600 text-sm leading-relaxed whitespace-pre-line">{conclusion}</p>
                 </div>
               )}
             </div>
