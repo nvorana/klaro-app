@@ -93,12 +93,12 @@ export default async function CoachDashboard() {
   const { data: students } = await (isAdmin
     ? adminClient
         .from('profiles')
-        .select('id, first_name, full_name, enrolled_at, last_active_at, coach_notes, dfy_flagged, access_level, unlocked_modules')
+        .select('id, first_name, full_name, email, enrolled_at, last_active_at, coach_notes, dfy_flagged, access_level, unlocked_modules')
         .eq('role', 'student')
         .order('enrolled_at', { ascending: false })
     : adminClient
         .from('profiles')
-        .select('id, first_name, full_name, enrolled_at, last_active_at, coach_notes, dfy_flagged, access_level, unlocked_modules')
+        .select('id, first_name, full_name, email, enrolled_at, last_active_at, coach_notes, dfy_flagged, access_level, unlocked_modules')
         .eq('role', 'student')
         .eq('coach_id', user.id)
         .order('enrolled_at', { ascending: false })
@@ -231,6 +231,7 @@ export default async function CoachDashboard() {
             id: student.id,
             full_name: student.full_name,
             first_name: student.first_name,
+            email: student.email,
             access_level: student.access_level,
             dfy_flagged: student.dfy_flagged,
             last_active_at: student.last_active_at,

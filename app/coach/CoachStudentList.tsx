@@ -29,6 +29,7 @@ interface Student {
   id: string
   full_name: string
   first_name: string
+  email?: string
   access_level: string
   dfy_flagged: boolean
   last_active_at: string | null
@@ -129,7 +130,10 @@ export default function CoachStudentList({ students }: Props) {
                       </div>
                       <div>
                         <p className="text-white font-semibold text-sm">{student.full_name || name}</p>
-                        <p className="text-gray-500 text-xs">
+                        {student.email && (
+                          <p className="text-gray-500 text-xs">{student.email}</p>
+                        )}
+                        <p className="text-gray-600 text-xs">
                           {days === 999 ? 'No activity yet' : days === 0 ? 'Active today' : `${days}d ago`}
                         </p>
                       </div>
