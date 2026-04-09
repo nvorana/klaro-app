@@ -25,6 +25,28 @@ export function isModuleUnlockedByTier(accessLevel: string | null, moduleNumber:
   return moduleNumber <= limit
 }
 
+/**
+ * Primary unlock check — uses unlocked_modules array if present,
+ * falls back to tier-based logic for legacy students.
+ */
+export function isModuleUnlockedForStudent(
+  unlockedModules: number[] | null | undefined,
+  accessLevel: string | null,
+  enrolledAt: string | null,
+  moduleNumber: number
+): boolean {
+  // Array-based (new system — TOPIS, Accel, manually unlocked)
+  if (unlockedModules && unlockedModules.length > 0) {
+    return unlockedModules.includes(moduleNumber)
+  }
+  // Tier-based fallback (existing tier1/tier2/tier3/full_access students)
+  if (accessLevel && ['tier1', 'tier2', 'tier3', 'full_access'].includes(accessLevel)) {
+    return isModuleUnlockedByTier(accessLevel, moduleNumber)
+  }
+  // Legacy time-based fallback
+  return isModuleUnlocked(enrolledAt, moduleNumber)
+}
+
 // Module unlock schedule — days after enrollment
 export const MODULE_UNLOCK_DAYS: Record<number, number> = {
   1: 0,   // Unlocks immediately

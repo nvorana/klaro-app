@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { MODULE_INFO, isModuleUnlocked, isModuleUnlockedByTier, getDaysUntilUnlock } from '@/lib/modules'
+import { MODULE_INFO, isModuleUnlockedForStudent, getDaysUntilUnlock } from '@/lib/modules'
 import SignOutButton from './SignOutButton'
 
 export const dynamic = 'force-dynamic'
@@ -16,7 +16,7 @@ export default async function DashboardPage() {
   // ── Profile ───────────────────────────────────────────────
   const { data: profile } = await supabase
     .from('profiles')
-    .select('full_name, access_level, enrolled_at')
+    .select('full_name, access_level, enrolled_at, unlocked_modules')
     .eq('id', user.id)
     .maybeSingle()
 
@@ -25,10 +25,8 @@ export default async function DashboardPage() {
   // Track last login — update last_active_at on every dashboard visit
   await supabase.from('profiles').update({ last_active_at: new Date().toISOString() }).eq('id', user.id)
 
-  // Tier-based access: tier1/tier2/tier3/full_access bypass time-gating
   const accessLevel = profile.access_level as string
-  const isTierBased = ['tier1', 'tier2', 'tier3', 'full_access'].includes(accessLevel)
-  const hasFullAccess = accessLevel === 'full_access' || accessLevel === 'tier3'
+  const unlockedModules = profile.unlocked_modules as number[] | null
 
   // ── Module completion ─────────────────────────────────────
   const [
@@ -66,9 +64,7 @@ export default async function DashboardPage() {
   // ── Next step module ──────────────────────────────────────
   let nextStepModule = -1
   for (let i = 0; i < 6; i++) {
-    const unlocked = isTierBased
-      ? isModuleUnlockedByTier(accessLevel, i + 1)
-      : isModuleUnlocked(enrolledAt, i + 1)
+    const unlocked = isModuleUnlockedForStudent(unlockedModules, accessLevel, enrolledAt, i + 1)
     if (unlocked && !completed[i]) {
       nextStepModule = i + 1
       break
@@ -139,9 +135,7 @@ export default async function DashboardPage() {
         {MODULE_INFO.map((mod, i) => {
           const moduleNum = mod.number
           const isCompleted = completed[i]
-          const unlocked = isTierBased
-            ? isModuleUnlockedByTier(accessLevel, moduleNum)
-            : isModuleUnlocked(enrolledAt, moduleNum)
+          const unlocked = isModuleUnlockedForStudent(unlockedModules, accessLevel, enrolledAt, moduleNum)
           const daysLeft = !unlocked && enrolledAt ? getDaysUntilUnlock(enrolledAt, moduleNum) : 0
           const isNext = moduleNum === nextStepModule
 

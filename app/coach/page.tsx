@@ -8,6 +8,7 @@ import {
   ChevronRight, Clock, CheckCircle2, MessageSquare
 } from 'lucide-react'
 import CoachSignOut from './CoachSignOut'
+import CoachStudentList from './CoachStudentList'
 
 export const dynamic = 'force-dynamic'
 
@@ -92,12 +93,12 @@ export default async function CoachDashboard() {
   const { data: students } = await (isAdmin
     ? adminClient
         .from('profiles')
-        .select('id, first_name, full_name, enrolled_at, last_active_at, coach_notes, dfy_flagged, access_level')
+        .select('id, first_name, full_name, enrolled_at, last_active_at, coach_notes, dfy_flagged, access_level, unlocked_modules')
         .eq('role', 'student')
         .order('enrolled_at', { ascending: false })
     : adminClient
         .from('profiles')
-        .select('id, first_name, full_name, enrolled_at, last_active_at, coach_notes, dfy_flagged, access_level')
+        .select('id, first_name, full_name, enrolled_at, last_active_at, coach_notes, dfy_flagged, access_level, unlocked_modules')
         .eq('role', 'student')
         .eq('coach_id', user.id)
         .order('enrolled_at', { ascending: false })
@@ -224,117 +225,28 @@ export default async function CoachDashboard() {
       )}
 
       {/* ── Student List ─────────────────────────────────── */}
-      <div className="flex-1 px-4 pt-4 pb-10 space-y-3">
-        {students.map(student => {
-          const hasClarity   = !!clarityMap[student.id]?.length
-          const hasEbook     = !!ebookMap[student.id]?.length
-          const hasSalesPage = !!salesMap[student.id]?.length
-          const hasEmail     = !!emailMap[student.id]?.length
-          const hasMagnet    = !!magnetMap[student.id]?.length
-          const hasPosts     = !!postsMap[student.id]?.length
-
-          const completions  = [hasClarity, hasEbook, hasSalesPage, hasEmail, hasMagnet, hasPosts]
-          const doneCount    = completions.filter(Boolean).length
-          const curMod       = currentModule(completions)
-          const days         = daysSince(student.last_active_at ?? student.enrolled_at)
-          const status       = getStatus(days)
-          const config       = STATUS_CONFIG[status]
-          const ebookTitle   = ebookMap[student.id]?.[0]?.title
-          const name         = student.first_name || student.full_name || 'Student'
-
-          return (
-            <Link key={student.id} href={`/coach/${student.id}`}>
-              <div className="bg-gray-900 border border-[#374151] rounded-2xl p-4 hover:border-[#F4B942]/50 transition-colors cursor-pointer">
-
-                {/* Top row */}
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    {/* Avatar */}
-                    <div className="w-10 h-10 rounded-full bg-[#F4B942] flex items-center justify-center text-[#1A1F36] font-black text-sm flex-shrink-0">
-                      {name.charAt(0).toUpperCase()}
-                    </div>
-                    <div>
-                      <p className="text-white font-semibold text-sm">{student.full_name || name}</p>
-                      <p className="text-gray-500 text-xs">
-                        {days === 999 ? 'No activity yet' : days === 0 ? 'Active today' : `${days}d ago`}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 flex-wrap justify-end">
-                    {/* Tier badge */}
-                    {student.access_level && student.access_level !== 'pending' && student.access_level !== 'enrolled' && (
-                      <span className="text-xs font-bold px-2 py-0.5 rounded-full"
-                        style={{
-                          background: student.access_level === 'tier3' || student.access_level === 'full_access'
-                            ? '#1c1500' : '#0d1a0d',
-                          color: student.access_level === 'tier3' || student.access_level === 'full_access'
-                            ? '#F4B942' : student.access_level === 'tier2' ? '#6ee7b7' : '#93c5fd',
-                          border: `1px solid ${student.access_level === 'tier3' || student.access_level === 'full_access' ? '#F4B942' : student.access_level === 'tier2' ? '#6ee7b7' : '#93c5fd'}40`,
-                        }}
-                      >
-                        {student.access_level === 'full_access' ? 'FULL' : student.access_level.toUpperCase()}
-                      </span>
-                    )}
-                    {student.dfy_flagged && (
-                      <span className="inline-flex items-center gap-1 text-xs bg-[#1c1500] text-[#F4B942] border border-[#F4B942]/40 px-2 py-0.5 rounded-full font-bold">
-                        <Star size={10} />DFY
-                      </span>
-                    )}
-                    <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${config.badge}`}>
-                      {config.label}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Module progress bar */}
-                <div className="mb-3">
-                  <div className="flex justify-between mb-1">
-                    <p className="text-gray-400 text-xs">
-                      Module {curMod < 6 ? curMod + 1 : 6} — {MODULE_NAMES[curMod < 6 ? curMod : 5]}
-                    </p>
-                    <p className="text-gray-400 text-xs">{doneCount}/6</p>
-                  </div>
-                  <div className="h-1.5 bg-gray-800 rounded-full overflow-hidden">
-                    <div
-                      className="h-full rounded-full transition-all"
-                      style={{
-                        width: `${(doneCount / 6) * 100}%`,
-                        background: doneCount === 6 ? '#10B981' : '#F4B942',
-                      }}
-                    />
-                  </div>
-                </div>
-
-                {/* Module dots */}
-                <div className="flex gap-1.5 mb-3">
-                  {completions.map((done, i) => (
-                    <div
-                      key={i}
-                      className="flex-1 h-1 rounded-full"
-                      style={{ background: done ? '#10B981' : '#374151' }}
-                      title={MODULE_NAMES[i]}
-                    />
-                  ))}
-                </div>
-
-                {/* Latest output */}
-                {ebookTitle && (
-                  <div className="flex items-center gap-1.5 mb-2">
-                    <BookOpen size={11} className="text-gray-500 shrink-0" />
-                    <p className="text-gray-500 text-xs truncate">{ebookTitle}</p>
-                  </div>
-                )}
-
-                {/* Message template */}
-                <div className="bg-gray-800 rounded-xl px-3 py-2 flex items-start gap-2">
-                  <MessageSquare size={13} className="text-gray-500 shrink-0 mt-0.5" />
-                  <p className="text-gray-400 text-xs leading-relaxed italic">"{config.message}"</p>
-                </div>
-
-              </div>
-            </Link>
-          )
-        })}
+      <div className="flex-1 px-4 pt-4 pb-28">
+        <CoachStudentList
+          students={students.map(student => ({
+            id: student.id,
+            full_name: student.full_name,
+            first_name: student.first_name,
+            access_level: student.access_level,
+            dfy_flagged: student.dfy_flagged,
+            last_active_at: student.last_active_at,
+            enrolled_at: student.enrolled_at,
+            unlocked_modules: student.unlocked_modules,
+            completions: [
+              !!clarityMap[student.id]?.length,
+              !!ebookMap[student.id]?.length,
+              !!salesMap[student.id]?.length,
+              !!emailMap[student.id]?.length,
+              !!magnetMap[student.id]?.length,
+              !!postsMap[student.id]?.length,
+            ],
+            ebookTitle: ebookMap[student.id]?.[0]?.title,
+          }))}
+        />
       </div>
     </div>
   )

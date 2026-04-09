@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 
-// Tag → access_level mapping
-const TAG_TO_ACCESS: Record<string, string> = {
-  'klaro-tier1': 'tier1',
-  'klaro-tier2': 'tier2',
-  'klaro-tier3': 'tier3',
+// Tag → { access_level, unlocked_modules }
+const TAG_TO_ACCESS: Record<string, { access_level: string; unlocked_modules: number[] }> = {
+  'topis-student':  { access_level: 'enrolled', unlocked_modules: [1, 2] },
+  'accel-enrolled': { access_level: 'enrolled', unlocked_modules: [1, 2] },
+  'klaro-tier1':    { access_level: 'tier1',    unlocked_modules: [1] },
+  'klaro-tier2':    { access_level: 'tier2',    unlocked_modules: [1, 2, 3] },
+  'klaro-tier3':    { access_level: 'tier3',    unlocked_modules: [1, 2, 3, 4, 5, 6] },
 }
 
 function normalizeTag(tag: string): string {
@@ -55,13 +57,15 @@ export async function POST(request: NextRequest) {
     }
 
     // ── 4. Map tag to access level ───────────────────────────────
-    const accessLevel = TAG_TO_ACCESS[normalizeTag(rawTag)]
+    const tagMapping = TAG_TO_ACCESS[normalizeTag(rawTag)]
 
-    if (!accessLevel) {
+    if (!tagMapping) {
       // Not a KLARO tag — ignore silently (Systeme.io may fire for other tags)
       console.log('[Webhook] Ignoring non-KLARO tag:', rawTag)
       return NextResponse.json({ ignored: true, tag: rawTag }, { status: 200 })
     }
+
+    const { access_level: accessLevel, unlocked_modules: unlockedModules } = tagMapping
 
     // ── 5. Find user by email ────────────────────────────────────
     const adminClient = createAdminClient()
@@ -74,7 +78,6 @@ export async function POST(request: NextRequest) {
     )
 
     if (!matchedUser) {
-      // Student hasn't signed up yet — store the tag for when they do
       console.warn('[Webhook] No KLARO account found for email:', email)
       return NextResponse.json({
         status: 'no_account',
@@ -84,23 +87,25 @@ export async function POST(request: NextRequest) {
       }, { status: 200 })
     }
 
-    // ── 6. Update access_level ───────────────────────────────────
+    // ── 6. Update access_level + unlocked_modules ────────────────
     const { error: updateError } = await adminClient
       .from('profiles')
       .update({
         access_level: accessLevel,
+        unlocked_modules: unlockedModules,
         enrolled_at: new Date().toISOString(),
       })
       .eq('id', matchedUser.id)
 
     if (updateError) throw updateError
 
-    console.log(`[Webhook] ✅ ${email} → ${accessLevel}`)
+    console.log(`[Webhook] ✅ ${email} → ${accessLevel}, modules: ${unlockedModules}`)
     return NextResponse.json({
       success: true,
       email,
       tag: rawTag,
       accessLevel,
+      unlockedModules,
     }, { status: 200 })
 
   } catch (err) {

@@ -82,7 +82,7 @@ export default function SignupPage() {
 
       const accessLevel = profile?.access_level ?? 'pending'
 
-      if (accessLevel === 'full_access' || accessLevel === 'enrolled') {
+      if (['full_access', 'enrolled', 'tier1', 'tier2', 'tier3'].includes(accessLevel)) {
         router.push('/dashboard')
         router.refresh()
         return
@@ -106,7 +106,7 @@ export default function SignupPage() {
 
     const accessLevel = profile?.access_level ?? 'pending'
 
-    if (accessLevel === 'full_access' || accessLevel === 'enrolled') {
+    if (['full_access', 'enrolled', 'tier1', 'tier2', 'tier3'].includes(accessLevel)) {
       router.push('/dashboard')
       router.refresh()
     } else {
@@ -137,10 +137,9 @@ export default function SignupPage() {
               </svg>
             </div>
 
-            <h2 className="text-lg font-bold text-[#1A1F36] mb-2">Access Pending</h2>
+            <h2 className="text-lg font-bold text-[#1A1F36] mb-2">Access Not Yet Activated</h2>
             <p className="text-sm text-gray-500 leading-relaxed mb-6">
-              Your account has been created. Once your enrollment is confirmed, KLARO will be unlocked automatically.
-              This usually takes a few minutes.
+              It looks like your KLARO access hasn't been activated yet. Please make sure you've completed your enrollment first — then come back here and tap the button below.
             </p>
 
             <button
