@@ -950,8 +950,12 @@ export default function Module2Page() {
               {saving ? '⏳ Saving...' : 'Save & Mark Complete →'}
             </button>
             <button
-              onClick={() => { setChapterDrafts([]); setTitleOptions([]); setChapterOutlines([]); setIntroduction(''); setConclusion(''); setStep('outline') }}
-              className="w-full text-gray-500 text-sm py-2 underline underline-offset-2"
+              onClick={() => {
+                if (window.confirm('⚠️ This will permanently delete your current e-book and start from scratch. Are you sure?')) {
+                  setChapterDrafts([]); setTitleOptions([]); setChapterOutlines([]); setIntroduction(''); setConclusion(''); setStep('outline')
+                }
+              }}
+              className="w-full text-gray-400 text-sm py-2 underline underline-offset-2 hover:text-red-500 transition-colors"
             >
               Start over with a new e-book
             </button>
