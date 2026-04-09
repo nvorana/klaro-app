@@ -66,6 +66,16 @@ STEP 2: Create a table of contents with 8 to 10 chapters. Choose the number that
 - Chapter 1 should address the biggest mindset block first
 - The final chapter should leave the reader ready to take their first real action
 
+STEP 3: Assign a chapter_type to each chapter to make the book feel dynamic and varied.
+Use this distribution across the book (assign based on what fits the content best):
+- "standard" — Story opener + core lessons + action steps (use for 3–4 chapters)
+- "myth_truth" — Busts 3–5 common myths about the topic, then reveals the truth (use once, ideally early)
+- "case_study" — Deep dive into one fictional but realistic character's full journey through the problem (use once)
+- "worksheet" — Self-assessment or reflection exercises that help the reader diagnose their own situation (use once)
+- "template" — Provides ready-to-use scripts, templates, checklists, or fill-in-the-blank tools (use once)
+
+No two adjacent chapters should have the same type. Spread the variety throughout.
+
 Return this exact JSON:
 {
   "title_options": [
@@ -79,7 +89,8 @@ Return this exact JSON:
       "number": 1,
       "title": "Chapter title",
       "goal": "What the reader will understand after this chapter",
-      "quick_win_outcome": "The specific thing the reader will be able to DO within 10 minutes of finishing this chapter"
+      "quick_win_outcome": "The specific thing the reader will be able to DO within 10 minutes of finishing this chapter",
+      "chapter_type": "standard"
     }
   ]
 }`
@@ -87,8 +98,9 @@ Return this exact JSON:
 
 function chapterPrompt(project: Project, bookTitle: string, chapter: ChapterOutline, allChapters: ChapterOutline[]): string {
   const chapterList = allChapters.map(c => `Chapter ${c.number}: ${c.title}`).join('\n')
+  const type = chapter.chapter_type || 'standard'
 
-  return `STAGE: CHAPTER DRAFT
+  const header = `STAGE: CHAPTER DRAFT
 
 Book: "${bookTitle}"
 Target Market: ${project.target_market}
@@ -101,73 +113,199 @@ ${chapterList}
 NOW WRITE: Chapter ${chapter.number} — "${chapter.title}"
 Chapter Goal: ${chapter.goal}
 Quick Win Outcome: ${chapter.quick_win_outcome}
-
-Write this chapter using the QUOTE and all 5 sections below. Follow the word count and rules for each section.
+Chapter Type: ${type}
 
 OPENING QUOTE
 Find a powerful, relevant quote by a well-known public figure, author, entrepreneur, or thought leader that directly connects to this chapter's topic.
 - The quote must feel earned — not generic motivational filler
 - Choose someone the Filipino reader would recognise (global figures are fine)
-- The quote should make the reader pause and think before they even start reading
-- Return both the quote text and the person's name + short title (e.g. "Richard Branson, Founder of Virgin Group")
+- Return both the quote text and the person's name + short title`
 
-SECTION 1 — STORY STARTER (300–500 words)
-Write a relatable, vivid story about someone from the target market dealing with the exact topic of this chapter.
-- Use a fictional but realistic Filipino character (give them a name and a specific situation)
-- Show the struggle in detail — make the reader feel seen
-- End with a natural transition into the lesson: "That's exactly what this chapter is about."
-- Do NOT teach yet. Just tell the story.
+  const quickWinRule = `
+QUICK WIN (completable in 5–10 minutes)
+Design ONE concrete mini-exercise the reader can complete right now.
+- State the goal clearly
+- Give numbered instructions as plain strings — do NOT include "1." or numbering in the strings themselves, those will be added automatically
+- Describe the immediate, tangible result they will have when done
+- Must feel easy and rewarding — build confidence, not overwhelm`
 
-SECTION 2 — CORE LESSONS (800–1200 words)
-Teach the core concept of this chapter.
-- Maximum 3–5 principles or key ideas (never more)
-- For each principle: explain it clearly, give a small relatable Filipino example, use a simple metaphor if helpful
-- Write like you're explaining to a smart friend, not a student
-- Avoid jargon. If you use a term, explain it immediately.
-
-SECTION 3 — PRACTICAL STEPS (3–5 steps)
-Give the reader a clear, step-by-step action plan.
-- Each step: what to do + why it matters + one common mistake to avoid
-- Steps must be specific enough that a beginner can follow them without asking questions
-- Number the steps clearly
-
-SECTION 4 — QUICK WIN (completable in 5–10 minutes)
-Design ONE mini-exercise the reader can complete right now.
-- State the goal of the exercise clearly
-- Give step-by-step instructions (short and simple)
-- Describe the immediate result they will get
-- This must build confidence — it should feel easy and rewarding to complete
-
-SECTION 5 — CONFIDENCE CLOSE (1–2 short paragraphs)
-Close the chapter with warmth and forward momentum.
-- Reinforce that the reader CAN do this — but tie it to the specific action they just learned
+  const closingRule = `
+CONFIDENCE CLOSE (1–2 short paragraphs)
+- Reinforce that the reader CAN do this — tie it to the specific action they just learned
 - Remove the most common self-doubt they might feel right now
 - End with one sentence that creates anticipation for the next chapter
-- Do NOT use generic motivation ("You've got this!", "Believe in yourself")
+- Do NOT use generic motivation ("You've got this!", "Believe in yourself")`
 
+  const jsonTemplate = `
 Return this exact JSON:
 {
   "number": ${chapter.number},
   "title": "${chapter.title}",
   "quote": { "text": "The quote text here", "author": "Full Name, Title or Role" },
-  "story_starter": "Full story starter text here",
-  "core_lessons": "Full core lessons text here",
+  "story_starter": "Content for section 1 here",
+  "core_lessons": "Content for section 2 here",
   "practical_steps": [
     {
       "step_number": 1,
       "title": "Step title",
-      "what_to_do": "Exact instruction",
+      "what_to_do": "Exact, specific instruction — name actual tools, platforms, or scripts where relevant",
       "why_it_matters": "Brief explanation",
       "common_mistake": "The one thing beginners get wrong here"
     }
   ],
   "quick_win": {
     "goal": "What the reader will accomplish",
-    "instructions": ["Step 1", "Step 2", "Step 3"],
-    "immediate_result": "What they will have at the end of this exercise"
+    "instructions": ["Do this specific thing", "Then do this", "Finally do this"],
+    "immediate_result": "The specific tangible thing they will have when done"
   },
   "confidence_close": "Full closing text here"
 }`
+
+  if (type === 'myth_truth') {
+    return `${header}
+
+This is a MYTH vs. TRUTH chapter. Do NOT use the standard story format.
+
+SECTION 1 — OPENING HOOK (150–200 words)
+Start with a punchy, provocative statement about what most people in this market believe that is actually wrong.
+No story. Just a direct, confident challenge to a widely-held assumption.
+
+SECTION 2 — MYTH vs. TRUTH (main body, 800–1000 words)
+Present exactly 4 myths with their corresponding truths. For each:
+- MYTH: State the myth as confidently as most people believe it (e.g. "You need X before you can Y")
+- THE TRUTH: Flip it with a specific, evidence-backed or experience-backed truth
+- WHY IT MATTERS: One short paragraph explaining the real-world consequence of believing the myth
+- Include at least one real industry example, statistic, or named tool per myth
+
+SECTION 3 — PRACTICAL STEPS (3–4 steps)
+Based on the truths revealed, give specific steps to rewire thinking and take action.
+Name actual tools, platforms, or resources the reader can use today.
+${quickWinRule}
+${closingRule}
+${jsonTemplate}`
+  }
+
+  if (type === 'case_study') {
+    return `${header}
+
+This is a CASE STUDY chapter. Do NOT use the standard story format.
+
+SECTION 1 — MEET THE CHARACTER (200–300 words)
+Introduce a fictional but hyper-realistic Filipino character from the target market.
+- Give them a full name, age, job, location, and specific situation
+- Describe exactly what their life looked like BEFORE — the daily frustration, the specific failure, the moment they hit rock bottom
+- Make the reader feel like they're reading about themselves or someone they know
+
+SECTION 2 — THE TURNING POINT (200–300 words)
+Describe the exact moment and decision that changed everything for this character.
+- What did they try first? What failed?
+- What did they finally discover or do differently?
+- Tie it directly to the unique mechanism: ${project.unique_mechanism}
+
+SECTION 3 — THE STEP-BY-STEP BREAKDOWN (500–700 words)
+Break down exactly what the character did, step by step.
+- Be specific: name actual tools, platforms, templates, or scripts they used
+- Show the timeline (week 1, week 2, etc. if relevant)
+- Include one specific setback they overcame and how
+
+SECTION 4 — THE RESULTS + LESSON (200–300 words)
+Show the concrete, specific result the character achieved.
+- Use numbers and specifics (e.g. "landed 3 interviews in 2 weeks", not "improved her chances")
+- Extract the single most important lesson the reader should take from this story
+
+SECTION 5 — PRACTICAL STEPS (3–4 steps)
+Give the reader the exact steps to replicate what the character did.
+Name actual tools, platforms, or scripts they can use.
+${quickWinRule}
+${closingRule}
+${jsonTemplate}`
+  }
+
+  if (type === 'worksheet') {
+    return `${header}
+
+This is a WORKSHEET chapter. Do NOT use the standard story format.
+
+SECTION 1 — OPENING REFRAME (150–200 words)
+Start with a sharp insight about why most people skip the self-assessment step and what it costs them.
+No long story — just a clear, direct explanation of why this chapter's exercise matters.
+
+SECTION 2 — THE SELF-ASSESSMENT (main body, 600–800 words)
+Create a practical self-assessment tool for the reader. Choose the format that best fits the topic:
+- A scored quiz (rate yourself 1–5 on each item) with a score interpretation at the end
+- A diagnostic checklist (check all that apply, then count and interpret)
+- A fill-in-the-blank reflection (complete these sentences about your situation)
+Present it as a real, usable exercise — not a list of questions with no structure.
+After the tool, provide a brief interpretation guide: "If you scored X, here's what that means and what to focus on."
+
+SECTION 3 — WHAT YOUR RESULTS MEAN (300–400 words)
+Walk through the main result categories and give specific, actionable guidance for each.
+Name actual next steps, tools, or resources for each category.
+
+SECTION 4 — PRACTICAL STEPS (3–4 steps)
+Based on what readers discovered in the assessment, give them specific next steps.
+${quickWinRule}
+${closingRule}
+${jsonTemplate}`
+  }
+
+  if (type === 'template') {
+    return `${header}
+
+This is a TEMPLATE chapter. Do NOT use the standard story format.
+
+SECTION 1 — WHY TEMPLATES MATTER (150–200 words)
+Open with the specific pain of starting from a blank page — most people freeze because they don't know what "good" looks like.
+Explain that this chapter gives them the exact tools professionals use, so they never have to guess again.
+
+SECTION 2 — THE TEMPLATES (main body, 700–1000 words)
+Provide 3–4 ready-to-use templates, scripts, or checklists directly relevant to this chapter's topic.
+For each template:
+- Give it a clear name (e.g. "The 3-Part Follow-Up Message", "The 60-Second Intro Script")
+- Explain when and how to use it (1–2 sentences)
+- Provide the full template with [BRACKETS] for the parts the reader fills in
+- Add 1 short example of the template filled in with realistic content
+Make these feel premium and genuinely useful — not generic filler.
+
+SECTION 3 — HOW TO CUSTOMIZE (200–300 words)
+Give 3–5 specific tips for adapting the templates to their own voice, industry, or situation.
+Name common mistakes people make when using templates (sounding robotic, over-copying, etc.)
+
+SECTION 4 — PRACTICAL STEPS (3–4 steps)
+Walk the reader through using one of the templates right now.
+${quickWinRule}
+${closingRule}
+${jsonTemplate}`
+  }
+
+  // Default: standard
+  return `${header}
+
+SECTION 1 — STORY STARTER (300–500 words)
+Write a relatable, vivid story about someone from the target market dealing with the exact topic of this chapter.
+- Use a fictional but realistic Filipino character (give them a full name and a specific situation)
+- VARY the opening: do NOT always use a woman feeling anxious. Use different characters, emotions, and scenarios.
+- Show the struggle in concrete detail — specific numbers, specific moments, specific words they said to themselves
+- End with a natural transition: "That's exactly what this chapter is about."
+- Do NOT teach yet. Just tell the story.
+
+SECTION 2 — CORE LESSONS (800–1200 words)
+Teach the core concept of this chapter.
+- Maximum 3–5 principles or key ideas (never more)
+- For each principle: explain it clearly, name a specific tool or resource the reader can use, give a relatable Filipino example
+- Include at least one real-world data point, statistic, or industry insight to build credibility
+- Write like you're explaining to a smart friend, not a student
+- Avoid jargon. If you use a term, explain it immediately.
+
+SECTION 3 — PRACTICAL STEPS (3–5 steps)
+Give the reader a clear, step-by-step action plan.
+- Each step must name specific tools, platforms, or scripts (not just "research" or "network" — say WHERE and HOW)
+- Each step: what to do + why it matters + one common mistake to avoid
+- Steps must be specific enough that a beginner can follow them without asking questions
+
+${quickWinRule}
+${closingRule}
+${jsonTemplate}`
 }
 
 function introductionPrompt(project: Project, bookTitle: string, bookSubtitle: string, chapters: ChapterOutline[]): string {
@@ -273,6 +411,7 @@ interface ChapterOutline {
   title: string
   goal: string
   quick_win_outcome: string
+  chapter_type?: 'standard' | 'myth_truth' | 'case_study' | 'worksheet' | 'template'
 }
 
 interface PracticalStep {

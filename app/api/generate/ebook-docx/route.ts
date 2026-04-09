@@ -10,9 +10,7 @@ import {
   Header,
   Footer,
   BorderStyle,
-  LevelFormat,
   PageBreak,
-  ShadingType,
 } from 'docx'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -283,12 +281,18 @@ function buildDocument(ebook: EbookData): Document {
         }))
       }
 
-      // Instructions as numbered list
+      // Instructions as numbered list — manually numbered to avoid Word counter bleed
       if (ch.quick_win.instructions?.length > 0) {
         ch.quick_win.instructions.forEach((inst, i) => {
+          // Strip any leading "1." or "1)" the AI may have added
+          const cleanInst = inst.replace(/^\d+[\.\)]\s*/, '').trim()
           children.push(new Paragraph({
-            numbering: { reference: 'quickwin-numbers', level: 0 },
-            children: [new TextRun({ text: inst, size: 24, font: 'Georgia' })],
+            children: [
+              new TextRun({ text: `${i + 1}.  `, bold: true, size: 24, font: 'Arial', color: 'b8860b' }),
+              new TextRun({ text: cleanInst, size: 24, font: 'Georgia' }),
+            ],
+            spacing: { after: 100 },
+            indent: { left: 360 },
           }))
         })
       }
@@ -330,20 +334,6 @@ function buildDocument(ebook: EbookData): Document {
 
   // ── Build document ────────────────────────────────────────────────────────────
   return new Document({
-    numbering: {
-      config: [
-        {
-          reference: 'quickwin-numbers',
-          levels: [{
-            level: 0,
-            format: LevelFormat.DECIMAL,
-            text: '%1.',
-            alignment: AlignmentType.LEFT,
-            style: { paragraph: { indent: { left: 720, hanging: 360 } } },
-          }],
-        },
-      ],
-    },
     styles: {
       default: {
         document: { run: { font: 'Georgia', size: 24 } },
@@ -390,10 +380,7 @@ function buildDocument(ebook: EbookData): Document {
           children: [new Paragraph({
             alignment: AlignmentType.CENTER,
             children: [
-              new TextRun({ text: 'Page ', size: 18, font: 'Arial', color: 'aaaaaa' }),
               new TextRun({ children: [PageNumber.CURRENT], size: 18, font: 'Arial', color: 'aaaaaa' }),
-              new TextRun({ text: ' of ', size: 18, font: 'Arial', color: 'aaaaaa' }),
-              new TextRun({ children: [PageNumber.TOTAL_PAGES], size: 18, font: 'Arial', color: 'aaaaaa' }),
             ],
           })],
         }),
