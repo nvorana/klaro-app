@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
 import GoldConfetti from '@/components/GoldConfetti'
+import { isModuleUnlockedByTier } from '@/lib/modules'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -123,11 +124,17 @@ export default function Module2Page() {
         .single()
 
       if (!profile || profile.access_level === 'pending') { router.push('/signup'); return }
-      if (profile.access_level === 'enrolled') { router.push('/dashboard'); return }
 
-      if (profile.enrolled_at) {
-        const daysSince = Math.floor((Date.now() - new Date(profile.enrolled_at).getTime()) / 86400000)
-        if (daysSince < 7) { router.push('/dashboard'); return }
+      const isTierBased = ['tier1', 'tier2', 'tier3', 'full_access'].includes(profile.access_level)
+      if (isTierBased) {
+        if (!isModuleUnlockedByTier(profile.access_level, 2)) { router.push('/dashboard'); return }
+      } else {
+        // Legacy time-based check for 'enrolled' students
+        if (profile.access_level === 'enrolled') { router.push('/dashboard'); return }
+        if (profile.enrolled_at) {
+          const daysSince = Math.floor((Date.now() - new Date(profile.enrolled_at).getTime()) / 86400000)
+          if (daysSince < 7) { router.push('/dashboard'); return }
+        }
       }
 
       const { data: clarityRow } = await supabase
