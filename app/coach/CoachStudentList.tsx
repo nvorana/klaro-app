@@ -45,9 +45,10 @@ interface Props {
 
 export default function CoachStudentList({ students }: Props) {
   const [selected, setSelected] = useState<Set<string>>(new Set())
-  const [moduleToUnlock, setModuleToUnlock] = useState<number>(3)
-  const [unlocking, setUnlocking] = useState(false)
-  const [unlockDone, setUnlockDone] = useState(false)
+  const [moduleTarget, setModuleTarget] = useState<number>(3)
+  const [action, setAction] = useState<'unlock' | 'lock'>('unlock')
+  const [loading, setLoading] = useState(false)
+  const [done, setDone] = useState(false)
 
   const toggleSelect = (id: string) => {
     setSelected(prev => {
@@ -60,18 +61,19 @@ export default function CoachStudentList({ students }: Props) {
   const selectAll = () => setSelected(new Set(students.map(s => s.id)))
   const clearAll = () => setSelected(new Set())
 
-  const handleUnlock = async () => {
+  const handleAction = async () => {
     if (!selected.size) return
-    setUnlocking(true)
-    await fetch('/api/coach/unlock-modules', {
+    setLoading(true)
+    const endpoint = action === 'unlock' ? '/api/coach/unlock-modules' : '/api/coach/lock-modules'
+    await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ studentIds: Array.from(selected), moduleNumber: moduleToUnlock }),
+      body: JSON.stringify({ studentIds: Array.from(selected), moduleNumber: moduleTarget }),
     })
-    setUnlocking(false)
-    setUnlockDone(true)
+    setLoading(false)
+    setDone(true)
     clearAll()
-    setTimeout(() => { setUnlockDone(false); window.location.reload() }, 1500)
+    setTimeout(() => { setDone(false); window.location.reload() }, 1500)
   }
 
   return (
@@ -186,35 +188,67 @@ export default function CoachStudentList({ students }: Props) {
         })}
       </div>
 
-      {/* ── Sticky Bulk Unlock Bar ─────────────────────────── */}
+      {/* ── Sticky Bulk Action Bar ─────────────────────────── */}
       {selected.size > 0 && (
         <div className="fixed bottom-0 left-0 right-0 bg-[#1A1F36] border-t border-[#F4B942]/30 px-4 py-4 z-50">
-          <div className="max-w-3xl mx-auto flex items-center gap-3">
-            <div className="flex items-center gap-2 flex-1">
-              <Unlock size={16} className="text-[#F4B942]" />
-              <span className="text-white text-sm font-semibold">
-                Unlock Module
-              </span>
-              <select
-                value={moduleToUnlock}
-                onChange={e => setModuleToUnlock(Number(e.target.value))}
-                className="bg-gray-800 text-white text-sm rounded-lg px-2 py-1.5 border border-gray-600 focus:outline-none focus:border-[#F4B942]"
+          <div className="max-w-3xl mx-auto flex items-center gap-3 flex-wrap">
+
+            {/* Lock / Unlock toggle */}
+            <div className="flex rounded-lg overflow-hidden border border-gray-700 flex-shrink-0">
+              <button
+                onClick={() => setAction('unlock')}
+                className={`flex items-center gap-1.5 px-3 py-2 text-xs font-bold transition-all ${
+                  action === 'unlock'
+                    ? 'bg-[#F4B942] text-[#1A1F36]'
+                    : 'bg-gray-800 text-gray-400 hover:text-white'
+                }`}
               >
-                {[1,2,3,4,5,6,7].map(n => (
-                  <option key={n} value={n}>Module {n} — {MODULE_NAMES[n-1] ?? 'Module 7'}</option>
-                ))}
-              </select>
-              <span className="text-gray-400 text-xs">for {selected.size} student{selected.size > 1 ? 's' : ''}</span>
+                <Unlock size={13} /> Unlock
+              </button>
+              <button
+                onClick={() => setAction('lock')}
+                className={`flex items-center gap-1.5 px-3 py-2 text-xs font-bold transition-all ${
+                  action === 'lock'
+                    ? 'bg-red-500 text-white'
+                    : 'bg-gray-800 text-gray-400 hover:text-white'
+                }`}
+              >
+                <Lock size={13} /> Lock
+              </button>
             </div>
-            <button
-              onClick={handleUnlock}
-              disabled={unlocking || unlockDone}
-              className="px-5 py-2.5 rounded-xl font-bold text-sm transition-all disabled:opacity-60"
-              style={{ background: unlockDone ? '#064e3b' : '#F4B942', color: unlockDone ? '#34d399' : '#1A1F36' }}
+
+            {/* Module picker */}
+            <select
+              value={moduleTarget}
+              onChange={e => setModuleTarget(Number(e.target.value))}
+              className="bg-gray-800 text-white text-sm rounded-lg px-2 py-1.5 border border-gray-600 focus:outline-none focus:border-[#F4B942] flex-shrink-0"
             >
-              {unlocking ? 'Unlocking…' : unlockDone ? '✓ Done' : 'Unlock'}
+              {[1,2,3,4,5,6,7].map(n => (
+                <option key={n} value={n}>Module {n} — {MODULE_NAMES[n-1] ?? 'Module 7'}</option>
+              ))}
+            </select>
+
+            <span className="text-gray-400 text-xs flex-1">
+              {selected.size} student{selected.size > 1 ? 's' : ''}
+            </span>
+
+            {/* Action button */}
+            <button
+              onClick={handleAction}
+              disabled={loading || done}
+              className="px-5 py-2.5 rounded-xl font-bold text-sm transition-all disabled:opacity-60 flex-shrink-0"
+              style={{
+                background: done ? '#064e3b' : action === 'lock' ? '#ef4444' : '#F4B942',
+                color: done ? '#34d399' : action === 'lock' ? '#fff' : '#1A1F36',
+              }}
+            >
+              {loading
+                ? (action === 'lock' ? 'Locking…' : 'Unlocking…')
+                : done ? '✓ Done'
+                : (action === 'lock' ? 'Lock' : 'Unlock')}
             </button>
-            <button onClick={clearAll} className="text-gray-500 text-xs hover:text-gray-300">Cancel</button>
+
+            <button onClick={clearAll} className="text-gray-500 text-xs hover:text-gray-300 flex-shrink-0">Cancel</button>
           </div>
         </div>
       )}

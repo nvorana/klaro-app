@@ -193,6 +193,7 @@ export default function Module1Page() {
   const [currentSolution, setCurrentSolution] = useState('')
   const [mechanisms, setMechanisms] = useState<Mechanism[]>([])
   const [selectedMechanism, setSelectedMechanism] = useState<Mechanism | null>(null)
+  const [expandedMechanismIndex, setExpandedMechanismIndex] = useState<number | null>(null)
   const [validation, setValidation] = useState<Validation | null>(null)
   const [loading, setLoading] = useState(false)
   const [loadingMessage, setLoadingMessage] = useState('')
@@ -841,98 +842,135 @@ export default function Module1Page() {
                 Each one is a fully built framework — not generic advice. Pick the one that feels most like <em>you</em>.
               </p>
 
-              <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-3">
                 {mechanisms.map((m, i) => {
                   const isSelected = selectedMechanism?.name === m.name
+                  const isExpanded = expandedMechanismIndex === i
                   return (
-                    <button
+                    <div
                       key={i}
-                      onClick={() => setSelectedMechanism(m)}
-                      className={`w-full text-left rounded-2xl border-2 transition-all overflow-hidden ${
+                      className={`rounded-2xl border-2 bg-white overflow-hidden transition-all ${
                         isSelected
-                          ? 'border-[#F4B942] bg-white shadow-sm'
-                          : 'border-gray-100 bg-white hover:border-gray-200'
+                          ? 'border-[#F4B942] shadow-sm'
+                          : isExpanded
+                            ? 'border-gray-300'
+                            : 'border-gray-100'
                       }`}
                     >
-                      {/* ── Mechanism name header ── */}
-                      <div className={`px-4 pt-4 pb-3 flex items-start justify-between gap-3 ${isSelected ? 'border-b border-[#F4B942]/20' : 'border-b border-gray-50'}`}>
-                        <div>
-                          <p className="text-[10px] font-bold text-[#F4B942] uppercase tracking-widest mb-0.5">⚙️ Unique Mechanism</p>
-                          <p className="text-base font-bold text-[#1A1F36] leading-snug">{m.name}</p>
+                      {/* ── Collapsed header — always visible, tap to expand ── */}
+                      <button
+                        onClick={() => setExpandedMechanismIndex(isExpanded ? null : i)}
+                        className="w-full text-left px-4 py-3.5 flex items-center justify-between gap-3"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          {/* Selected indicator dot */}
+                          <div className={`w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center transition-all ${
+                            isSelected ? 'bg-[#F4B942] border-[#F4B942]' : 'border-gray-300'
+                          }`}>
+                            {isSelected && (
+                              <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="20 6 9 17 4 12" />
+                              </svg>
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-base font-bold text-[#1A1F36] leading-snug">{m.name}</p>
+                            {m.positioning_line && !isExpanded && (
+                              <p className="text-xs text-gray-500 mt-0.5 leading-relaxed line-clamp-1 italic">{m.positioning_line}</p>
+                            )}
+                          </div>
                         </div>
-                        {isSelected && (
-                          <div className="w-5 h-5 rounded-full bg-[#F4B942] flex items-center justify-center shrink-0 mt-1">
-                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                              <polyline points="20 6 9 17 4 12" />
-                            </svg>
-                          </div>
-                        )}
-                      </div>
+                        {/* Chevron */}
+                        <svg
+                          width="16" height="16" viewBox="0 0 24 24" fill="none"
+                          stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                          className={`text-gray-400 shrink-0 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+                        >
+                          <polyline points="6 9 12 15 18 9" />
+                        </svg>
+                      </button>
 
-                      <div className="px-4 pb-4 pt-3 space-y-3">
+                      {/* ── Expanded details ── */}
+                      {isExpanded && (
+                        <div className="px-4 pb-4 pt-1 space-y-3 border-t border-gray-100">
 
-                        {/* ❌ Why old way fails */}
-                        {m.old_way_fails && (
-                          <div className="bg-red-50 rounded-xl px-3 py-2.5">
-                            <p className="text-[10px] font-bold text-red-400 uppercase tracking-wide mb-1">❌ Why the old way fails</p>
-                            <p className="text-xs text-red-700 leading-relaxed">{m.old_way_fails}</p>
-                          </div>
-                        )}
-
-                        {/* 💡 New belief */}
-                        {m.new_belief && (
-                          <div className="bg-amber-50 rounded-xl px-3 py-2.5">
-                            <p className="text-[10px] font-bold text-amber-500 uppercase tracking-wide mb-1">💡 New belief</p>
-                            <p className="text-xs text-amber-800 italic leading-relaxed">&ldquo;{m.new_belief}&rdquo;</p>
-                          </div>
-                        )}
-
-                        {/* 🧩 How it works */}
-                        {m.steps && m.steps.length > 0 && (
-                          <div>
-                            <p className="text-[10px] font-bold text-[#1A1F36] uppercase tracking-wide mb-1.5">🧩 How it works</p>
-                            <div className="flex flex-col gap-1.5">
-                              {m.steps.map((s, si) => (
-                                <div key={si} className="flex items-start gap-2">
-                                  <span className="w-4 h-4 rounded-full bg-[#F4B942] text-[#1A1F36] text-[9px] font-black flex items-center justify-center shrink-0 mt-0.5">{si + 1}</span>
-                                  <p className="text-xs text-gray-600 leading-relaxed">{s}</p>
-                                </div>
-                              ))}
+                          {/* ❌ Why old way fails */}
+                          {m.old_way_fails && (
+                            <div className="bg-red-50 rounded-xl px-3 py-2.5">
+                              <p className="text-[10px] font-bold text-red-400 uppercase tracking-wide mb-1">❌ Why the old way fails</p>
+                              <p className="text-xs text-red-700 leading-relaxed">{m.old_way_fails}</p>
                             </div>
-                          </div>
-                        )}
+                          )}
 
-                        {/* 🔥 Aha statements */}
-                        {m.aha_statements && m.aha_statements.length > 0 && (
-                          <div>
-                            <p className="text-[10px] font-bold text-[#1A1F36] uppercase tracking-wide mb-1.5">🔥 Aha statements</p>
-                            <div className="flex flex-col gap-1">
-                              {m.aha_statements.map((a, ai) => (
-                                <p key={ai} className="text-[11px] text-[#F4B942] italic leading-relaxed">&ldquo;{a}&rdquo;</p>
-                              ))}
+                          {/* 💡 New belief */}
+                          {m.new_belief && (
+                            <div className="bg-amber-50 rounded-xl px-3 py-2.5">
+                              <p className="text-[10px] font-bold text-amber-500 uppercase tracking-wide mb-1">💡 New belief</p>
+                              <p className="text-xs text-amber-800 italic leading-relaxed">&ldquo;{m.new_belief}&rdquo;</p>
                             </div>
-                          </div>
-                        )}
+                          )}
 
-                        {/* 🎯 Positioning line */}
-                        {m.positioning_line && (
-                          <div className="bg-[#1A1F36] rounded-xl px-3 py-2.5">
-                            <p className="text-[10px] font-bold text-[#F4B942] uppercase tracking-wide mb-1">🎯 Positioning</p>
-                            <p className="text-xs text-white leading-relaxed italic">{m.positioning_line}</p>
-                          </div>
-                        )}
+                          {/* 🧩 How it works */}
+                          {m.steps && m.steps.length > 0 && (
+                            <div>
+                              <p className="text-[10px] font-bold text-[#1A1F36] uppercase tracking-wide mb-1.5">🧩 How it works</p>
+                              <div className="flex flex-col gap-1.5">
+                                {m.steps.map((s, si) => (
+                                  <div key={si} className="flex items-start gap-2">
+                                    <span className="w-4 h-4 rounded-full bg-[#F4B942] text-[#1A1F36] text-[9px] font-black flex items-center justify-center shrink-0 mt-0.5">{si + 1}</span>
+                                    <p className="text-xs text-gray-600 leading-relaxed">{s}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
 
-                        {/* Legacy fallback fields */}
-                        {!m.old_way_fails && m.core_idea && (
-                          <p className="text-xs text-gray-600 leading-relaxed">
-                            <span className="font-semibold text-[#1A1F36]">Core idea: </span>{m.core_idea}
-                          </p>
-                        )}
-                        {!m.old_way_fails && m.description && (
-                          <p className="text-xs text-gray-500 leading-relaxed">{m.description}</p>
-                        )}
-                      </div>
-                    </button>
+                          {/* 🔥 Aha statements */}
+                          {m.aha_statements && m.aha_statements.length > 0 && (
+                            <div>
+                              <p className="text-[10px] font-bold text-[#1A1F36] uppercase tracking-wide mb-1.5">🔥 Aha statements</p>
+                              <div className="flex flex-col gap-1">
+                                {m.aha_statements.map((a, ai) => (
+                                  <p key={ai} className="text-[11px] text-[#F4B942] italic leading-relaxed">&ldquo;{a}&rdquo;</p>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* 🎯 Positioning line */}
+                          {m.positioning_line && (
+                            <div className="bg-[#1A1F36] rounded-xl px-3 py-2.5">
+                              <p className="text-[10px] font-bold text-[#F4B942] uppercase tracking-wide mb-1">🎯 Positioning</p>
+                              <p className="text-xs text-white leading-relaxed italic">{m.positioning_line}</p>
+                            </div>
+                          )}
+
+                          {/* Legacy fallback fields */}
+                          {!m.old_way_fails && m.core_idea && (
+                            <p className="text-xs text-gray-600 leading-relaxed">
+                              <span className="font-semibold text-[#1A1F36]">Core idea: </span>{m.core_idea}
+                            </p>
+                          )}
+                          {!m.old_way_fails && m.description && (
+                            <p className="text-xs text-gray-500 leading-relaxed">{m.description}</p>
+                          )}
+
+                          {/* ── Choose / Unchoose button ── */}
+                          <button
+                            onClick={() => {
+                              setSelectedMechanism(isSelected ? null : m)
+                            }}
+                            className={`w-full mt-1 py-2.5 rounded-xl text-sm font-bold transition-all ${
+                              isSelected
+                                ? 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                                : 'bg-[#F4B942] text-[#1A1F36] hover:bg-[#e5a830] active:scale-[0.98]'
+                            }`}
+                          >
+                            {isSelected ? '✓ Selected — tap to change' : 'Choose This'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   )
                 })}
               </div>
