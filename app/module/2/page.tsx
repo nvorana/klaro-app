@@ -111,6 +111,7 @@ export default function Module2Page() {
 
   // Review
   const [expandedChapter, setExpandedChapter] = useState<number | null>(null)
+  const [showStartOverWarning, setShowStartOverWarning] = useState(false)
 
   // ─── Auth & init ──────────────────────────────────────────────────────────
 
@@ -973,11 +974,7 @@ export default function Module2Page() {
               {saving ? '⏳ Saving...' : 'Save & Mark Complete →'}
             </button>
             <button
-              onClick={() => {
-                if (window.confirm('⚠️ This will permanently delete your current e-book and start from scratch. Are you sure?')) {
-                  setChapterDrafts([]); setTitleOptions([]); setChapterOutlines([]); setIntroduction(''); setConclusion(''); setStep('outline')
-                }
-              }}
+              onClick={() => setShowStartOverWarning(true)}
               className="w-full text-gray-400 text-sm py-2 underline underline-offset-2 hover:text-red-500 transition-colors"
             >
               Start over with a new e-book
@@ -1015,6 +1012,88 @@ export default function Module2Page() {
       )}
 
       </div>
+
+      {/* ── Start Over Warning Overlay ────────────────────────────────────────── */}
+      {showStartOverWarning && (
+        <div className="fixed inset-0 z-50 bg-[#1A1F36] flex flex-col">
+          <div className="w-full max-w-[430px] md:max-w-xl mx-auto flex flex-col flex-1 px-6 pt-12 pb-10">
+
+            {/* Icon */}
+            <div className="text-5xl mb-6 text-center">⚠️</div>
+
+            {/* Headline */}
+            <h2 className="text-2xl font-black text-white text-center mb-2 leading-tight">
+              Wait — You're About to Delete Everything.
+            </h2>
+            <p className="text-gray-400 text-sm text-center mb-8 leading-relaxed">
+              This will permanently erase your e-book — all chapters, your title, your introduction, and your conclusion. This cannot be undone.
+            </p>
+
+            {/* What will be deleted */}
+            <div className="bg-red-900/30 border border-red-700/40 rounded-2xl p-4 mb-6">
+              <p className="text-xs font-bold text-red-400 uppercase tracking-wide mb-3">What will be deleted</p>
+              <div className="flex flex-col gap-2">
+                {[
+                  `Your title: "${selectedTitle?.title || 'your chosen title'}"`,
+                  `${chapterDrafts.length} chapter${chapterDrafts.length !== 1 ? 's' : ''} already written`,
+                  'Your introduction and conclusion',
+                  'All AI-generated content for this ebook',
+                ].map((item, i) => (
+                  <div key={i} className="flex items-start gap-2">
+                    <span className="text-red-500 text-xs mt-0.5 flex-shrink-0">✕</span>
+                    <p className="text-red-200 text-sm">{item}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Reminder about AI's role */}
+            <div className="bg-[#F4B942]/10 border border-[#F4B942]/30 rounded-2xl p-4 mb-8">
+              <p className="text-xs font-bold text-[#F4B942] uppercase tracking-wide mb-2">A reminder before you decide</p>
+              <p className="text-gray-300 text-sm leading-relaxed mb-3">
+                AI is your writing partner — not the final author. The raw file it created is your <span className="text-white font-semibold">starting point</span>, not the finished product.
+              </p>
+              <p className="text-gray-300 text-sm leading-relaxed">
+                Download your ebook first. Then add your own stories, your real experiences, your unique voice. That's what makes it yours — and what makes it sellable.
+              </p>
+            </div>
+
+            {/* Actions */}
+            <div className="flex flex-col gap-3 mt-auto">
+              <button
+                onClick={downloadEbook}
+                disabled={downloading}
+                className="w-full bg-[#F4B942] text-[#1A1F36] font-bold py-4 rounded-xl text-sm flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {downloading ? '⏳ Generating...' : '⬇ Download My E-Book First'}
+              </button>
+              <button
+                onClick={() => {
+                  setShowStartOverWarning(false)
+                  setChapterDrafts([])
+                  setTitleOptions([])
+                  setChapterOutlines([])
+                  setIntroduction('')
+                  setConclusion('')
+                  setRegenCounts({})
+                  setStep('outline')
+                }}
+                className="w-full bg-red-600/20 border border-red-600/40 text-red-400 font-semibold py-3.5 rounded-xl text-sm hover:bg-red-600/30 transition-colors"
+              >
+                Yes, delete everything and start over
+              </button>
+              <button
+                onClick={() => setShowStartOverWarning(false)}
+                className="w-full text-gray-500 text-sm py-2 hover:text-gray-300 transition-colors"
+              >
+                No, keep my e-book
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }
