@@ -200,6 +200,7 @@ export default function Module1Page() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [existingClarity, setExistingClarity] = useState<{ target_market: string; core_problem: string; unique_mechanism: string; full_sentence: string } | null>(null)
+  const [module2Started, setModule2Started] = useState(false)
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -222,6 +223,15 @@ export default function Module1Page() {
         .order('created_at', { ascending: false })
         .limit(1)
         .single()
+
+      // Check if Module 2 has been started — if so, lock the reset button
+      const { data: mod2Progress } = await supabase
+        .from('module_progress')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('module_number', 2)
+        .maybeSingle()
+      if (mod2Progress) setModule2Started(true)
 
       if (data) {
         if (isResume) {
@@ -541,22 +551,24 @@ export default function Module1Page() {
             Back to Dashboard
           </button>
 
-          <button
-            onClick={() => {
-              setTargetMarket('')
-              setSelectedProblem(null)
-              setSelectedMechanism(null)
-              setProblems([])
-              setMechanisms([])
-              setValidation(null)
-              setCurrentSolution('')
-              setError('')
-              setStep('market')
-            }}
-            className="w-full text-center text-xs text-gray-400 hover:text-red-400 transition-colors py-1 mt-1"
-          >
-            ↺ Start over with a new clarity sentence
-          </button>
+          {!module2Started && (
+            <button
+              onClick={() => {
+                setTargetMarket('')
+                setSelectedProblem(null)
+                setSelectedMechanism(null)
+                setProblems([])
+                setMechanisms([])
+                setValidation(null)
+                setCurrentSolution('')
+                setError('')
+                setStep('market')
+              }}
+              className="w-full text-center text-xs text-gray-400 hover:text-red-400 transition-colors py-1 mt-1"
+            >
+              ↺ Start over with a new clarity sentence
+            </button>
+          )}
         </div>
       </div>
       </>

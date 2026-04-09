@@ -54,10 +54,24 @@ export default function StudentDetail() {
   const [saved, setSaved] = useState(false)
   const [copied, setCopied] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
+  const [resetting, setResetting] = useState(false)
+  const [showResetConfirm, setShowResetConfirm] = useState(false)
 
   useEffect(() => {
     loadStudent()
   }, [studentId])
+
+  async function resetStudent() {
+    setResetting(true)
+    await fetch('/api/coach/reset-student', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ studentId }),
+    })
+    setResetting(false)
+    setShowResetConfirm(false)
+    loadStudent()
+  }
 
   async function loadStudent() {
     const res = await fetch(`/api/coach/student?id=${studentId}`)
@@ -293,6 +307,38 @@ export default function StudentDetail() {
           >
             {saving ? 'Saving…' : saved ? '✓ Saved' : 'Save Notes'}
           </button>
+        </div>
+
+        {/* ── Reset Student ─────────────────────────────────── */}
+        <div className="mt-6 pt-6 border-t border-[#374151]">
+          {!showResetConfirm ? (
+            <button
+              onClick={() => setShowResetConfirm(true)}
+              className="w-full py-2.5 rounded-xl text-sm font-semibold border border-red-800 text-red-400 hover:bg-red-900/20 transition-colors"
+            >
+              Reset Student Progress
+            </button>
+          ) : (
+            <div className="bg-red-900/20 border border-red-800 rounded-xl p-4">
+              <p className="text-red-300 text-sm font-semibold mb-1">Are you sure?</p>
+              <p className="text-red-400 text-xs mb-4">This will delete all module progress, outputs, and the clarity sentence for this student. This cannot be undone.</p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowResetConfirm(false)}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-gray-800 text-gray-300 hover:bg-gray-700 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={resetStudent}
+                  disabled={resetting}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-bold bg-red-700 text-white hover:bg-red-600 transition-colors disabled:opacity-50"
+                >
+                  {resetting ? 'Resetting…' : 'Yes, Reset'}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
       </div>
