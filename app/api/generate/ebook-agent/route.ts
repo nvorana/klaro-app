@@ -85,13 +85,30 @@ interface ChapterDraft {
 
 type Message = { role: 'user' | 'assistant'; content: string }
 
-// ─── HELPER ──────────────────────────────────────────────────────────────────
+interface TokenUsage {
+  prompt_tokens: number
+  completion_tokens: number
+  total_tokens: number
+}
 
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+
+// Standard call — returns parsed JSON only
 async function callOpenAI(
   prompt: string,
   context: Message[] = [],
   maxTokens = 2500
 ): Promise<unknown> {
+  const { result } = await callOpenAIWithUsage(prompt, context, maxTokens)
+  return result
+}
+
+// Returns parsed JSON + token usage — used by chapter_section stage for test page
+async function callOpenAIWithUsage(
+  prompt: string,
+  context: Message[] = [],
+  maxTokens = 2500
+): Promise<{ result: unknown; usage: TokenUsage }> {
   const messages = [
     { role: 'system' as const, content: MASTER_SYSTEM_PROMPT },
     ...context,
@@ -107,11 +124,16 @@ async function callOpenAI(
   })
 
   let content = completion.choices[0].message.content || '{}'
+  const usage: TokenUsage = {
+    prompt_tokens:      completion.usage?.prompt_tokens      ?? 0,
+    completion_tokens:  completion.usage?.completion_tokens  ?? 0,
+    total_tokens:       completion.usage?.total_tokens        ?? 0,
+  }
 
   // Auto-correct banned words
   const bannedFound = findBannedWords(content)
   if (bannedFound.length > 0) {
-    console.warn(`[ebook-agent] Banned words found: ${bannedFound.join(', ')} — auto-correcting`)
+    console.warn(`[ebook-agent] Banned words: ${bannedFound.join(', ')} — auto-correcting`)
     const correction = await openai.chat.completions.create({
       model: AI_MODEL,
       messages: [
@@ -124,9 +146,12 @@ async function callOpenAI(
       max_tokens: maxTokens,
     })
     content = correction.choices[0].message.content || content
+    usage.total_tokens += correction.usage?.total_tokens ?? 0
+    usage.completion_tokens += correction.usage?.completion_tokens ?? 0
+    usage.prompt_tokens += correction.usage?.prompt_tokens ?? 0
   }
 
-  return JSON.parse(content)
+  return { result: JSON.parse(content), usage }
 }
 
 // ─── OUTLINE PROMPT ───────────────────────────────────────────────────────────
@@ -724,6 +749,63 @@ export async function POST(request: NextRequest) {
         const chapters  = data.chapters as ChapterOutline[]
         const result = await callOpenAI(conclusionPrompt(project, bookTitle, chapters), [], 1000) as { conclusion: string }
         return NextResponse.json({ stage, data: result })
+      }
+
+      // Stage: Single chapter section — for test page step-by-step mode with token reporting
+      case 'chapter_section': {
+        const section      = data.section as string
+        const bookTitle    = data.book_title as string
+        const chapter      = data.chapter as ChapterOutline
+        const allChapters  = data.all_chapters as ChapterOutline[]
+        const ctxStory     = data.ctx_story     as string | undefined
+        const ctxLessons   = data.ctx_lessons   as string | undefined
+
+        const nextChapter  = allChapters.find(c => c.number === chapter.number + 1) ?? null
+
+        let prompt: string
+        let maxTokens: number
+        let context: Message[] = []
+
+        switch (section) {
+          case 'quote':
+            prompt    = pass1_QuotePrompt(chapter)
+            maxTokens = 400
+            break
+          case 'story':
+            prompt    = pass2_StoryPrompt(project, bookTitle, chapter)
+            maxTokens = 1500
+            break
+          case 'lessons':
+            prompt    = pass3_LessonsPrompt(project, chapter, ctxStory ?? '')
+            maxTokens = 2500
+            context   = ctxStory ? [{ role: 'assistant', content: JSON.stringify({ story_starter: ctxStory }) }] : []
+            break
+          case 'steps':
+            prompt    = pass4_StepsPrompt(project, chapter, ctxStory ?? '', ctxLessons ?? '')
+            maxTokens = 2000
+            context   = [
+              ...(ctxStory   ? [{ role: 'assistant' as const, content: JSON.stringify({ story_starter: ctxStory }) }] : []),
+              ...(ctxLessons ? [{ role: 'assistant' as const, content: JSON.stringify({ core_lessons: ctxLessons }) }] : []),
+            ]
+            break
+          case 'quickwin':
+            prompt    = pass5_QuickWinPrompt(chapter)
+            maxTokens = 1500
+            break
+          case 'close':
+            prompt    = pass6_ClosePrompt(chapter, nextChapter)
+            maxTokens = 900
+            context   = [
+              ...(ctxStory   ? [{ role: 'assistant' as const, content: JSON.stringify({ story_starter: ctxStory }) }] : []),
+              ...(ctxLessons ? [{ role: 'assistant' as const, content: JSON.stringify({ core_lessons: ctxLessons }) }] : []),
+            ]
+            break
+          default:
+            return NextResponse.json({ error: `Unknown section: ${section}` }, { status: 400 })
+        }
+
+        const { result, usage } = await callOpenAIWithUsage(prompt, context, maxTokens)
+        return NextResponse.json({ stage, section, data: result, usage })
       }
 
       default:
