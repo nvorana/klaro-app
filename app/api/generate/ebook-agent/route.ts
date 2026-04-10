@@ -295,20 +295,44 @@ ${storyContent}
 
 Now write ONLY the Core Lessons section. This picks up where the story left off — teach what the story just made the reader feel.
 
-STRUCTURE:
-- Break into 3–4 sub-sections. Each sub-section must start with a bold heading on its own line using this format: ## Heading Here
-- Under each heading: explain the concept clearly, give a specific Philippine example or context, name at least one real tool, platform, or resource the reader can use.
-- Include at least one data point, statistic, or real-world insight across the whole section to build credibility.
+STRUCTURE — every Core Lessons section MUST contain all four of the following, in this order:
+
+1. THE UNCOMFORTABLE TRUTH (sub-section, ## heading required)
+   - State something most people in this market don't want to hear but need to know
+   - It must be specific to this chapter's topic — not a generic life lesson
+   - It should make the reader pause. A little sting. The kind of thing they'll quote to someone else later.
+   - Follow with 1–2 paragraphs that explain WHY this truth exists and what it costs them to keep ignoring it
+   - Example heading: ## The Truth Nobody Tells You About [Topic]
+
+2. THE ANCHOR EXAMPLE (woven into the next sub-section)
+   - Introduce ONE named, specific Filipino character or scenario that illustrates the core concept
+   - NOT a passing mention — this is the example the whole section builds around
+   - Use real specifics: their name, job, city, the exact thing they did or said
+   - Reference this same example again later in the section when making a key point
+   - This is NOT the same character as the story starter — create a new one
+
+3. THE CORE CONCEPT SUB-SECTIONS (1–2 more sub-sections, ## headings required)
+   - Teach the main principles of this chapter using the anchor example as proof
+   - Name at least one real tool, platform, or resource per sub-section
+   - Include at least one data point or real-world statistic to build credibility
+
+4. THE MISTAKE EVERYONE MAKES (final sub-section, ## heading required)
+   - Dedicate a full sub-section to THE ONE MISTAKE that undoes everything else in this chapter
+   - This is the chapter-level mistake — bigger and more important than the per-step mistakes later
+   - State it bluntly. Name it. Then explain exactly why it happens and how to avoid it.
+   - Example heading: ## The Mistake That Erases All Your Progress
+
+WRITING RULES:
 - Write like you're explaining to a smart friend. Not a textbook.
 - Each sub-section: 150–250 words.
-- Total: 600–900 words.
+- Total: 700–1000 words.
 
-FORMAT RULE: Sub-headings must use ## at the start of the line, like this:
-## Why Most People Get This Wrong
+FORMAT RULE: Every sub-heading must use ## at the start of the line:
+## The Truth Nobody Tells You About [Topic]
 
 Return this exact JSON:
 {
-  "core_lessons": "## First Heading\\n\\nContent here...\\n\\n## Second Heading\\n\\nMore content..."
+  "core_lessons": "## The Truth...\\n\\nContent here...\\n\\n## The Anchor Example heading...\\n\\nContent...\\n\\n## Core concept heading...\\n\\nContent...\\n\\n## The Mistake Everyone Makes\\n\\nContent..."
 }`
 }
 
@@ -582,7 +606,7 @@ async function generateStandardChapterMultiPass(
   const lessonsData = await callOpenAI(
     pass3_LessonsPrompt(project, chapter, storyData.story_starter),
     [{ role: 'assistant', content: JSON.stringify(storyData) }],
-    2500
+    3000
   ) as { core_lessons: string }
   console.log(`[ebook-agent] Chapter ${chapter.number} — lessons done`)
 
@@ -808,7 +832,7 @@ export async function POST(request: NextRequest) {
             break
           case 'lessons':
             prompt    = pass3_LessonsPrompt(project, chapter, ctxStory ?? '')
-            maxTokens = 2500
+            maxTokens = 3000
             context   = ctxStory ? [{ role: 'assistant', content: JSON.stringify({ story_starter: ctxStory }) }] : []
             break
           case 'steps':

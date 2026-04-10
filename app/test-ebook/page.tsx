@@ -44,7 +44,7 @@ const SECTION_DEFS = [
   { key: 'preview', label: 'Pass 0 — Chapter Preview', maxTokens: 300,  color: 'text-gray-300'   },
   { key: 'quote',   label: 'Pass 1 — Opening Quote',   maxTokens: 400,  color: 'text-yellow-400' },
   { key: 'story',   label: 'Pass 2 — Story Starter',   maxTokens: 1500, color: 'text-orange-400' },
-  { key: 'lessons', label: 'Pass 3 — Core Lessons',    maxTokens: 2500, color: 'text-blue-400'   },
+  { key: 'lessons', label: 'Pass 3 — Core Lessons',    maxTokens: 3000, color: 'text-blue-400'   },
   { key: 'steps',   label: 'Pass 4 — Practical Steps', maxTokens: 2000, color: 'text-green-400'  },
   { key: 'quickwin',label: 'Pass 5 — Quick Win',       maxTokens: 1500, color: 'text-amber-400'  },
   { key: 'close',   label: 'Pass 6 — Confidence Close',maxTokens: 900,  color: 'text-purple-400' },
