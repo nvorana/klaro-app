@@ -15,8 +15,10 @@ export async function POST(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+    const adminClient = createAdminClient()
+
     // Only admins can invite coaches
-    const { data: requester } = await supabase
+    const { data: requester } = await adminClient
       .from('profiles')
       .select('role')
       .eq('id', user.id)
@@ -35,8 +37,6 @@ export async function POST(request: NextRequest) {
     if (!['topis', 'accelerator'].includes(programType)) {
       return NextResponse.json({ error: 'programType must be topis or accelerator' }, { status: 400 })
     }
-
-    const adminClient = createAdminClient()
 
     // Check if a user with this email already exists
     const { data: existing } = await adminClient

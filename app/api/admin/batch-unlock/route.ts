@@ -13,7 +13,9 @@ export async function POST(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const { data: requester } = await supabase
+    const adminClient = createAdminClient()
+
+    const { data: requester } = await adminClient
       .from('profiles')
       .select('role')
       .eq('id', user.id)
@@ -28,8 +30,6 @@ export async function POST(request: NextRequest) {
     if (!batchNumber || !upToModule || upToModule < 1 || upToModule > 6) {
       return NextResponse.json({ error: 'Invalid batchNumber or upToModule' }, { status: 400 })
     }
-
-    const adminClient = createAdminClient()
 
     // Get all active (non-suspended) students in this batch
     const { data: students } = await adminClient

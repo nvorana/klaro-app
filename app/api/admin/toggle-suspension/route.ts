@@ -12,7 +12,9 @@ export async function POST(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const { data: requester } = await supabase
+    const adminClient = createAdminClient()
+
+    const { data: requester } = await adminClient
       .from('profiles')
       .select('role')
       .eq('id', user.id)
@@ -26,8 +28,6 @@ export async function POST(request: NextRequest) {
     if (!studentId || typeof suspend !== 'boolean') {
       return NextResponse.json({ error: 'Missing studentId or suspend flag' }, { status: 400 })
     }
-
-    const adminClient = createAdminClient()
     await adminClient
       .from('profiles')
       .update({ access_suspended: suspend, updated_at: new Date().toISOString() })
