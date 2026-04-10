@@ -41,6 +41,7 @@ interface SectionResult {
 }
 
 const SECTION_DEFS = [
+  { key: 'preview', label: 'Pass 0 — Chapter Preview', maxTokens: 300,  color: 'text-gray-300'   },
   { key: 'quote',   label: 'Pass 1 — Opening Quote',   maxTokens: 400,  color: 'text-yellow-400' },
   { key: 'story',   label: 'Pass 2 — Story Starter',   maxTokens: 1500, color: 'text-orange-400' },
   { key: 'lessons', label: 'Pass 3 — Core Lessons',    maxTokens: 2500, color: 'text-blue-400'   },
@@ -127,6 +128,15 @@ function SectionCard({ sec, maxTokens }: { sec: SectionResult; maxTokens: number
       {/* Content preview */}
       {expanded && sec.data && (
         <div className="px-4 pb-4 border-t border-gray-800 pt-3 space-y-3">
+          {sec.key === 'preview' && (() => {
+            const d = sec.data as { chapter_preview: string }
+            return (
+              <div className="border-l-2 border-gray-600 pl-3">
+                <p className="text-gray-300 text-sm italic">{d.chapter_preview}</p>
+              </div>
+            )
+          })()}
+
           {sec.key === 'quote' && (() => {
             const d = sec.data as { quote: { text: string; author: string } }
             return (

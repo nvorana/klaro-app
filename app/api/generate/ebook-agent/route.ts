@@ -74,6 +74,7 @@ interface QuickWin {
 interface ChapterDraft {
   number: number
   title: string
+  chapter_preview?: string
   quote: { text: string; author: string }
   story_starter: string
   core_lessons: string
@@ -209,6 +210,30 @@ Return this exact JSON:
 }
 
 // ─── MULTI-PASS SECTION PROMPTS (standard chapters) ──────────────────────────
+
+function pass0_PreviewPrompt(chapter: ChapterOutline): string {
+  return `TASK: Chapter Preview for Chapter ${chapter.number} — "${chapter.title}"
+Chapter goal: ${chapter.goal}
+Quick win outcome: ${chapter.quick_win_outcome}
+
+Write a short, punchy chapter preview — 2 to 3 sentences — that appears at the very opening of the chapter before the quote.
+This is a promise to the reader about what they'll gain.
+
+RULES:
+- Be specific to this chapter's topic — not generic ("you'll learn a lot") but concrete ("you'll see exactly why X keeps happening, and the one shift that stops it")
+- Reference both what they'll understand AND what they'll be able to do
+- Write like a trusted friend who's about to show you something useful — not a table of contents entry
+- Do NOT start with "In this chapter" or "You will learn" or "This chapter covers"
+- Keep it energetic and personal — make them lean in
+
+EXAMPLE TONE (for a dog care ebook, not your topic):
+"Most dog owners treat the symptom. This chapter shows you the actual cycle — and why it keeps restarting without you knowing. By the end, you'll have a clear picture of what's really happening and a simple first step you can take today."
+
+Return this exact JSON:
+{
+  "chapter_preview": "Your 2–3 sentence preview here"
+}`
+}
 
 function pass1_QuotePrompt(chapter: ChapterOutline): string {
   return `TASK: Opening Quote for Chapter ${chapter.number} — "${chapter.title}"
@@ -540,11 +565,12 @@ async function generateStandardChapterMultiPass(
 
   console.log(`[ebook-agent] Chapter ${chapter.number} multi-pass — starting`)
 
-  // Pass 1: Opening Quote
-  const quoteData = await callOpenAI(pass1_QuotePrompt(chapter), [], 400) as {
-    quote: { text: string; author: string }
-  }
-  console.log(`[ebook-agent] Chapter ${chapter.number} — quote done`)
+  // Pass 0 + Pass 1 in parallel (both are independent)
+  const [previewData, quoteData] = await Promise.all([
+    callOpenAI(pass0_PreviewPrompt(chapter), [], 300) as Promise<{ chapter_preview: string }>,
+    callOpenAI(pass1_QuotePrompt(chapter), [], 400) as Promise<{ quote: { text: string; author: string } }>,
+  ])
+  console.log(`[ebook-agent] Chapter ${chapter.number} — preview + quote done`)
 
   // Pass 2: Story Starter
   const storyData = await callOpenAI(pass2_StoryPrompt(project, bookTitle, chapter), [], 1500) as {
@@ -591,6 +617,7 @@ async function generateStandardChapterMultiPass(
   return {
     number:           chapter.number,
     title:            chapter.title,
+    chapter_preview:  previewData.chapter_preview,
     quote:            quoteData.quote,
     story_starter:    storyData.story_starter,
     core_lessons:     lessonsData.core_lessons,
@@ -767,6 +794,10 @@ export async function POST(request: NextRequest) {
         let context: Message[] = []
 
         switch (section) {
+          case 'preview':
+            prompt    = pass0_PreviewPrompt(chapter)
+            maxTokens = 300
+            break
           case 'quote':
             prompt    = pass1_QuotePrompt(chapter)
             maxTokens = 400

@@ -33,6 +33,7 @@ interface QuickWin {
 interface ChapterDraft {
   number: number
   title: string
+  chapter_preview?: string
   quote?: { text: string; author: string }
   story_starter: string
   core_lessons: string
@@ -222,6 +223,18 @@ function buildDocument(ebook: EbookData): Document {
       children: [new TextRun({ text: ch.title, font: 'Arial', size: 44, bold: true, color: '1a1a2e' })],
       spacing: { after: 480 },
     }))
+
+    // Chapter Preview
+    if (ch.chapter_preview) {
+      children.push(new Paragraph({
+        children: [new TextRun({ text: ch.chapter_preview, size: 22, font: 'Georgia', color: '555555', italics: true })],
+        spacing: { before: 0, after: 400, line: 320 },
+        border: {
+          left: { style: BorderStyle.SINGLE, size: 6, color: 'dddddd', space: 12 },
+        },
+        indent: { left: 480 },
+      }))
+    }
 
     // Opening Quote
     if (ch.quote?.text) {
