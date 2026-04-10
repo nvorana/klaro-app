@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -279,25 +280,28 @@ function CoachesPanel({ coaches }: { coaches: Coach[] }) {
   const [showForm, setShowForm] = useState(false)
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
+  const [tempPassword, setTempPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [programType, setProgramType] = useState<'topis' | 'accelerator'>('accelerator')
   const [submitting, setSubmitting] = useState(false)
   const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null)
 
-  async function handleInvite() {
-    if (!fullName.trim() || !email.trim()) return
+  async function handleCreate() {
+    if (!fullName.trim() || !email.trim() || !tempPassword.trim()) return
     setSubmitting(true)
     setResult(null)
     try {
       const res = await fetch('/api/admin/invite-coach', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fullName: fullName.trim(), email: email.trim(), programType }),
+        body: JSON.stringify({ fullName: fullName.trim(), email: email.trim(), programType, tempPassword: tempPassword.trim() }),
       })
       const data = await res.json()
       if (res.ok) {
-        setResult({ ok: true, message: `Invite sent to ${email}.` })
+        setResult({ ok: true, message: `Account created for ${email}.` })
         setFullName('')
         setEmail('')
+        setTempPassword('')
         setShowForm(false)
         router.refresh()
       } else {
@@ -366,14 +370,14 @@ function CoachesPanel({ coaches }: { coaches: Coach[] }) {
             </div>
           )}
 
-          {/* Invite form toggle */}
+          {/* Create coach form toggle */}
           {!showForm ? (
             <div className="px-4 py-3 border-t border-gray-800">
               <button
                 onClick={() => { setShowForm(true); setResult(null) }}
                 className="w-full bg-[#1A1F36] border border-[#F4B942]/40 text-[#F4B942] font-bold py-2.5 rounded-xl text-sm hover:border-[#F4B942] transition-colors"
               >
-                + Invite a New Coach
+                + Add a New Coach
               </button>
               {result && (
                 <p className={`text-xs mt-2 text-center ${result.ok ? 'text-green-400' : 'text-red-400'}`}>
@@ -383,13 +387,13 @@ function CoachesPanel({ coaches }: { coaches: Coach[] }) {
             </div>
           ) : (
             <div className="px-4 py-4 border-t border-gray-800 space-y-3">
-              <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">New Coach Invite</p>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">New Coach Account</p>
 
               <input
                 type="text"
                 value={fullName}
                 onChange={e => setFullName(e.target.value)}
-                placeholder="Full name"
+                placeholder="Full name (e.g. Maria Santos)"
                 className="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-gray-500"
               />
               <input
@@ -399,6 +403,27 @@ function CoachesPanel({ coaches }: { coaches: Coach[] }) {
                 placeholder="Email address"
                 className="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-gray-500"
               />
+
+              {/* Temp password field */}
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={tempPassword}
+                  onChange={e => setTempPassword(e.target.value)}
+                  placeholder="Temporary password (min. 8 characters)"
+                  className="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-gray-500 pr-16"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(v => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-gray-500 hover:text-gray-300"
+                >
+                  {showPassword ? 'Hide' : 'Show'}
+                </button>
+              </div>
+              <p className="text-[10px] text-gray-600 -mt-1">
+                They will be required to change this on their first login.
+              </p>
 
               <div>
                 <p className="text-xs text-gray-500 mb-2">Program this coach manages:</p>
@@ -431,16 +456,13 @@ function CoachesPanel({ coaches }: { coaches: Coach[] }) {
                   Cancel
                 </button>
                 <button
-                  onClick={handleInvite}
-                  disabled={submitting || !fullName.trim() || !email.trim()}
+                  onClick={handleCreate}
+                  disabled={submitting || !fullName.trim() || !email.trim() || tempPassword.trim().length < 8}
                   className="flex-1 py-2.5 rounded-xl text-sm font-bold bg-[#F4B942] text-[#1A1F36] disabled:opacity-40 transition-opacity"
                 >
-                  {submitting ? 'Sending...' : 'Send Invite'}
+                  {submitting ? 'Creating...' : 'Create Account'}
                 </button>
               </div>
-              <p className="text-[10px] text-gray-600 text-center">
-                They will receive an email to set up their password and can log in immediately after.
-              </p>
             </div>
           )}
         </div>
@@ -454,6 +476,14 @@ function CoachesPanel({ coaches }: { coaches: Coach[] }) {
 export default function AdminDashboard({ students, coaches, adminName }: Props) {
   const router = useRouter()
   const [activeTab, setActiveTab] = useState<'topis' | 'accelerator'>('topis')
+  const [signingOut, setSigningOut] = useState(false)
+
+  async function handleSignOut() {
+    setSigningOut(true)
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    router.push('/login')
+  }
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'suspended'>('all')
   const [togglingId, setTogglingId] = useState<string | null>(null)
@@ -517,8 +547,17 @@ export default function AdminDashboard({ students, coaches, adminName }: Props) 
           <p className="text-[#F4B942] text-xs font-bold uppercase tracking-widest mb-0.5">Admin</p>
           <h1 className="text-white text-lg font-bold">Student Management</h1>
         </div>
-        <div className="w-9 h-9 rounded-full bg-[#F4B942] flex items-center justify-center text-[#1A1F36] text-sm font-bold">
-          {adminName[0]}
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-full bg-[#F4B942] flex items-center justify-center text-[#1A1F36] text-sm font-bold">
+            {adminName[0]}
+          </div>
+          <button
+            onClick={handleSignOut}
+            disabled={signingOut}
+            className="text-[11px] font-bold text-gray-400 border border-gray-700 px-3 py-1.5 rounded-lg hover:border-gray-500 hover:text-gray-200 transition-colors disabled:opacity-40"
+          >
+            {signingOut ? 'Signing out…' : 'Sign out'}
+          </button>
         </div>
       </div>
 
