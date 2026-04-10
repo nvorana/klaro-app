@@ -3,7 +3,6 @@ import { openai, AI_MODEL } from '@/lib/openai'
 import { findBannedWords, buildCorrectionPrompt } from '@/lib/bannedWords'
 
 // ─── MASTER SYSTEM PROMPT ────────────────────────────────────────────────────
-// Based on Coach Jon Oraña's Negosyo University OPIS workshop methodology
 
 const MASTER_SYSTEM_PROMPT = `You are an expert ebook writing assistant helping Filipino entrepreneurs and knowledge workers create their first digital product.
 
@@ -15,11 +14,11 @@ WRITING RULES — follow these strictly:
 - Do NOT use hype, exaggerated claims, or fake testimonials.
 - Do NOT include advanced strategies — keep it simple and executable.
 - Do NOT use academic or formal language. Write conversationally.
-- Use short paragraphs. Maximum 3 sentences per paragraph. After every 3 sentences, start a new paragraph with a blank line.
+- VARY sentence length deliberately. Mix long explanatory sentences with punchy 3–6 word sentences. Short sentences land harder. Use them after important points.
 - Use simple words.
 - Clarity over cleverness. Done beats perfect.
 - Use English as the primary language. Add light, natural Taglish warmth where a Filipino reader would feel immediately understood — never forced, just real.
-- TITLES AND SUBTITLES must be 100% English — no Tagalog or Filipino words whatsoever. Titles are product names and must be universally marketable.
+- TITLES AND SUBTITLES must be 100% English — no Tagalog or Filipino words whatsoever.
 - Chapter titles must also be 100% English.
 - Body content and examples may use natural conversational Taglish where it adds warmth.
 
@@ -33,372 +32,7 @@ Write like a practical friend — not a TED Talk, not a LinkedIn post.
 ❌ AI style: "Unlock your full potential with this powerful method."
 ✅ Market style: "Ganito mo magagawa ito… kahit busy ka pa."
 
-CONTENT RULES:
-- Each chapter must have a Story Starter that makes readers feel seen immediately
-- Core Lessons must have no more than 3–5 principles per chapter (never overwhelm)
-- Quick Wins must be completable in 5–10 minutes — they build confidence
-- Closing must end with forward momentum, not generic motivation
-- The whole ebook should feel like a trusted friend explaining something, not a textbook
-
 Always return valid JSON only. No explanations outside JSON. No markdown fences.`
-
-// ─── STAGE PROMPTS ───────────────────────────────────────────────────────────
-
-function outlinePrompt(project: Project): string {
-  return `STAGE: OUTLINE
-
-You are helping create an ebook based on this clarity sentence:
-- Target Market: ${project.target_market}
-- Problem they face: ${project.problem}
-- Unique solution/mechanism: ${project.unique_mechanism}
-
-STEP 1: Generate 3 compelling title options for this ebook.
-- Titles must be specific, not generic
-- They should communicate a clear, tangible outcome
-- They should appeal to a Filipino beginner audience
-
-STEP 2: Create a table of contents with 8 to 10 chapters. Choose the number that best fits the depth of the topic — not too thin, not padded.
-- Each chapter title must be nice, cute, succinct, witty, and attention-grabbing — make the reader excited to open it
-- Avoid generic titles like "Introduction to X" or "Understanding Y" — every title should have personality and spark curiosity
-- Each chapter must have a clear goal (what the reader will learn)
-- Each chapter must have a quick win outcome (what the reader will be able to DO immediately after)
-- Chapters must flow logically — each one builds on the previous
-- Chapter 1 should address the biggest mindset block first
-- The final chapter should leave the reader ready to take their first real action
-
-STEP 3: Assign a chapter_type to each chapter to make the book feel dynamic and varied.
-Use this distribution across the book (assign based on what fits the content best):
-- "standard" — Story opener + core lessons + action steps (use for 3–4 chapters)
-- "myth_truth" — Busts 3–5 common myths about the topic, then reveals the truth (use once, ideally early)
-- "case_study" — Deep dive into one fictional but realistic character's full journey through the problem (use once)
-- "worksheet" — Self-assessment or reflection exercises that help the reader diagnose their own situation (use once)
-- "template" — Provides ready-to-use scripts, templates, checklists, or fill-in-the-blank tools (use once)
-
-No two adjacent chapters should have the same type. Spread the variety throughout.
-
-Return this exact JSON:
-{
-  "title_options": [
-    { "option": 1, "title": "...", "subtitle": "..." },
-    { "option": 2, "title": "...", "subtitle": "..." },
-    { "option": 3, "title": "...", "subtitle": "..." }
-  ],
-  "recommended": 1,
-  "chapters": [
-    {
-      "number": 1,
-      "title": "Chapter title",
-      "goal": "What the reader will understand after this chapter",
-      "quick_win_outcome": "The specific thing the reader will be able to DO within 10 minutes of finishing this chapter",
-      "chapter_type": "standard"
-    }
-  ]
-}`
-}
-
-function chapterPrompt(project: Project, bookTitle: string, chapter: ChapterOutline, allChapters: ChapterOutline[]): string {
-  const chapterList = allChapters.map(c => `Chapter ${c.number}: ${c.title}`).join('\n')
-  const type = chapter.chapter_type || 'standard'
-
-  const header = `STAGE: CHAPTER DRAFT
-
-Book: "${bookTitle}"
-Target Market: ${project.target_market}
-Problem: ${project.problem}
-Unique Mechanism: ${project.unique_mechanism}
-
-Full Chapter List (for context — do NOT repeat content from other chapters):
-${chapterList}
-
-NOW WRITE: Chapter ${chapter.number} — "${chapter.title}"
-Chapter Goal: ${chapter.goal}
-Quick Win Outcome: ${chapter.quick_win_outcome}
-Chapter Type: ${type}
-
-OPENING QUOTE
-Find a powerful, relevant quote by a well-known public figure, author, entrepreneur, or thought leader that directly connects to this chapter's topic.
-- The quote must feel earned — not generic motivational filler
-- Choose someone the Filipino reader would recognise (global figures are fine)
-- Return both the quote text and the person's name + short title`
-
-  const quickWinRule = `
-QUICK WIN (completable in 5–10 minutes)
-Design ONE concrete mini-exercise the reader can complete right now.
-- State the goal clearly
-- Give numbered instructions as plain strings — do NOT include "1." or numbering in the strings themselves, those will be added automatically
-- Describe the immediate, tangible result they will have when done
-- Must feel easy and rewarding — build confidence, not overwhelm`
-
-  const closingRule = `
-CONFIDENCE CLOSE (1–2 short paragraphs)
-- Reinforce that the reader CAN do this — tie it to the specific action they just learned
-- Remove the most common self-doubt they might feel right now
-- End with one sentence that creates anticipation for the next chapter
-- Do NOT use generic motivation ("You've got this!", "Believe in yourself")`
-
-  const jsonTemplate = `
-Return this exact JSON:
-{
-  "number": ${chapter.number},
-  "title": "${chapter.title}",
-  "quote": { "text": "The quote text here", "author": "Full Name, Title or Role" },
-  "story_starter": "Content for section 1 here",
-  "core_lessons": "Content for section 2 here",
-  "practical_steps": [
-    {
-      "step_number": 1,
-      "title": "Step title",
-      "what_to_do": "Exact, specific instruction — name actual tools, platforms, or scripts where relevant",
-      "why_it_matters": "Brief explanation",
-      "common_mistake": "The one thing beginners get wrong here"
-    }
-  ],
-  "quick_win": {
-    "goal": "What the reader will accomplish",
-    "instructions": ["Do this specific thing", "Then do this", "Finally do this"],
-    "immediate_result": "The specific tangible thing they will have when done"
-  },
-  "confidence_close": "Full closing text here",
-  "references": []
-}
-
-REFERENCES RULE:
-- If this chapter mentions or cites a specific book, research study, article, or named work by a real author, include it in the "references" array.
-- Use this format for each: "Author Last, First. Title. Publisher, Year." (e.g. "Clear, James. Atomic Habits. Avery, 2018.")
-- For articles or studies: "Author Last, First. 'Article Title.' Publication Name, Year."
-- If no specific works are cited in this chapter, return an empty array: []
-- Do NOT invent references. Only include works that are actually mentioned in the chapter content.`
-
-  if (type === 'myth_truth') {
-    return `${header}
-
-This is a MYTH vs. TRUTH chapter. Do NOT use the standard story format.
-
-SECTION 1 — OPENING HOOK (150–200 words)
-Start with a punchy, provocative statement about what most people in this market believe that is actually wrong.
-No story. Just a direct, confident challenge to a widely-held assumption.
-
-SECTION 2 — MYTH vs. TRUTH (main body, 800–1000 words)
-Present exactly 4 myths with their corresponding truths. For each:
-- MYTH: State the myth as confidently as most people believe it (e.g. "You need X before you can Y")
-- THE TRUTH: Flip it with a specific, evidence-backed or experience-backed truth
-- WHY IT MATTERS: One short paragraph explaining the real-world consequence of believing the myth
-- Include at least one real industry example, statistic, or named tool per myth
-
-SECTION 3 — PRACTICAL STEPS (3–4 steps)
-Based on the truths revealed, give specific steps to rewire thinking and take action.
-Name actual tools, platforms, or resources the reader can use today.
-${quickWinRule}
-${closingRule}
-${jsonTemplate}`
-  }
-
-  if (type === 'case_study') {
-    return `${header}
-
-This is a CASE STUDY chapter. Do NOT use the standard story format.
-
-SECTION 1 — MEET THE CHARACTER (200–300 words)
-Introduce a fictional but hyper-realistic Filipino character from the target market.
-- Give them a full name, age, job, location, and specific situation
-- Describe exactly what their life looked like BEFORE — the daily frustration, the specific failure, the moment they hit rock bottom
-- Make the reader feel like they're reading about themselves or someone they know
-
-SECTION 2 — THE TURNING POINT (200–300 words)
-Describe the exact moment and decision that changed everything for this character.
-- What did they try first? What failed?
-- What did they finally discover or do differently?
-- Tie it directly to the unique mechanism: ${project.unique_mechanism}
-
-SECTION 3 — THE STEP-BY-STEP BREAKDOWN (500–700 words)
-Break down exactly what the character did, step by step.
-- Be specific: name actual tools, platforms, templates, or scripts they used
-- Show the timeline (week 1, week 2, etc. if relevant)
-- Include one specific setback they overcame and how
-
-SECTION 4 — THE RESULTS + LESSON (200–300 words)
-Show the concrete, specific result the character achieved.
-- Use numbers and specifics (e.g. "landed 3 interviews in 2 weeks", not "improved her chances")
-- Extract the single most important lesson the reader should take from this story
-
-SECTION 5 — PRACTICAL STEPS (3–4 steps)
-Give the reader the exact steps to replicate what the character did.
-Name actual tools, platforms, or scripts they can use.
-${quickWinRule}
-${closingRule}
-${jsonTemplate}`
-  }
-
-  if (type === 'worksheet') {
-    return `${header}
-
-This is a WORKSHEET chapter. Do NOT use the standard story format.
-
-SECTION 1 — OPENING REFRAME (150–200 words)
-Start with a sharp insight about why most people skip the self-assessment step and what it costs them.
-No long story — just a clear, direct explanation of why this chapter's exercise matters.
-
-SECTION 2 — THE SELF-ASSESSMENT (main body, 600–800 words)
-Create a practical self-assessment tool for the reader. Choose the format that best fits the topic:
-- A scored quiz (rate yourself 1–5 on each item) with a score interpretation at the end
-- A diagnostic checklist (check all that apply, then count and interpret)
-- A fill-in-the-blank reflection (complete these sentences about your situation)
-Present it as a real, usable exercise — not a list of questions with no structure.
-After the tool, provide a brief interpretation guide: "If you scored X, here's what that means and what to focus on."
-
-SECTION 3 — WHAT YOUR RESULTS MEAN (300–400 words)
-Walk through the main result categories and give specific, actionable guidance for each.
-Name actual next steps, tools, or resources for each category.
-
-SECTION 4 — PRACTICAL STEPS (3–4 steps)
-Based on what readers discovered in the assessment, give them specific next steps.
-${quickWinRule}
-${closingRule}
-${jsonTemplate}`
-  }
-
-  if (type === 'template') {
-    return `${header}
-
-This is a TEMPLATE chapter. Do NOT use the standard story format.
-
-SECTION 1 — WHY TEMPLATES MATTER (150–200 words)
-Open with the specific pain of starting from a blank page — most people freeze because they don't know what "good" looks like.
-Explain that this chapter gives them the exact tools professionals use, so they never have to guess again.
-
-SECTION 2 — THE TEMPLATES (main body, 700–1000 words)
-Provide 3–4 ready-to-use templates, scripts, or checklists directly relevant to this chapter's topic.
-For each template:
-- Give it a clear name (e.g. "The 3-Part Follow-Up Message", "The 60-Second Intro Script")
-- Explain when and how to use it (1–2 sentences)
-- Provide the full template with [BRACKETS] for the parts the reader fills in
-- Add 1 short example of the template filled in with realistic content
-Make these feel premium and genuinely useful — not generic filler.
-
-SECTION 3 — HOW TO CUSTOMIZE (200–300 words)
-Give 3–5 specific tips for adapting the templates to their own voice, industry, or situation.
-Name common mistakes people make when using templates (sounding robotic, over-copying, etc.)
-
-SECTION 4 — PRACTICAL STEPS (3–4 steps)
-Walk the reader through using one of the templates right now.
-${quickWinRule}
-${closingRule}
-${jsonTemplate}`
-  }
-
-  // Default: standard
-  return `${header}
-
-SECTION 1 — STORY STARTER (300–500 words)
-Write a relatable, vivid story about someone from the target market dealing with the exact topic of this chapter.
-- Use a fictional but realistic Filipino character (give them a full name and a specific situation)
-- VARY the opening: do NOT always use a woman feeling anxious. Use different characters, emotions, and scenarios.
-- Show the struggle in concrete detail — specific numbers, specific moments, specific words they said to themselves
-- End with a natural transition: "That's exactly what this chapter is about."
-- Do NOT teach yet. Just tell the story.
-
-SECTION 2 — CORE LESSONS (800–1200 words)
-Teach the core concept of this chapter.
-- Maximum 3–5 principles or key ideas (never more)
-- For each principle: explain it clearly, name a specific tool or resource the reader can use, give a relatable Filipino example
-- Include at least one real-world data point, statistic, or industry insight to build credibility
-- Write like you're explaining to a smart friend, not a student
-- Avoid jargon. If you use a term, explain it immediately.
-
-SECTION 3 — PRACTICAL STEPS (3–5 steps)
-Give the reader a clear, step-by-step action plan.
-- Each step must name specific tools, platforms, or scripts (not just "research" or "network" — say WHERE and HOW)
-- Each step: what to do + why it matters + one common mistake to avoid
-- Steps must be specific enough that a beginner can follow them without asking questions
-
-${quickWinRule}
-${closingRule}
-${jsonTemplate}`
-}
-
-function introductionPrompt(project: Project, bookTitle: string, bookSubtitle: string, chapters: ChapterOutline[]): string {
-  const chapterList = chapters.map(c => `Chapter ${c.number}: ${c.title} — ${c.goal}`).join('\n')
-
-  return `STAGE: BOOK INTRODUCTION
-
-Act as a best-selling non-fiction author and direct response copywriter.
-
-Book: "${bookTitle}: ${bookSubtitle}"
-Target Market: ${project.target_market}
-Problem: ${project.problem}
-Unique Solution/Mechanism: ${project.unique_mechanism}
-Chapters covered:
-${chapterList}
-
-YOUR TASK: Write a powerful, emotionally compelling book introduction built around a BIG IDEA hook.
-
-STEP 1 — IDENTIFY THE WRONG BELIEF:
-Find the #1 wrong belief that most people in "${project.target_market}" have about solving "${project.problem}".
-This is the thing they've been told — or assume — that is actually holding them back.
-
-STEP 2 — FLIP IT WITH A CONTRARIAN INSIGHT:
-Use this structure: "Most people think [X]… but the real reason is [Y]."
-Make it:
-- Simple and relatable
-- Slightly surprising
-- Easy to understand in 5 seconds
-- Emotionally gripping — the reader should feel "Wait… that's ME."
-
-STEP 3 — BUILD THE INTRODUCTION USING THIS EXACT STRUCTURE:
-1. HOOK — Open with a vivid, relatable question or scenario the target market immediately recognizes. Do NOT start with "In this book…" or "Welcome to…" or any generic opener.
-2. VALIDATION — Acknowledge why this problem feels so hard and why it's NOT their fault
-3. THE BIG IDEA REVEAL — Deliver the contrarian insight: "Most people think X… but the truth is Y." This is the turning point of the introduction.
-4. THE MECHANISM BRIDGE — Introduce the unique mechanism (${project.unique_mechanism}) as the solution to the wrong belief. Make it feel like a discovery, not a feature.
-5. THE PROMISE — State clearly and specifically what changes for them if they read and apply this book. Be specific — not "your life will change" but a concrete, believable result.
-6. THE CALL TO START — End with a warm, energizing push to begin RIGHT NOW, not someday.
-
-WRITING RULES:
-- Use short paragraphs (2–4 sentences max per paragraph)
-- Write conversationally — like a trusted friend explaining something life-changing
-- Add light, natural Taglish warmth where a Filipino reader would feel immediately seen — never forced
-- NEVER use hype, fake promises, or clichés like "life-changing," "revolutionary," or "game-changer"
-- NO academic openers. NO "This book will teach you…" style intros.
-- Clarity and emotion over cleverness. Done beats perfect.
-
-EXAMPLE TONE (dog training ebook, for reference only):
-"Have you ever wondered why your dog doesn't listen… kahit ilang beses mo na tinuro?
-It's not because your dog is stubborn. And it's definitely not because you're a bad owner.
-Here's the truth most people don't realize: Most dog owners fail not because they lack time… but because they're speaking a language their dog doesn't understand.
-You're trying to teach commands. But your dog? They don't understand commands. They understand patterns.
-And once you see this… everything changes."
-
-Apply the same structure and emotional tension to THIS book's topic, market, and mechanism.
-
-Return this exact JSON:
-{
-  "introduction": "Full introduction text here — 4 to 6 paragraphs following the 6-step structure above"
-}`
-}
-
-function conclusionPrompt(project: Project, bookTitle: string, chapters: ChapterOutline[]): string {
-  const chapterList = chapters.map(c => `Chapter ${c.number}: ${c.title}`).join('\n')
-
-  return `STAGE: BOOK CONCLUSION
-
-Book: "${bookTitle}"
-Target Market: ${project.target_market}
-Chapters:
-${chapterList}
-
-Write a powerful book conclusion that:
-1. Reminds the reader of where they started (the struggle they came in with)
-2. Celebrates how much ground they've covered — make them feel proud
-3. Reframes the journey ahead as exciting, not overwhelming
-4. Gives a clear, specific final call to action — what to do TODAY with what they've learned
-5. Ends with a memorable line that captures the spirit of the entire book
-
-Keep it short and punchy — 2 to 3 paragraphs. This is the last thing they read. Make it count.
-
-Return this exact JSON:
-{
-  "conclusion": "Full conclusion text here"
-}`
-}
 
 // ─── TYPES ───────────────────────────────────────────────────────────────────
 
@@ -431,6 +65,7 @@ interface PracticalStep {
 }
 
 interface QuickWin {
+  name?: string
   goal: string
   instructions: string[]
   immediate_result: string
@@ -448,44 +83,570 @@ interface ChapterDraft {
   references?: string[]
 }
 
+type Message = { role: 'user' | 'assistant'; content: string }
+
 // ─── HELPER ──────────────────────────────────────────────────────────────────
 
-async function callOpenAI(prompt: string, maxTokens = 2500): Promise<unknown> {
+async function callOpenAI(
+  prompt: string,
+  context: Message[] = [],
+  maxTokens = 2500
+): Promise<unknown> {
+  const messages = [
+    { role: 'system' as const, content: MASTER_SYSTEM_PROMPT },
+    ...context,
+    { role: 'user' as const, content: prompt },
+  ]
+
   const completion = await openai.chat.completions.create({
     model: AI_MODEL,
-    messages: [
-      { role: 'system', content: MASTER_SYSTEM_PROMPT },
-      { role: 'user', content: prompt },
-    ],
+    messages,
     response_format: { type: 'json_object' },
-    temperature: 0.75,
+    temperature: 0.78,
     max_tokens: maxTokens,
   })
 
   let content = completion.choices[0].message.content || '{}'
 
-  // ── Post-generation banned word scan ────────────────────────────────────────
-  // If the AI slipped any banned words into its output, auto-correct before
-  // returning to the user. One silent correction pass — invisible to the user.
+  // Auto-correct banned words
   const bannedFound = findBannedWords(content)
   if (bannedFound.length > 0) {
-    console.warn(`[ebook-agent] Banned words found: ${bannedFound.join(', ')} — running auto-correction`)
-    const correctionCompletion = await openai.chat.completions.create({
+    console.warn(`[ebook-agent] Banned words found: ${bannedFound.join(', ')} — auto-correcting`)
+    const correction = await openai.chat.completions.create({
       model: AI_MODEL,
       messages: [
-        { role: 'system', content: MASTER_SYSTEM_PROMPT },
-        { role: 'user', content: prompt },
-        { role: 'assistant', content: content },
-        { role: 'user', content: buildCorrectionPrompt(content, bannedFound) },
+        ...messages,
+        { role: 'assistant' as const, content },
+        { role: 'user' as const, content: buildCorrectionPrompt(content, bannedFound) },
       ],
       response_format: { type: 'json_object' },
       temperature: 0.5,
       max_tokens: maxTokens,
     })
-    content = correctionCompletion.choices[0].message.content || content
+    content = correction.choices[0].message.content || content
   }
 
   return JSON.parse(content)
+}
+
+// ─── OUTLINE PROMPT ───────────────────────────────────────────────────────────
+
+function outlinePrompt(project: Project): string {
+  return `STAGE: OUTLINE
+
+You are helping create an ebook based on this clarity sentence:
+- Target Market: ${project.target_market}
+- Problem they face: ${project.problem}
+- Unique solution/mechanism: ${project.unique_mechanism}
+
+STEP 1: Generate 3 compelling title options for this ebook.
+- Titles must be specific, not generic
+- They should communicate a clear, tangible outcome
+- They should appeal to a Filipino beginner audience
+
+STEP 2: Create a table of contents with 8 to 10 chapters. Choose the number that best fits the depth of the topic — not too thin, not padded.
+- Each chapter title must be nice, cute, succinct, witty, and attention-grabbing — make the reader excited to open it
+- Avoid generic titles like "Introduction to X" or "Understanding Y" — every title should have personality and spark curiosity
+- Each chapter must have a clear goal (what the reader will learn)
+- Each chapter must have a quick win outcome (what the reader will be able to DO immediately after)
+- Chapters must flow logically — each one builds on the previous
+- Chapter 1 should address the biggest mindset block first
+- The final chapter should leave the reader ready to take their first real action
+
+STEP 3: Assign a chapter_type to each chapter to make the book feel dynamic and varied.
+Use this distribution across the book (assign based on what fits the content best):
+- "standard" — Story opener + core lessons + action steps (use for 3–4 chapters)
+- "myth_truth" — Busts 3–5 common myths about the topic, then reveals the truth (use once, ideally early)
+- "case_study" — Deep dive into one fictional but realistic character's full journey (use once)
+- "worksheet" — Self-assessment or reflection exercises (use once)
+- "template" — Ready-to-use scripts, templates, checklists (use once)
+
+No two adjacent chapters should have the same type.
+
+Return this exact JSON:
+{
+  "title_options": [
+    { "option": 1, "title": "...", "subtitle": "..." },
+    { "option": 2, "title": "...", "subtitle": "..." },
+    { "option": 3, "title": "...", "subtitle": "..." }
+  ],
+  "recommended": 1,
+  "chapters": [
+    {
+      "number": 1,
+      "title": "Chapter title",
+      "goal": "What the reader will understand after this chapter",
+      "quick_win_outcome": "The specific thing the reader will be able to DO within 10 minutes",
+      "chapter_type": "standard"
+    }
+  ]
+}`
+}
+
+// ─── MULTI-PASS SECTION PROMPTS (standard chapters) ──────────────────────────
+
+function pass1_QuotePrompt(chapter: ChapterOutline): string {
+  return `TASK: Opening Quote for Chapter ${chapter.number} — "${chapter.title}"
+Chapter goal: ${chapter.goal}
+
+Find a powerful, relevant quote by a well-known public figure, author, entrepreneur, or thought leader that directly connects to this chapter's topic and goal.
+- The quote must feel earned — not generic motivational filler
+- Choose someone the Filipino reader would recognise (global figures are fine)
+- The quote should feel like it was written for this exact moment in the reader's journey
+
+Return this exact JSON:
+{
+  "quote": {
+    "text": "The exact quote text here",
+    "author": "Full Name, Title or Role (e.g. James Clear, Author of Atomic Habits)"
+  }
+}`
+}
+
+function pass2_StoryPrompt(project: Project, bookTitle: string, chapter: ChapterOutline): string {
+  return `TASK: Story Starter for Chapter ${chapter.number} — "${chapter.title}"
+
+Book: "${bookTitle}"
+Target Market: ${project.target_market}
+Problem: ${project.problem}
+Chapter Goal: ${chapter.goal}
+
+Write ONLY the Story Starter for this chapter. Do NOT teach yet — pure storytelling.
+
+CINEMATIC TECHNIQUE — follow this exactly:
+- Open in a specific moment, mid-scene. No preamble.
+- Use a fictional but hyper-realistic Filipino character from the target market. Give them a full name and a concrete situation.
+- VARY sentence length deliberately. Long sentences for building tension. Then short ones. Very short ones. One-word sentences if needed.
+- Use real Taglish dialogue in quotation marks — the words people actually say to themselves or others.
+- Show the pain through specific sensory detail — not "she was stressed" but what she saw, said, felt, or did.
+- Include at least one moment of false hope followed by a harder fall. (e.g. They thought it was fixed. It wasn't.)
+- End the story with a powerful realization line — something that flips their understanding.
+- NEVER start the transition with "In this chapter" or generic openers.
+- Transition to the lesson with something like: "Because here's what most [target market] don't realize:" or "That's the thing about [topic]."
+- 300–500 words. No more. No padding.
+
+Return this exact JSON:
+{
+  "story_starter": "Full story text here — use \\n\\n between paragraphs for line breaks"
+}`
+}
+
+function pass3_LessonsPrompt(project: Project, chapter: ChapterOutline, storyContent: string): string {
+  return `TASK: Core Lessons for Chapter ${chapter.number} — "${chapter.title}"
+
+Target Market: ${project.target_market}
+Problem: ${project.problem}
+Chapter Goal: ${chapter.goal}
+
+The Story Starter already written:
+---
+${storyContent}
+---
+
+Now write ONLY the Core Lessons section. This picks up where the story left off — teach what the story just made the reader feel.
+
+STRUCTURE:
+- Break into 3–4 sub-sections. Each sub-section must start with a bold heading on its own line using this format: ## Heading Here
+- Under each heading: explain the concept clearly, give a specific Philippine example or context, name at least one real tool, platform, or resource the reader can use.
+- Include at least one data point, statistic, or real-world insight across the whole section to build credibility.
+- Write like you're explaining to a smart friend. Not a textbook.
+- Each sub-section: 150–250 words.
+- Total: 600–900 words.
+
+FORMAT RULE: Sub-headings must use ## at the start of the line, like this:
+## Why Most People Get This Wrong
+
+Return this exact JSON:
+{
+  "core_lessons": "## First Heading\\n\\nContent here...\\n\\n## Second Heading\\n\\nMore content..."
+}`
+}
+
+function pass4_StepsPrompt(project: Project, chapter: ChapterOutline, storyContent: string, lessonsContent: string): string {
+  return `TASK: Practical Steps for Chapter ${chapter.number} — "${chapter.title}"
+
+Target Market: ${project.target_market}
+Chapter Goal: ${chapter.goal}
+
+Already written — Story:
+---
+${storyContent.slice(0, 400)}...
+---
+Already written — Core Lessons (summary):
+---
+${lessonsContent.slice(0, 600)}...
+---
+
+Now write ONLY the Practical Steps. These must flow naturally from the lessons above.
+
+RULES:
+- 4–5 steps (never fewer, never more)
+- Each step must be specific enough that the reader can do it WITHOUT googling anything extra
+- Name actual tools, platforms, apps, websites, or scripts where relevant (e.g. "Open Canva at canva.com", "Go to Facebook Creator Studio", "Use Google Docs at docs.google.com")
+- what_to_do: the exact action, written like a clear instruction
+- why_it_matters: one sentence, honest and direct — not motivational filler
+- common_mistake: the specific thing beginners always get wrong here — be blunt
+
+Return this exact JSON:
+{
+  "practical_steps": [
+    {
+      "step_number": 1,
+      "title": "Step title here",
+      "what_to_do": "Exact, specific instruction naming real tools and actions",
+      "why_it_matters": "One honest sentence about why this step matters",
+      "common_mistake": "The one thing beginners always get wrong at this step"
+    }
+  ]
+}`
+}
+
+function pass5_QuickWinPrompt(chapter: ChapterOutline): string {
+  return `TASK: Quick Win for Chapter ${chapter.number} — "${chapter.title}"
+Quick Win Outcome: ${chapter.quick_win_outcome}
+
+Design a named, step-by-step Quick Win the reader can complete TODAY in 10–15 minutes.
+
+RULES:
+- Give it a catchy, specific name (e.g. "The 24-Hour Parasite Reset Starter", "The 10-Minute Niche Clarity Test")
+- 7–9 numbered steps — specific enough to follow without any extra research
+- Each step is one clear action, 1–2 sentences max
+- Steps must build on each other — completing one makes the next easier
+- The immediate_result must describe a tangible, visible thing the reader will HAVE when done
+- Tone: energetic but practical — not a pep talk, a protocol
+
+Return this exact JSON:
+{
+  "quick_win": {
+    "name": "Catchy name for this Quick Win",
+    "goal": "One sentence: what the reader will accomplish",
+    "instructions": [
+      "Step instruction here — specific, clear, no vague verbs",
+      "Next step here"
+    ],
+    "immediate_result": "The specific, tangible thing they will have or see when they finish all steps"
+  }
+}`
+}
+
+function pass6_ClosePrompt(chapter: ChapterOutline, nextChapter: ChapterOutline | null): string {
+  const nextRef = nextChapter
+    ? `The NEXT chapter is Chapter ${nextChapter.number}: "${nextChapter.title}" — which covers: ${nextChapter.goal}`
+    : 'This is the final chapter.'
+
+  return `TASK: Confidence Close for Chapter ${chapter.number} — "${chapter.title}"
+
+${nextRef}
+
+Write ONLY the Confidence Close and references. This is the last thing the reader sees before turning the page.
+
+RULES:
+- 2–3 short paragraphs only
+- Paragraph 1: Reinforce that the reader CAN do what this chapter taught — tie it to one specific action from the Practical Steps or Quick Win
+- Paragraph 2: Remove the most common self-doubt they feel right now. Be specific — name the doubt, then dismantle it with a real reason
+- Final sentence: A teaser for the next chapter that creates genuine curiosity. Reference the EXACT next chapter title. NOT "In the next chapter we will discuss..." — something more alive, like: "The next piece? It's the one most people skip — and it's why Chapter ${nextChapter ? nextChapter.number : ''} exists."
+- Do NOT use generic motivation ("You've got this!", "Believe in yourself")
+- If this chapter mentioned any specific books, studies, articles, or named authors, list them in references. Otherwise return [].
+
+Return this exact JSON:
+{
+  "confidence_close": "Full closing text here — use \\n\\n between paragraphs",
+  "references": []
+}`
+}
+
+// ─── SINGLE-PASS CHAPTER PROMPT (non-standard types) ─────────────────────────
+
+function singlePassChapterPrompt(project: Project, bookTitle: string, chapter: ChapterOutline, allChapters: ChapterOutline[]): string {
+  const chapterList = allChapters.map(c => `Chapter ${c.number}: ${c.title}`).join('\n')
+  const type = chapter.chapter_type || 'standard'
+
+  const header = `STAGE: CHAPTER DRAFT
+
+Book: "${bookTitle}"
+Target Market: ${project.target_market}
+Problem: ${project.problem}
+Unique Mechanism: ${project.unique_mechanism}
+
+Full Chapter List (for context — do NOT repeat content from other chapters):
+${chapterList}
+
+NOW WRITE: Chapter ${chapter.number} — "${chapter.title}"
+Chapter Goal: ${chapter.goal}
+Quick Win Outcome: ${chapter.quick_win_outcome}
+Chapter Type: ${type}
+
+OPENING QUOTE: Find a powerful, relevant quote by a well-known public figure that directly connects to this chapter's topic.`
+
+  const quickWinRule = `
+QUICK WIN (completable in 10–15 minutes)
+Give it a catchy specific name. Design 7–9 concrete steps the reader can do right now.
+State the goal clearly. Each instruction must be specific enough to follow without googling.
+Describe the immediate tangible result they will have when done.`
+
+  const closingRule = `
+CONFIDENCE CLOSE (2–3 short paragraphs)
+- Reinforce that the reader CAN do this — tie it to a specific action they just learned
+- Remove the most common self-doubt they might feel right now — name it, then dismantle it
+- End with a teaser sentence for the next chapter that creates genuine curiosity
+- Do NOT use generic motivation`
+
+  const jsonTemplate = `
+Return this exact JSON:
+{
+  "number": ${chapter.number},
+  "title": "${chapter.title}",
+  "quote": { "text": "...", "author": "Full Name, Title" },
+  "story_starter": "...",
+  "core_lessons": "## Sub-heading\\n\\nContent...\\n\\n## Sub-heading\\n\\nContent...",
+  "practical_steps": [
+    {
+      "step_number": 1,
+      "title": "Step title",
+      "what_to_do": "Exact specific instruction naming real tools",
+      "why_it_matters": "One honest sentence",
+      "common_mistake": "What beginners get wrong"
+    }
+  ],
+  "quick_win": {
+    "name": "Catchy Quick Win name",
+    "goal": "What the reader will accomplish",
+    "instructions": ["Specific step", "Next step"],
+    "immediate_result": "The tangible thing they will have when done"
+  },
+  "confidence_close": "...",
+  "references": []
+}`
+
+  if (type === 'myth_truth') {
+    return `${header}
+
+This is a MYTH vs. TRUTH chapter.
+
+SECTION 1 — OPENING HOOK (150–200 words): A punchy challenge to a widely-held wrong assumption. No story. Direct and confident.
+
+SECTION 2 — MYTH vs. TRUTH (800–1000 words): Present exactly 4 myths with their truths. For each:
+- MYTH: State it as confidently as most people believe it
+- THE TRUTH: Flip it with a specific, evidence-backed truth
+- WHY IT MATTERS: Real-world consequence of believing the myth
+- Include a real industry example, statistic, or named tool per myth
+
+Use ## Heading format for each myth heading.
+
+SECTION 3 — PRACTICAL STEPS (4–5 steps): Specific steps to act on the truths revealed.
+${quickWinRule}
+${closingRule}
+${jsonTemplate}`
+  }
+
+  if (type === 'case_study') {
+    return `${header}
+
+This is a CASE STUDY chapter.
+
+SECTION 1 — MEET THE CHARACTER (200–300 words): Fictional but hyper-realistic Filipino character. Full name, age, job, location, specific situation. Show the struggle in visceral detail.
+
+SECTION 2 — THE TURNING POINT (200–300 words): What they tried first. What failed. What they finally discovered. Tie to the unique mechanism: ${project.unique_mechanism}
+
+SECTION 3 — STEP-BY-STEP BREAKDOWN (500–700 words): Exactly what they did, with specific tools and timeline. Include one setback they overcame.
+
+SECTION 4 — RESULTS + LESSON (200–300 words): Concrete specific result (use numbers). The single most important lesson.
+
+SECTION 5 — PRACTICAL STEPS (4–5 steps): Exact steps to replicate what the character did.
+${quickWinRule}
+${closingRule}
+${jsonTemplate}`
+  }
+
+  if (type === 'worksheet') {
+    return `${header}
+
+This is a WORKSHEET chapter.
+
+SECTION 1 — OPENING REFRAME (150–200 words): Why most people skip self-assessment and what it costs them.
+
+SECTION 2 — THE SELF-ASSESSMENT (600–800 words): A practical self-assessment tool — scored quiz, diagnostic checklist, or fill-in-the-blank reflection. Provide interpretation guide.
+
+SECTION 3 — WHAT YOUR RESULTS MEAN (300–400 words): Walk through main result categories with specific actionable guidance and tools for each.
+
+SECTION 4 — PRACTICAL STEPS (4–5 steps): Based on what readers discovered.
+${quickWinRule}
+${closingRule}
+${jsonTemplate}`
+  }
+
+  if (type === 'template') {
+    return `${header}
+
+This is a TEMPLATE chapter.
+
+SECTION 1 — WHY TEMPLATES MATTER (150–200 words): The pain of starting from blank. This chapter fixes that.
+
+SECTION 2 — THE TEMPLATES (700–1000 words): 3–4 ready-to-use templates, scripts, or checklists. For each: name, when/how to use it, full template with [BRACKETS], one filled-in example.
+
+SECTION 3 — HOW TO CUSTOMIZE (200–300 words): 3–5 tips for adapting templates to their own voice. Common mistakes when using templates.
+
+SECTION 4 — PRACTICAL STEPS (4–5 steps): Walk through using one template right now.
+${quickWinRule}
+${closingRule}
+${jsonTemplate}`
+  }
+
+  // Fallback standard (shouldn't reach here normally)
+  return `${header}
+
+SECTION 1 — STORY STARTER (300–500 words): Cinematic. Short punchy sentences for impact. Real Taglish dialogue. Named Filipino character.
+SECTION 2 — CORE LESSONS (600–900 words): 3–4 sub-sections with ## headings. Specific examples and tools.
+SECTION 3 — PRACTICAL STEPS (4–5 steps).
+${quickWinRule}
+${closingRule}
+${jsonTemplate}`
+}
+
+// ─── MULTI-PASS GENERATOR (standard chapters) ────────────────────────────────
+
+async function generateStandardChapterMultiPass(
+  project: Project,
+  bookTitle: string,
+  chapter: ChapterOutline,
+  allChapters: ChapterOutline[]
+): Promise<ChapterDraft> {
+  const nextChapter = allChapters.find(c => c.number === chapter.number + 1) ?? null
+
+  console.log(`[ebook-agent] Chapter ${chapter.number} multi-pass — starting`)
+
+  // Pass 1: Opening Quote
+  const quoteData = await callOpenAI(pass1_QuotePrompt(chapter), [], 400) as {
+    quote: { text: string; author: string }
+  }
+  console.log(`[ebook-agent] Chapter ${chapter.number} — quote done`)
+
+  // Pass 2: Story Starter
+  const storyData = await callOpenAI(pass2_StoryPrompt(project, bookTitle, chapter), [], 1500) as {
+    story_starter: string
+  }
+  console.log(`[ebook-agent] Chapter ${chapter.number} — story done`)
+
+  // Pass 3: Core Lessons (story as context)
+  const lessonsData = await callOpenAI(
+    pass3_LessonsPrompt(project, chapter, storyData.story_starter),
+    [{ role: 'assistant', content: JSON.stringify(storyData) }],
+    2500
+  ) as { core_lessons: string }
+  console.log(`[ebook-agent] Chapter ${chapter.number} — lessons done`)
+
+  // Pass 4: Practical Steps (story + lessons as context)
+  const stepsData = await callOpenAI(
+    pass4_StepsPrompt(project, chapter, storyData.story_starter, lessonsData.core_lessons),
+    [
+      { role: 'assistant', content: JSON.stringify(storyData) },
+      { role: 'assistant', content: JSON.stringify(lessonsData) },
+    ],
+    2000
+  ) as { practical_steps: PracticalStep[] }
+  console.log(`[ebook-agent] Chapter ${chapter.number} — steps done`)
+
+  // Pass 5: Quick Win
+  const quickWinData = await callOpenAI(pass5_QuickWinPrompt(chapter), [], 1500) as {
+    quick_win: QuickWin
+  }
+  console.log(`[ebook-agent] Chapter ${chapter.number} — quick win done`)
+
+  // Pass 6: Confidence Close (story + lessons as context, next chapter ref)
+  const closeData = await callOpenAI(
+    pass6_ClosePrompt(chapter, nextChapter),
+    [
+      { role: 'assistant', content: JSON.stringify(storyData) },
+      { role: 'assistant', content: JSON.stringify(lessonsData) },
+    ],
+    900
+  ) as { confidence_close: string; references: string[] }
+  console.log(`[ebook-agent] Chapter ${chapter.number} — close done`)
+
+  return {
+    number:           chapter.number,
+    title:            chapter.title,
+    quote:            quoteData.quote,
+    story_starter:    storyData.story_starter,
+    core_lessons:     lessonsData.core_lessons,
+    practical_steps:  stepsData.practical_steps,
+    quick_win:        quickWinData.quick_win,
+    confidence_close: closeData.confidence_close,
+    references:       closeData.references ?? [],
+  }
+}
+
+// ─── INTRODUCTION & CONCLUSION PROMPTS ───────────────────────────────────────
+
+function introductionPrompt(project: Project, bookTitle: string, bookSubtitle: string, chapters: ChapterOutline[]): string {
+  const chapterList = chapters.map(c => `Chapter ${c.number}: ${c.title} — ${c.goal}`).join('\n')
+
+  return `STAGE: BOOK INTRODUCTION
+
+Act as a best-selling non-fiction author and direct response copywriter.
+
+Book: "${bookTitle}: ${bookSubtitle}"
+Target Market: ${project.target_market}
+Problem: ${project.problem}
+Unique Solution/Mechanism: ${project.unique_mechanism}
+Chapters covered:
+${chapterList}
+
+YOUR TASK: Write a powerful, emotionally compelling book introduction built around a BIG IDEA hook.
+
+STEP 1 — IDENTIFY THE WRONG BELIEF:
+Find the #1 wrong belief that most people in "${project.target_market}" have about solving "${project.problem}".
+
+STEP 2 — FLIP IT WITH A CONTRARIAN INSIGHT:
+"Most people think [X]… but the real reason is [Y]."
+- Simple and relatable
+- Slightly surprising
+- Easy to understand in 5 seconds
+- Emotionally gripping — the reader should feel "Wait… that's ME."
+
+STEP 3 — BUILD THE INTRODUCTION WITH THIS EXACT STRUCTURE:
+1. HOOK — Open mid-scene. No "In this book…" or "Welcome to…"
+2. VALIDATION — Why this problem feels hard and why it's NOT their fault
+3. BIG IDEA REVEAL — "Most people think X… but the truth is Y."
+4. MECHANISM BRIDGE — Introduce the unique mechanism as a discovery, not a feature
+5. THE PROMISE — Specific, believable result — not "your life will change"
+6. THE CALL TO START — Warm, energizing push to begin RIGHT NOW
+
+WRITING RULES:
+- Short paragraphs (2–4 sentences max, then vary with single punchy lines)
+- Conversational — trusted friend explaining something life-changing
+- Light natural Taglish where a Filipino reader would feel seen
+- NEVER use hype, fake promises, or clichés
+
+Return this exact JSON:
+{
+  "introduction": "Full introduction text — 4 to 6 paragraphs — use \\n\\n between paragraphs"
+}`
+}
+
+function conclusionPrompt(project: Project, bookTitle: string, chapters: ChapterOutline[]): string {
+  const chapterList = chapters.map(c => `Chapter ${c.number}: ${c.title}`).join('\n')
+
+  return `STAGE: BOOK CONCLUSION
+
+Book: "${bookTitle}"
+Target Market: ${project.target_market}
+Chapters:
+${chapterList}
+
+Write a powerful book conclusion that:
+1. Reminds the reader of where they started (the struggle they came in with)
+2. Celebrates how much ground they've covered — make them feel proud
+3. Reframes the journey ahead as exciting, not overwhelming
+4. Gives a clear, specific final call to action — what to do TODAY
+5. Ends with a memorable line that captures the spirit of the entire book
+
+Keep it short and punchy — 2 to 3 paragraphs. Make the last sentence count.
+
+Return this exact JSON:
+{
+  "conclusion": "Full conclusion text here — use \\n\\n between paragraphs"
+}`
 }
 
 // ─── ROUTE ───────────────────────────────────────────────────────────────────
@@ -516,7 +677,7 @@ export async function POST(request: NextRequest) {
 
       // Stage 1: Generate title options + chapter outline
       case 'outline': {
-        const result = await callOpenAI(outlinePrompt(project), 2000) as {
+        const result = await callOpenAI(outlinePrompt(project), [], 2000) as {
           title_options: TitleOption[]
           recommended: number
           chapters: ChapterOutline[]
@@ -524,29 +685,44 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ stage, data: result })
       }
 
-      // Stage 2: Write a single chapter (called once per chapter)
+      // Stage 2: Write a single chapter
+      // Standard chapters use multi-pass (6 focused API calls).
+      // Specialty types (myth_truth, case_study, worksheet, template) use a single improved call.
       case 'chapter': {
-        const bookTitle = data.book_title as string
-        const chapter = data.chapter as ChapterOutline
-        const allChapters = data.all_chapters as ChapterOutline[]
-        const result = await callOpenAI(chapterPrompt(project, bookTitle, chapter, allChapters), 4500) as ChapterDraft
+        const bookTitle    = data.book_title as string
+        const chapter      = data.chapter as ChapterOutline
+        const allChapters  = data.all_chapters as ChapterOutline[]
+        const chapterType  = chapter.chapter_type ?? 'standard'
+
+        let result: ChapterDraft
+
+        if (chapterType === 'standard') {
+          result = await generateStandardChapterMultiPass(project, bookTitle, chapter, allChapters)
+        } else {
+          result = await callOpenAI(
+            singlePassChapterPrompt(project, bookTitle, chapter, allChapters),
+            [],
+            4500
+          ) as ChapterDraft
+        }
+
         return NextResponse.json({ stage, data: result })
       }
 
-      // Stage 3: Write the book introduction
+      // Stage 3: Book introduction
       case 'introduction': {
-        const bookTitle = data.book_title as string
+        const bookTitle    = data.book_title as string
         const bookSubtitle = data.book_subtitle as string
-        const chapters = data.chapters as ChapterOutline[]
-        const result = await callOpenAI(introductionPrompt(project, bookTitle, bookSubtitle, chapters), 1500) as { introduction: string }
+        const chapters     = data.chapters as ChapterOutline[]
+        const result = await callOpenAI(introductionPrompt(project, bookTitle, bookSubtitle, chapters), [], 1800) as { introduction: string }
         return NextResponse.json({ stage, data: result })
       }
 
-      // Stage 4: Write the book conclusion
+      // Stage 4: Book conclusion
       case 'conclusion': {
         const bookTitle = data.book_title as string
-        const chapters = data.chapters as ChapterOutline[]
-        const result = await callOpenAI(conclusionPrompt(project, bookTitle, chapters), 1000) as { conclusion: string }
+        const chapters  = data.chapters as ChapterOutline[]
+        const result = await callOpenAI(conclusionPrompt(project, bookTitle, chapters), [], 1000) as { conclusion: string }
         return NextResponse.json({ stage, data: result })
       }
 

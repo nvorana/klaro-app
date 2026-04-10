@@ -24,6 +24,7 @@ interface PracticalStep {
 }
 
 interface QuickWin {
+  name?: string
   goal: string
   instructions: string[]
   immediate_result: string
@@ -82,6 +83,7 @@ function splitIntoShortParagraphs(text: string): string[] {
 }
 
 // Split a block of text into Paragraphs (one per line break, max 3 sentences each)
+// Lines starting with "## " are rendered as bold sub-headings.
 function textToParagraphs(text: string, extraSpacing = false): Paragraph[] {
   if (!text) return []
   const lines = text
@@ -91,7 +93,17 @@ function textToParagraphs(text: string, extraSpacing = false): Paragraph[] {
 
   const paragraphs: Paragraph[] = []
   for (const line of lines) {
-    // Only apply sentence splitting to longer lines (short ones are already a single sentence)
+    // ## Sub-heading → render as bold Arial subheading
+    if (line.startsWith('## ')) {
+      const headingText = line.replace(/^##\s+/, '')
+      paragraphs.push(new Paragraph({
+        children: [new TextRun({ text: headingText, bold: true, size: 26, font: 'Arial', color: '1a1a2e' })],
+        spacing: { before: 280, after: 100 },
+      }))
+      continue
+    }
+
+    // Only apply sentence splitting to longer lines
     const chunks = line.split(' ').length > 30 ? splitIntoShortParagraphs(line) : [line]
     for (const chunk of chunks) {
       paragraphs.push(new Paragraph({
@@ -284,6 +296,14 @@ function buildDocument(ebook: EbookData): Document {
     if (ch.quick_win) {
       children.push(sectionLabel('Quick Win', 'b8860b'))
       children.push(spacer(80))
+
+      // Named quick win title
+      if (ch.quick_win.name) {
+        children.push(new Paragraph({
+          children: [new TextRun({ text: ch.quick_win.name, bold: true, size: 28, font: 'Arial', color: 'b8860b' })],
+          spacing: { after: 100 },
+        }))
+      }
 
       // Goal
       if (ch.quick_win.goal) {
