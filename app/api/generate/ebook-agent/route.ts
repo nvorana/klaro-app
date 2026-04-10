@@ -529,7 +529,7 @@ export async function POST(request: NextRequest) {
         const bookTitle = data.book_title as string
         const chapter = data.chapter as ChapterOutline
         const allChapters = data.all_chapters as ChapterOutline[]
-        const result = await callOpenAI(chapterPrompt(project, bookTitle, chapter, allChapters), 3000) as ChapterDraft
+        const result = await callOpenAI(chapterPrompt(project, bookTitle, chapter, allChapters), 4500) as ChapterDraft
         return NextResponse.json({ stage, data: result })
       }
 
