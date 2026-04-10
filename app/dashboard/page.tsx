@@ -120,20 +120,10 @@ export default async function DashboardPage() {
             </p>
           </div>
 
-          {/* CTA */}
-          <a
-            href="https://app.systeme.io"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="w-full bg-[#F4B942] text-[#1A1F36] font-bold py-4 rounded-xl text-sm text-center block mb-3"
-          >
-            Settle My Balance →
-          </a>
-
           <p className="text-gray-400 text-xs">
-            Already paid?{' '}
+            Already paid? Email us at{' '}
             <a href="mailto:jon@negosyouniversity.com" className="text-[#1A1F36] underline underline-offset-2">
-              Contact us
+              jon@negosyouniversity.com
             </a>{' '}
             and we&apos;ll restore your access right away.
           </p>
