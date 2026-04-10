@@ -38,6 +38,7 @@ interface ChapterDraft {
   practical_steps: PracticalStep[]
   quick_win: QuickWin
   confidence_close: string
+  references?: string[]
 }
 
 interface EbookData {
@@ -327,6 +328,23 @@ function buildDocument(ebook: EbookData): Document {
       children.push(sectionLabel('Closing', '6a329f'))
       children.push(spacer(80))
       children.push(...textToParagraphs(ch.confidence_close, true))
+    }
+
+    // References
+    if (ch.references && ch.references.length > 0) {
+      children.push(spacer(200))
+      children.push(new Paragraph({
+        children: [new TextRun({ text: 'References', bold: true, size: 20, font: 'Arial', color: '888888', allCaps: true })],
+        border: { top: { style: BorderStyle.SINGLE, size: 4, color: 'dddddd', space: 4 } },
+        spacing: { before: 0, after: 120 },
+      }))
+      ch.references.forEach((ref, i) => {
+        children.push(new Paragraph({
+          children: [new TextRun({ text: `${i + 1}.  ${ref}`, size: 18, font: 'Georgia', color: '888888', italics: true })],
+          spacing: { after: 80 },
+          indent: { left: 320, hanging: 320 },
+        }))
+      })
     }
 
     // Page break after each chapter (except last)

@@ -158,8 +158,16 @@ Return this exact JSON:
     "instructions": ["Do this specific thing", "Then do this", "Finally do this"],
     "immediate_result": "The specific tangible thing they will have when done"
   },
-  "confidence_close": "Full closing text here"
-}`
+  "confidence_close": "Full closing text here",
+  "references": []
+}
+
+REFERENCES RULE:
+- If this chapter mentions or cites a specific book, research study, article, or named work by a real author, include it in the "references" array.
+- Use this format for each: "Author Last, First. Title. Publisher, Year." (e.g. "Clear, James. Atomic Habits. Avery, 2018.")
+- For articles or studies: "Author Last, First. 'Article Title.' Publication Name, Year."
+- If no specific works are cited in this chapter, return an empty array: []
+- Do NOT invent references. Only include works that are actually mentioned in the chapter content.`
 
   if (type === 'myth_truth') {
     return `${header}
@@ -437,6 +445,7 @@ interface ChapterDraft {
   practical_steps: PracticalStep[]
   quick_win: QuickWin
   confidence_close: string
+  references?: string[]
 }
 
 // ─── HELPER ──────────────────────────────────────────────────────────────────
