@@ -124,35 +124,48 @@ function BatchSection({ batchNumber, students, onToggleSuspend }: {
   onToggleSuspend: (id: string, suspend: boolean) => void
 }) {
   const [expanded, setExpanded] = useState(true)
-  const [unlocking, setUnlocking] = useState<number | null>(null)
-  const [lastUnlock, setLastUnlock] = useState<number | null>(null)
-  const [error, setError] = useState('')
+  const [acting, setActing] = useState<number | null>(null)
+  const [feedback, setFeedback] = useState<{ type: 'ok' | 'err'; msg: string } | null>(null)
   const router = useRouter()
 
   const active = students.filter(s => !s.suspended)
   const suspended = students.filter(s => s.suspended)
+
+  // The consensus max = highest module unlocked across active students
   const maxUnlocked = active.length > 0
     ? Math.max(0, ...active.flatMap(s => s.unlockedModules))
     : 0
 
-  async function handleBatchUnlock(upToModule: number) {
-    if (!batchNumber) return
-    setUnlocking(upToModule)
-    setError('')
+  async function handleModuleClick(n: number) {
+    if (!batchNumber || !!acting) return
+    setActing(n)
+    setFeedback(null)
+
+    const isLock = n === maxUnlocked   // clicking the current max → lock it
+    const endpoint = isLock ? '/api/admin/batch-lock' : '/api/admin/batch-unlock'
+    const body = isLock
+      ? { batchNumber, fromModule: n }
+      : { batchNumber, upToModule: n }
+
     try {
-      const res = await fetch('/api/admin/batch-unlock', {
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ batchNumber, upToModule }),
+        body: JSON.stringify(body),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
-      setLastUnlock(upToModule)
+      setFeedback({
+        type: 'ok',
+        msg: isLock
+          ? `Module ${n} locked for ${data.updated} students.`
+          : `Modules 1–${n} unlocked for ${data.updated} students.`,
+      })
       router.refresh()
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Something went wrong')
+      setFeedback({ type: 'err', msg: e instanceof Error ? e.message : 'Something went wrong' })
     } finally {
-      setUnlocking(null)
+      setActing(null)
     }
   }
 
@@ -186,41 +199,56 @@ function BatchSection({ batchNumber, students, onToggleSuspend }: {
 
       {expanded && (
         <>
-          {/* Bulk module unlock bar */}
+          {/* Module toggle bar */}
           {batchNumber && (
             <div className="px-4 py-3 bg-gray-950/50 border-t border-gray-800">
               <p className="text-[11px] text-gray-500 uppercase tracking-wide font-bold mb-2">
-                Unlock modules for all active students ({active.length})
+                Module access — {active.length} active students
               </p>
               <div className="flex gap-2 flex-wrap">
                 {[1, 2, 3, 4, 5, 6].map(n => {
-                  const isCurrent = maxUnlocked === n
-                  const isDone = maxUnlocked >= n
-                  const isLoading = unlocking === n
+                  const isUnlocked  = n <= maxUnlocked   // already unlocked
+                  const isCurrentMax = n === maxUnlocked  // the topmost unlocked
+                  const isBelow     = n < maxUnlocked     // below current max → disabled
+                  const isLoading   = acting === n
+
+                  // Style rules:
+                  // below max → gold filled, disabled, no cursor
+                  // at max    → gold filled, clickable (will lock on click), lock icon hint
+                  // above max → gray outline, clickable (will unlock up to here)
+                  const cls = isBelow
+                    ? 'bg-[#F4B942]/20 border-[#F4B942]/40 text-[#F4B942]/50 cursor-not-allowed'
+                    : isCurrentMax
+                      ? 'bg-[#F4B942] border-[#F4B942] text-[#1A1F36] hover:bg-[#F4B942]/80'
+                      : 'border-gray-700 text-gray-400 hover:border-[#F4B942] hover:text-[#F4B942]'
+
                   return (
                     <button
                       key={n}
-                      onClick={() => handleBatchUnlock(n)}
-                      disabled={!!unlocking || active.length === 0}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors disabled:opacity-40
-                        ${isDone
-                          ? 'bg-[#F4B942]/20 border-[#F4B942] text-[#F4B942]'
-                          : 'border-gray-700 text-gray-400 hover:border-[#F4B942] hover:text-[#F4B942]'
-                        }`}
+                      onClick={() => !isBelow && handleModuleClick(n)}
+                      disabled={isBelow || !!acting || active.length === 0}
+                      title={
+                        isBelow      ? 'Already unlocked — click the higher module to lock back'
+                        : isCurrentMax ? `Click to lock Module ${n}`
+                        : `Click to unlock Modules 1–${n}`
+                      }
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors ${cls}`}
                     >
-                      {isLoading ? '...' : `M${n}${isDone ? ' ✓' : ''}`}
+                      {isLoading ? '…' : isCurrentMax ? `M${n} ✓` : isBelow ? `M${n} ✓` : `M${n}`}
                     </button>
                   )
                 })}
               </div>
-              {lastUnlock && !unlocking && (
-                <p className="text-[11px] text-green-400 mt-2">
-                  ✓ Modules 1–{lastUnlock} unlocked for {active.length} students
+
+              {/* Feedback line */}
+              {feedback && (
+                <p className={`text-[11px] mt-2 ${feedback.type === 'ok' ? 'text-green-400' : 'text-red-400'}`}>
+                  {feedback.type === 'ok' ? '✓' : '✗'} {feedback.msg}
                 </p>
               )}
-              {error && <p className="text-[11px] text-red-400 mt-2">✗ {error}</p>}
+
               <p className="text-[10px] text-gray-600 mt-2">
-                Clicking M4 unlocks Modules 1, 2, 3, and 4 — suspended students are skipped.
+                Gold = unlocked. Click the highest gold module to lock it back. Click a gray module to unlock up to that point.
               </p>
             </div>
           )}
