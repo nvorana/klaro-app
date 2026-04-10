@@ -132,7 +132,7 @@ export default async function DashboardPage() {
 
           <p className="text-gray-400 text-xs">
             Already paid?{' '}
-            <a href="mailto:support@negosyouniversity.com" className="text-[#1A1F36] underline underline-offset-2">
+            <a href="mailto:jon@negosyouniversity.com" className="text-[#1A1F36] underline underline-offset-2">
               Contact us
             </a>{' '}
             and we&apos;ll restore your access right away.
