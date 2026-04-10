@@ -21,6 +21,13 @@ export default async function AdminPage() {
 
   const adminClient = createAdminClient()
 
+  // ── Fetch all coaches ───────────────────────────────────────────────────────
+  const { data: coaches } = await adminClient
+    .from('profiles')
+    .select('id, full_name, first_name, email, program_type')
+    .eq('role', 'coach')
+    .order('full_name', { ascending: true })
+
   // ── Fetch all students ──────────────────────────────────────────────────────
   const { data: students } = await adminClient
     .from('profiles')
@@ -92,5 +99,12 @@ export default async function AdminPage() {
 
   const adminName = me.first_name || me.full_name?.split(' ')[0] || 'Admin'
 
-  return <AdminDashboard students={enriched} adminName={adminName} />
+  const enrichedCoaches = (coaches ?? []).map(c => ({
+    id:          c.id,
+    name:        c.full_name || c.first_name || 'Coach',
+    email:       c.email,
+    programType: (c.program_type as string | null) ?? 'unknown',
+  }))
+
+  return <AdminDashboard students={enriched} coaches={enrichedCoaches} adminName={adminName} />
 }

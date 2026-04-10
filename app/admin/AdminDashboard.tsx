@@ -19,8 +19,16 @@ interface Student {
   completions: boolean[]
 }
 
+interface Coach {
+  id: string
+  name: string
+  email: string
+  programType: string
+}
+
 interface Props {
   students: Student[]
+  coaches: Coach[]
   adminName: string
 }
 
@@ -235,7 +243,187 @@ function BatchSection({ batchNumber, students, onToggleSuspend }: {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export default function AdminDashboard({ students, adminName }: Props) {
+// ─── Coaches Panel ────────────────────────────────────────────────────────────
+
+function CoachesPanel({ coaches }: { coaches: Coach[] }) {
+  const router = useRouter()
+  const [open, setOpen] = useState(false)
+  const [showForm, setShowForm] = useState(false)
+  const [fullName, setFullName] = useState('')
+  const [email, setEmail] = useState('')
+  const [programType, setProgramType] = useState<'topis' | 'accelerator'>('accelerator')
+  const [submitting, setSubmitting] = useState(false)
+  const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null)
+
+  async function handleInvite() {
+    if (!fullName.trim() || !email.trim()) return
+    setSubmitting(true)
+    setResult(null)
+    try {
+      const res = await fetch('/api/admin/invite-coach', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fullName: fullName.trim(), email: email.trim(), programType }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setResult({ ok: true, message: `Invite sent to ${email}.` })
+        setFullName('')
+        setEmail('')
+        setShowForm(false)
+        router.refresh()
+      } else {
+        setResult({ ok: false, message: data.error || 'Something went wrong.' })
+      }
+    } catch {
+      setResult({ ok: false, message: 'Network error. Please try again.' })
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const PROGRAM_LABELS: Record<string, string> = {
+    topis: 'TOPIS',
+    accelerator: 'Accelerator',
+    unknown: 'Unassigned',
+  }
+
+  return (
+    <div className="mx-4 mb-4 bg-gray-900 border border-gray-700 rounded-2xl overflow-hidden">
+
+      {/* Header */}
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-800/50 transition-colors"
+      >
+        <div className="flex items-center gap-3">
+          <span className="text-white font-bold text-sm">Coaches</span>
+          <span className="text-[11px] text-gray-400">{coaches.length} active</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] text-[#F4B942] font-bold">+ Add Coach</span>
+          <svg
+            width="14" height="14" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+            className={`text-gray-500 transition-transform ${open ? 'rotate-180' : ''}`}
+          >
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        </div>
+      </button>
+
+      {open && (
+        <div className="border-t border-gray-800">
+
+          {/* Existing coaches */}
+          {coaches.length > 0 && (
+            <div className="divide-y divide-gray-800">
+              {coaches.map(c => (
+                <div key={c.id} className="px-4 py-3 flex items-center justify-between">
+                  <div>
+                    <p className="text-white text-sm font-medium">{c.name}</p>
+                    <p className="text-gray-500 text-xs">{c.email}</p>
+                  </div>
+                  <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full border ${
+                    c.programType === 'accelerator'
+                      ? 'bg-blue-900/30 text-blue-400 border-blue-800'
+                      : c.programType === 'topis'
+                        ? 'bg-amber-900/30 text-amber-400 border-amber-800'
+                        : 'bg-gray-800 text-gray-500 border-gray-700'
+                  }`}>
+                    {PROGRAM_LABELS[c.programType] ?? c.programType}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Invite form toggle */}
+          {!showForm ? (
+            <div className="px-4 py-3 border-t border-gray-800">
+              <button
+                onClick={() => { setShowForm(true); setResult(null) }}
+                className="w-full bg-[#1A1F36] border border-[#F4B942]/40 text-[#F4B942] font-bold py-2.5 rounded-xl text-sm hover:border-[#F4B942] transition-colors"
+              >
+                + Invite a New Coach
+              </button>
+              {result && (
+                <p className={`text-xs mt-2 text-center ${result.ok ? 'text-green-400' : 'text-red-400'}`}>
+                  {result.ok ? '✓' : '✗'} {result.message}
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className="px-4 py-4 border-t border-gray-800 space-y-3">
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">New Coach Invite</p>
+
+              <input
+                type="text"
+                value={fullName}
+                onChange={e => setFullName(e.target.value)}
+                placeholder="Full name"
+                className="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-gray-500"
+              />
+              <input
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="Email address"
+                className="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-gray-500"
+              />
+
+              <div>
+                <p className="text-xs text-gray-500 mb-2">Program this coach manages:</p>
+                <div className="flex gap-2">
+                  {(['accelerator', 'topis'] as const).map(p => (
+                    <button
+                      key={p}
+                      onClick={() => setProgramType(p)}
+                      className={`flex-1 py-2 rounded-lg text-xs font-bold border transition-colors ${
+                        programType === p
+                          ? 'bg-[#1A1F36] border-[#F4B942] text-[#F4B942]'
+                          : 'border-gray-700 text-gray-500 hover:border-gray-500'
+                      }`}
+                    >
+                      {PROGRAM_LABELS[p]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {result && !result.ok && (
+                <p className="text-xs text-red-400">✗ {result.message}</p>
+              )}
+
+              <div className="flex gap-2 pt-1">
+                <button
+                  onClick={() => { setShowForm(false); setResult(null) }}
+                  className="flex-1 py-2.5 rounded-xl text-sm text-gray-400 border border-gray-700 hover:border-gray-500 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleInvite}
+                  disabled={submitting || !fullName.trim() || !email.trim()}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-bold bg-[#F4B942] text-[#1A1F36] disabled:opacity-40 transition-opacity"
+                >
+                  {submitting ? 'Sending...' : 'Send Invite'}
+                </button>
+              </div>
+              <p className="text-[10px] text-gray-600 text-center">
+                They will receive an email to set up their password and can log in immediately after.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
+
+export default function AdminDashboard({ students, coaches, adminName }: Props) {
   const router = useRouter()
   const [activeTab, setActiveTab] = useState<'topis' | 'accelerator'>('topis')
   const [search, setSearch] = useState('')
@@ -319,6 +507,9 @@ export default function AdminDashboard({ students, adminName }: Props) {
           </div>
         ))}
       </div>
+
+      {/* ── Coaches panel ─────────────────────────────────────────────────────── */}
+      <CoachesPanel coaches={coaches} />
 
       {/* ── Program tabs ──────────────────────────────────────────────────────── */}
       <div className="px-4 mb-4">
