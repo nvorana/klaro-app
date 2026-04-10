@@ -35,11 +35,20 @@ export async function middleware(request: NextRequest) {
     request.nextUrl.pathname.startsWith('/coach') ||
     request.nextUrl.pathname.startsWith('/profile') ||
     request.nextUrl.pathname.startsWith('/progress') ||
-    request.nextUrl.pathname.startsWith('/my-work')
+    request.nextUrl.pathname.startsWith('/my-work') ||
+    request.nextUrl.pathname.startsWith('/admin')
 
   // Redirect unauthenticated users to login
   if (!user && isProtectedPage) {
     return NextResponse.redirect(new URL('/login', request.url))
+  }
+
+  // Force password change for coaches (or anyone) created with a temp password
+  const mustChangePassword = user?.user_metadata?.must_change_password === true
+  const isOnChangePassword = request.nextUrl.pathname.startsWith('/change-password')
+
+  if (user && mustChangePassword && !isOnChangePassword) {
+    return NextResponse.redirect(new URL('/change-password', request.url))
   }
 
   return supabaseResponse
