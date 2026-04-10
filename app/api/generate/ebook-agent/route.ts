@@ -353,13 +353,24 @@ ${lessonsContent.slice(0, 600)}...
 
 Now write ONLY the Practical Steps. These must flow naturally from the lessons above.
 
+TONE RULE — THIS IS THE MOST IMPORTANT INSTRUCTION:
+Every step must sound like it came from real-world trial and error — NOT from a textbook, NOT from theory, NOT from "best practices."
+Write as if the author personally tried this, failed first, figured out what actually works, and is now passing on the hard-won version.
+
+The difference:
+❌ Theoretical: "Research your target audience to understand their needs."
+✅ Trial and error: "Open a Facebook group where your target market hangs out — not to post, just to read. Scroll for 20 minutes and write down the exact words they use to describe their problem. Those words become your content. I wasted three months writing copy that sounded good to me but meant nothing to them."
+
+❌ Theoretical: "Create a consistent posting schedule."
+✅ Trial and error: "Post at 7am or 8pm on weekdays — those are the two windows that actually get seen in Philippine feeds. I tested every time slot for six weeks. Everything else got buried."
+
 RULES:
 - 4–5 steps (never fewer, never more)
 - Each step must be specific enough that the reader can do it WITHOUT googling anything extra
-- Name actual tools, platforms, apps, websites, or scripts where relevant (e.g. "Open Canva at canva.com", "Go to Facebook Creator Studio", "Use Google Docs at docs.google.com")
-- what_to_do: the exact action, written like a clear instruction
-- why_it_matters: one sentence, honest and direct — not motivational filler
-- common_mistake: the specific thing beginners always get wrong here — be blunt
+- Name actual tools, platforms, apps, or websites where relevant (e.g. "Open Canva at canva.com", "Go to Facebook Creator Studio")
+- what_to_do: the exact action — written with the authority of someone who has done this before and knows the shortcut
+- why_it_matters: one honest sentence — ground it in a real consequence, not a vague benefit ("skipping this means you'll redo the whole thing later" beats "this is important for success")
+- common_mistake: write it as if you personally watched someone make this exact mistake and saw what it cost them — be specific and a little blunt
 
 Return this exact JSON:
 {
@@ -367,9 +378,9 @@ Return this exact JSON:
     {
       "step_number": 1,
       "title": "Step title here",
-      "what_to_do": "Exact, specific instruction naming real tools and actions",
-      "why_it_matters": "One honest sentence about why this step matters",
-      "common_mistake": "The one thing beginners always get wrong at this step"
+      "what_to_do": "Exact instruction with the authority of someone who has done this before",
+      "why_it_matters": "One honest sentence grounded in a real consequence",
+      "common_mistake": "The specific mistake you've personally seen — and what it costs"
     }
   ]
 }`
