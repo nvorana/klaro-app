@@ -16,7 +16,7 @@ export default async function DashboardPage() {
   // ── Profile ───────────────────────────────────────────────
   const { data: profile } = await supabase
     .from('profiles')
-    .select('full_name, access_level, enrolled_at, unlocked_modules')
+    .select('full_name, access_level, enrolled_at, unlocked_modules, access_suspended')
     .eq('id', user.id)
     .maybeSingle()
 
@@ -69,6 +69,78 @@ export default async function DashboardPage() {
       nextStepModule = i + 1
       break
     }
+  }
+
+  // ── Suspended account screen ───────────────────────────────
+  if (profile.access_suspended) {
+    return (
+      <div className="min-h-screen bg-[#F8F9FA] flex flex-col max-w-[430px] md:max-w-3xl mx-auto">
+
+        {/* Header */}
+        <div className="bg-[#1A1F36] px-5 pt-4 pb-5 flex items-center justify-between">
+          <img src="/Klaro_Logo-cropped.png" alt="KLARO" className="h-10 w-auto" />
+          <div className="flex items-center gap-3">
+            <span className="text-white/60 text-sm font-medium">{firstName}</span>
+            <div className="w-9 h-9 rounded-full bg-[#F4B942] flex items-center justify-center text-[#1A1F36] text-sm font-bold">
+              {initial}
+            </div>
+            <SignOutButton />
+          </div>
+        </div>
+
+        {/* Suspension message */}
+        <div className="flex-1 flex flex-col items-center justify-center px-6 py-12 text-center">
+
+          {/* Lock icon */}
+          <div className="w-20 h-20 rounded-full bg-amber-100 flex items-center justify-center mb-6">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#C49A00" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+          </div>
+
+          <h1 className="text-2xl font-bold text-[#1A1F36] mb-3 leading-tight">
+            Your account is temporarily on hold.
+          </h1>
+
+          <p className="text-gray-500 text-sm leading-relaxed mb-6 max-w-xs">
+            Hi {firstName}, it looks like there&apos;s an outstanding balance on your account. To protect your progress, we&apos;ve placed a temporary hold on your access.
+          </p>
+
+          {/* Saved work card */}
+          <div className="w-full bg-white border border-gray-100 rounded-2xl px-5 py-4 mb-6 text-left shadow-sm">
+            <div className="flex items-center gap-2 mb-2">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+              <span className="text-sm font-semibold text-[#1A1F36]">Your work is safe</span>
+            </div>
+            <p className="text-gray-500 text-sm leading-relaxed">
+              Everything you&apos;ve built inside KLARO — your clarity sentence, your ebook, your content — is saved and waiting for you. Nothing has been deleted. The moment your balance is settled, your access will be fully restored.
+            </p>
+          </div>
+
+          {/* CTA */}
+          <a
+            href="https://app.systeme.io"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full bg-[#F4B942] text-[#1A1F36] font-bold py-4 rounded-xl text-sm text-center block mb-3"
+          >
+            Settle My Balance →
+          </a>
+
+          <p className="text-gray-400 text-xs">
+            Already paid?{' '}
+            <a href="mailto:support@negosyouniversity.com" className="text-[#1A1F36] underline underline-offset-2">
+              Contact us
+            </a>{' '}
+            and we&apos;ll restore your access right away.
+          </p>
+
+        </div>
+      </div>
+    )
   }
 
   return (
