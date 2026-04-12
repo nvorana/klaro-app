@@ -393,26 +393,37 @@ export default function Module3Page() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user || !clarity) return
 
-    await supabase.from('offers').upsert({
-      user_id: user.id,
-      target_market: clarity.target_market,
-      core_problem: clarity.core_problem,
-      unique_mechanism: clarity.unique_mechanism,
-      ebook_title: ebookTitle,
-      transformation,
-      bonuses,
-      selling_price: parseInt(sellingPrice) || 0,
-      ebook_value: parseInt(ebookValuePeso) || 0,
-      total_value: totalValue,
-      price_justification: priceJustification,
-      guarantee,
-      offer_statement: offerStatement,
-      updated_at: new Date().toISOString(),
-    }, { onConflict: 'user_id' })
+    setError('')
+    try {
+      // Delete existing offer first (avoids needing unique constraint)
+      await supabase.from('offers').delete().eq('user_id', user.id)
 
-    setShowConfetti(true)
-    setTimeout(() => setShowConfetti(false), 3500)
-    setStep('complete')
+      const { error: insertErr } = await supabase.from('offers').insert({
+        user_id: user.id,
+        target_market: clarity.target_market,
+        core_problem: clarity.core_problem,
+        unique_mechanism: clarity.unique_mechanism,
+        ebook_title: ebookTitle,
+        transformation,
+        bonuses,
+        selling_price: parseInt(sellingPrice) || 0,
+        ebook_value: parseInt(ebookValuePeso) || 0,
+        total_value: totalValue,
+        price_justification: priceJustification,
+        guarantee,
+        offer_statement: offerStatement,
+        updated_at: new Date().toISOString(),
+      })
+
+      if (insertErr) throw insertErr
+
+      setShowConfetti(true)
+      setTimeout(() => setShowConfetti(false), 3500)
+      setStep('complete')
+    } catch (e) {
+      console.error('Save offer error:', e)
+      setError('Could not save your offer. Please try again.')
+    }
   }
 
   // ── Shared UI ──────────────────────────────────────────────────────────────
