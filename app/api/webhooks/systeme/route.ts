@@ -161,6 +161,35 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true })
     }
 
+    // ── Klaro Tier Tags ──────────────────────────────────────────────────────
+    // Klaro-tier1 → access_level = 'tier1' (Module 1 only)
+    // Klaro-tier2 → access_level = 'tier2' (Modules 1–3)
+    // Klaro-tier3 → access_level = 'tier3' (All modules)
+    const TIER_MAP: Record<string, string> = {
+      'klaro-tier1': 'tier1',
+      'klaro-tier2': 'tier2',
+      'klaro-tier3': 'tier3',
+    }
+    const tierLevel = TIER_MAP[tagName.toLowerCase()]
+    if (tierLevel && isAdded) {
+      const profile = await getProfile()
+      if (profile) {
+        await supabase
+          .from('profiles')
+          .update({
+            access_level:     tierLevel,
+            enrolled_at:      profile.enrolled_at || new Date().toISOString(),
+            access_suspended: false,
+            updated_at:       new Date().toISOString(),
+          })
+          .eq('id', profile.id)
+        await logAction(`tier_access_granted_${tierLevel}`)
+      } else {
+        await logAction(`tier_access_pending_signup_${tierLevel}`)
+      }
+      return NextResponse.json({ success: true })
+    }
+
     // ── Legacy: KLARO-FULLPAY ────────────────────────────────────────────────
     const ACCESS_TAG   = process.env.SYSTEME_ACCESS_TAG   || 'KLARO-FULLPAY'
     const ENROLLED_TAG = process.env.SYSTEME_ENROLLED_TAG || 'KLARO-ENROLLED'
