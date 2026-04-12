@@ -486,16 +486,22 @@ export default function Module3Page() {
           </div>
 
           <button
-            onClick={() => router.push('/dashboard')}
+            onClick={() => router.push('/module/4')}
             className="w-full py-4 rounded-xl font-bold text-sm mb-3"
             style={{ background: '#F4B942', color: '#1A1F36' }}
+          >
+            Next: Write My Sales Page →
+          </button>
+          <button
+            onClick={() => router.push('/dashboard')}
+            className="w-full py-3 rounded-xl font-semibold text-sm text-gray-400 mb-2"
+            style={{ background: '#111827', border: '1px solid #374151' }}
           >
             Back to Dashboard
           </button>
           <button
             onClick={() => { setStep('offer_statement'); setOfferStatement('') }}
-            className="w-full py-3 rounded-xl font-semibold text-sm text-gray-400"
-            style={{ background: '#111827', border: '1px solid #374151' }}
+            className="w-full py-2 text-xs text-gray-600 font-semibold"
           >
             Rebuild My Offer
           </button>
