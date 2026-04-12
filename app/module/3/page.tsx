@@ -270,7 +270,7 @@ export default function Module3Page() {
       bonus_name: '',
       description: '',
       format: '',
-      value_peso: 0,
+      value_peso: 497,
       objection_addressed: objections[i].objection,
       loading: true,
     }))
@@ -291,7 +291,7 @@ export default function Module3Page() {
         })
         const { data } = await res.json()
         setBonuses(prev => prev.map((b, i) =>
-          i === idx ? { ...data, value_peso: 0, objection_addressed: objections[objIndex].objection, loading: false } : b
+          i === idx ? { ...data, value_peso: 497, objection_addressed: objections[objIndex].objection, loading: false } : b
         ))
       } catch {
         setBonuses(prev => prev.map((b, i) =>
@@ -319,7 +319,7 @@ export default function Module3Page() {
       })
       const { data } = await res.json()
       setBonuses(prev => prev.map((b, i) =>
-        i === idx ? { ...data, value_peso: b.value_peso, objection_addressed: objText, loading: false } : b
+        i === idx ? { ...data, value_peso: b.value_peso || 497, objection_addressed: objText, loading: false } : b
       ))
     } catch {
       setBonuses(prev => prev.map((b, i) => i === idx ? { ...b, loading: false } : b))
@@ -1082,8 +1082,6 @@ export default function Module3Page() {
         {step === 'bonuses' && (
           <button
             onClick={() => {
-              const allValued = bonuses.every(b => !b.loading && b.value_peso > 0)
-              if (!allValued) { setError('Please set a peso value for each bonus before continuing.'); return }
               setError('')
               setStep('price_anchor')
             }}
