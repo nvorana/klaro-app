@@ -27,14 +27,15 @@ These should be real, specific objections — not generic ones. Think about:
 - "Is this for me?" doubts ("My situation is different")
 - Tech or skill concerns ("I'm not tech-savvy enough")
 
-Return ONLY a valid JSON array, no other text:
-[
-  {
-    "objection": "The specific objection as the buyer would think or say it",
-    "underlying_fear": "The real fear or belief behind this objection (1 sentence)"
-  },
-  ...
-]`
+Return ONLY a valid JSON object in exactly this format:
+{
+  "objections": [
+    {
+      "objection": "The specific objection as the buyer would think or say it",
+      "underlying_fear": "The real fear or belief behind this objection (1 sentence)"
+    }
+  ]
+}`
 
     const completion = await openai.chat.completions.create({
       model: AI_MODEL,
@@ -45,7 +46,10 @@ Return ONLY a valid JSON array, no other text:
 
     const content = completion.choices[0].message.content
     const parsed = JSON.parse(content || '{}')
-    const result = Array.isArray(parsed) ? parsed : (parsed.objections || parsed.items || [])
+    // Robustly extract array from any wrapping key the AI might use
+    const result = Array.isArray(parsed)
+      ? parsed
+      : parsed.objections ?? parsed.items ?? parsed.data ?? parsed.results ?? Object.values(parsed).find(v => Array.isArray(v)) ?? []
 
     return NextResponse.json({ data: result })
   } catch (error) {

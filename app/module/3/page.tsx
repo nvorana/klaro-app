@@ -803,7 +803,7 @@ export default function Module3Page() {
                               border: `2px solid ${isSelected ? '#F4B942' : '#4b5563'}`,
                             }}
                           >
-                            {isSelected && <span className="text-white"><CheckIcon /></span>}
+                            {isSelected && <span className="text-[#1A1F36]"><CheckIcon /></span>}
                           </div>
                           <div>
                             <p className="text-sm font-medium text-white">{obj.objection}</p>
