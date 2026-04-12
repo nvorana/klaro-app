@@ -194,10 +194,11 @@ export default function Module3Page() {
 
   // ── Transformation ─────────────────────────────────────────────────────────
 
-  async function handleRefineTransformation() {
-    if (!clarity || !studentInput.trim()) return
+  async function handleGenerateTransformation(extraInput = '') {
+    if (!clarity) return
     setError('')
     setTransformationLoading(true)
+    setEditingTransformation(false)
     try {
       const res = await fetch('/api/generate/offer', {
         method: 'POST',
@@ -208,7 +209,7 @@ export default function Module3Page() {
           problem: clarity.core_problem,
           mechanism: clarity.unique_mechanism,
           ebook_title: ebookTitle,
-          student_input: studentInput,
+          student_input: extraInput,
         }),
       })
       const { data, error: apiErr } = await res.json()
@@ -216,7 +217,7 @@ export default function Module3Page() {
       setTransformation(data.statement || '')
       setEditingTransformation(false)
     } catch {
-      setError('Could not refine your statement. Please try again.')
+      setError('Could not generate transformation statement. Please try again.')
     } finally {
       setTransformationLoading(false)
     }
@@ -602,39 +603,65 @@ export default function Module3Page() {
           <div className="space-y-4">
             <div>
               <p className="text-white font-bold text-lg mb-1">What result do they get?</p>
-              <p className="text-gray-400 text-sm">Describe the specific outcome your buyer gets after reading your ebook. Don&apos;t overthink it — just write it in your own words.</p>
+              <p className="text-gray-400 text-sm">Based on your ebook and clarity sentence, here&apos;s the transformation your buyer gets. Edit it if needed.</p>
             </div>
 
-            {!transformation || editingTransformation ? (
-              <div>
-                <label className={labelClass}>In your own words…</label>
-                <textarea
-                  value={studentInput}
-                  onChange={e => setStudentInput(e.target.value)}
-                  placeholder={`e.g. "After reading this, they'll know exactly how to find their first paying client without needing experience or a big following"`}
-                  rows={4}
-                  className={`${inputClass} resize-none`}
-                  style={{ border: '1px solid #374151' }}
-                />
-                <p className="text-gray-500 text-[11px] mt-1.5">Write at least one sentence. AI will refine it into a sharp transformation statement.</p>
-              </div>
-            ) : (
-              <div className="bg-gray-900 rounded-2xl p-4" style={{ border: '1px solid #F4B942' }}>
-                <p className="text-[10px] font-bold text-[#F4B942] uppercase tracking-wide mb-2">Your Transformation Statement</p>
-                <p className="text-white text-sm leading-relaxed">{transformation}</p>
-                <button
-                  onClick={() => setEditingTransformation(true)}
-                  className="flex items-center gap-1.5 mt-3 text-xs text-gray-400 font-semibold"
-                >
-                  <RefreshIcon /> Edit this
-                </button>
+            {transformationLoading && (
+              <div className="text-center py-14">
+                <div className="w-10 h-10 border-4 border-[#F4B942] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                <p className="text-sm font-medium text-white">Writing your transformation statement…</p>
               </div>
             )}
 
-            {transformationLoading && (
-              <div className="text-center py-6">
-                <div className="w-8 h-8 border-4 border-[#F4B942] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-                <p className="text-sm text-gray-400">Sharpening your transformation statement…</p>
+            {!transformationLoading && transformation && !editingTransformation && (
+              <div className="bg-gray-900 rounded-2xl p-4" style={{ border: '1px solid #F4B942' }}>
+                <p className="text-[10px] font-bold text-[#F4B942] uppercase tracking-wide mb-2">Your Transformation Statement</p>
+                <p className="text-white text-sm leading-relaxed">{transformation}</p>
+                <div className="flex items-center gap-3 mt-3">
+                  <button
+                    onClick={() => handleGenerateTransformation()}
+                    className="flex items-center gap-1.5 text-xs text-gray-400 font-semibold"
+                  >
+                    <RefreshIcon /> Regenerate
+                  </button>
+                  <button
+                    onClick={() => { setStudentInput(transformation); setEditingTransformation(true) }}
+                    className="flex items-center gap-1.5 text-xs text-gray-400 font-semibold"
+                  >
+                    ✏️ Edit manually
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {!transformationLoading && editingTransformation && (
+              <div className="space-y-3">
+                <div>
+                  <label className={labelClass}>Edit your transformation statement</label>
+                  <textarea
+                    value={studentInput}
+                    onChange={e => setStudentInput(e.target.value)}
+                    rows={4}
+                    className={`${inputClass} resize-none`}
+                    style={{ border: '1px solid #374151' }}
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleGenerateTransformation(studentInput)}
+                    className="flex-1 py-3 rounded-xl font-semibold text-sm"
+                    style={{ background: '#1A1F36', color: '#F4B942', border: '1px solid #F4B942' }}
+                  >
+                    Refine with AI
+                  </button>
+                  <button
+                    onClick={() => { setTransformation(studentInput); setEditingTransformation(false) }}
+                    className="flex-1 py-3 rounded-xl font-semibold text-sm"
+                    style={{ background: '#374151', color: '#fff' }}
+                  >
+                    Use as written
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -1003,7 +1030,7 @@ export default function Module3Page() {
         {/* Foundation */}
         {step === 'foundation' && (
           <button
-            onClick={() => setStep('transformation')}
+            onClick={() => { setStep('transformation'); handleGenerateTransformation() }}
             className="w-full py-4 rounded-xl font-bold text-base"
             style={{ background: '#F4B942', color: '#1A1F36' }}
           >
@@ -1011,20 +1038,8 @@ export default function Module3Page() {
           </button>
         )}
 
-        {/* Transformation — before refining */}
-        {step === 'transformation' && !transformation && (
-          <button
-            onClick={handleRefineTransformation}
-            disabled={!studentInput.trim() || transformationLoading}
-            className="w-full py-4 rounded-xl font-bold text-base disabled:opacity-40 transition-all"
-            style={{ background: '#F4B942', color: '#1A1F36' }}
-          >
-            {transformationLoading ? 'Refining…' : 'Refine My Statement →'}
-          </button>
-        )}
-
-        {/* Transformation — after refining */}
-        {step === 'transformation' && transformation && !editingTransformation && (
+        {/* Transformation */}
+        {step === 'transformation' && transformation && !editingTransformation && !transformationLoading && (
           <button
             onClick={() => setStep('objections')}
             className="w-full py-4 rounded-xl font-bold text-base"

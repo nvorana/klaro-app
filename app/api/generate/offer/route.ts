@@ -30,20 +30,20 @@ export async function POST(request: NextRequest) {
 Ebook: "${ebook_title}"
 Target market: ${target_market}
 Problem solved: ${problem}
-Method: ${mechanism}
-Student's words: "${student_input}"
+Unique approach/method: ${mechanism}
+${student_input ? `Student's additional words: "${student_input}"` : ''}
 
-The student described the result their buyer gets. Refine it into ONE powerful transformation statement.
+Generate ONE powerful transformation statement based on the data above.
 
 Rules:
 - Format: "From [specific stuck state] → To [specific better state they can reach]"
 - Be concrete and specific — no vague words like "success" or "freedom"
-- Use the student's own words where possible — just sharpen them
+- Reflect the exact problem and mechanism — do not invent details
 - Write for a Filipino audience — warm, direct, relatable
 - Maximum 2 sentences total
 
 Return ONLY a valid JSON object:
-{ "statement": "Your refined transformation statement here" }`
+{ "statement": "Your transformation statement here" }`
 
       const completion = await openai.chat.completions.create({
         model: AI_MODEL,
