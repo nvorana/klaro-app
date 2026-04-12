@@ -4,6 +4,7 @@ import GoldConfetti from '@/components/GoldConfetti'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
+import { isModuleUnlockedForStudent, getDaysUntilUnlock } from '@/lib/modules'
 
 type Step = 'url' | 'emails' | 'complete'
 
@@ -95,6 +96,12 @@ export default function Module4Page() {
   const [copiedLabel, setCopiedLabel] = useState<string | null>(null)
   const [promptCopied, setPromptCopied] = useState(false)
 
+  // Lock state
+  const [locked, setLocked] = useState(false)
+  const [daysUntilUnlock, setDaysUntilUnlock] = useState(0)
+  const [nextModuleLocked, setNextModuleLocked] = useState(false)
+  const [nextModuleDaysLeft, setNextModuleDaysLeft] = useState(0)
+
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -107,6 +114,27 @@ export default function Module4Page() {
     async function loadData() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login'); return }
+
+      // ── Access check ──────────────────────────────────────────
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('access_level, enrolled_at, unlocked_modules')
+        .eq('id', user.id)
+        .maybeSingle()
+
+      if (profile) {
+        const unlocked = isModuleUnlockedForStudent(profile.unlocked_modules, profile.access_level, profile.enrolled_at, 5)
+        if (!unlocked) {
+          setDaysUntilUnlock(profile.enrolled_at ? getDaysUntilUnlock(profile.enrolled_at, 5) : 0)
+          setLocked(true)
+          setClarityLoading(false)
+          return
+        }
+        // Check if next module (6) is also unlocked — for complete screen CTA
+        const next = isModuleUnlockedForStudent(profile.unlocked_modules, profile.access_level, profile.enrolled_at, 6)
+        setNextModuleLocked(!next)
+        if (!next && profile.enrolled_at) setNextModuleDaysLeft(getDaysUntilUnlock(profile.enrolled_at, 6))
+      }
 
       const { data: clarityData } = await supabase
         .from('clarity_sentences')
@@ -255,7 +283,7 @@ export default function Module4Page() {
       await supabase.from('module_progress').upsert(
         {
           user_id: user.id,
-          module_number: 4,
+          module_number: 5,
           status: 'complete',
           completed_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
@@ -324,6 +352,28 @@ export default function Module4Page() {
     )
   }
 
+  // ── Locked Screen ────────────────────────────────────────────
+  if (locked) {
+    return (
+      <div className="min-h-screen bg-gray-950 flex items-center justify-center px-4">
+        <div className="max-w-[380px] w-full text-center">
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-5" style={{ background: '#111827', border: '1px solid #374151' }}>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+          </div>
+          <h1 className="text-lg font-bold text-white mb-2">Module 5 — Not Yet Open</h1>
+          <p className="text-sm text-gray-400 mb-1">The 7-Day Email Sequence opens in</p>
+          <p className="text-3xl font-black mb-1" style={{ color: '#F4B942' }}>{daysUntilUnlock} {daysUntilUnlock === 1 ? 'day' : 'days'}</p>
+          <p className="text-xs text-gray-500 mb-8">Your sales page is saved and ready.</p>
+          <button onClick={() => router.push('/dashboard')} className="w-full py-3 rounded-xl font-bold text-sm" style={{ background: '#F4B942', color: '#1A1F36' }}>
+            Back to Dashboard
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   // ── Complete Screen ──────────────────────────────────────────
   if (step === 'complete') {
     return (
@@ -369,18 +419,30 @@ export default function Module4Page() {
             ))}
           </div>
 
-          <div className="rounded-xl p-4 mb-4" style={{ background: '#1A1F36', border: '2px solid #F4B942' }}>
-            <p className="text-xs font-medium mb-1" style={{ color: '#F4B942' }}>Up Next</p>
-            <p className="text-white font-bold">Module 5 — Lead Magnet Builder</p>
-            <p className="text-gray-300 text-sm mt-1">Create a free lead magnet that builds your email list.</p>
-            <button
-              onClick={() => router.push('/module/5')}
-              className="mt-3 w-full py-2.5 rounded-lg font-bold text-sm"
-              style={{ background: '#F4B942', color: '#1A1F36' }}
-            >
-              Start Module 5
-            </button>
-          </div>
+          {nextModuleLocked ? (
+            <div className="rounded-xl p-4 mb-4 flex flex-col items-center gap-1" style={{ background: '#111827', border: '1px solid #374151' }}>
+              <div className="flex items-center gap-2 text-gray-400 font-semibold text-sm">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+                Module 6 — Lead Magnet Builder
+              </div>
+              <p className="text-xs text-gray-500">{nextModuleDaysLeft > 0 ? `Opens in ${nextModuleDaysLeft} day${nextModuleDaysLeft !== 1 ? 's' : ''}` : 'Coming soon'}</p>
+            </div>
+          ) : (
+            <div className="rounded-xl p-4 mb-4" style={{ background: '#1A1F36', border: '2px solid #F4B942' }}>
+              <p className="text-xs font-medium mb-1" style={{ color: '#F4B942' }}>Up Next</p>
+              <p className="text-white font-bold">Module 6 — Lead Magnet Builder</p>
+              <p className="text-gray-300 text-sm mt-1">Create a free lead magnet that builds your email list.</p>
+              <button
+                onClick={() => router.push('/module/6')}
+                className="mt-3 w-full py-2.5 rounded-lg font-bold text-sm"
+                style={{ background: '#F4B942', color: '#1A1F36' }}
+              >
+                Start Module 6
+              </button>
+            </div>
+          )}
 
           <button
             onClick={() => router.push('/dashboard')}

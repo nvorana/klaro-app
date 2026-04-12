@@ -8,11 +8,25 @@ import { openai, AI_MODEL } from '@/lib/openai'
 
 export async function POST(request: NextRequest) {
   try {
-    const { target_market, problem, mechanism, ebook_title, format } = await request.json()
+    const {
+      target_market, problem, mechanism, ebook_title, format,
+      // Phase 2 — idea context (optional, enriches the output)
+      idea_angle, idea_description, example_title, emotional_trigger,
+    } = await request.json()
 
     if (!target_market || !problem || !mechanism || !format) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
+
+    // Build idea context block if provided
+    const ideaContext = idea_angle ? `
+CHOSEN ANGLE: "${idea_angle}"
+What it covers: ${idea_description}
+Target emotional trigger: ${emotional_trigger || 'desire'}
+Target title direction: "${example_title}"
+
+Every section must be written to deliver on this specific angle. The title should be a refined version of the target title direction above — same formula, same specificity, but polished.
+` : ''
 
     const formatInstructions: Record<string, string> = {
       checklist: '7-10 short, scannable action items. Each item is one line: the action + one sentence of why it matters. No fluff. Completable in under 10 minutes.',
@@ -31,6 +45,7 @@ export async function POST(request: NextRequest) {
 Clarity Sentence: "I help ${target_market} who struggle with ${problem} through ${mechanism}"
 Main ebook title: "${ebook_title}"
 Lead magnet format: ${formatLabel[format] || format}
+${ideaContext}
 
 THE ONLY JOB OF THIS LEAD MAGNET: Give the reader ONE small but meaningful win as fast as possible.
 Not educate. Not impress. Not overwhelm. Just ONE win.

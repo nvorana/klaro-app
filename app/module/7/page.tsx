@@ -4,6 +4,7 @@ import GoldConfetti from '@/components/GoldConfetti'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
+import { isModuleUnlockedForStudent, getDaysUntilUnlock } from '@/lib/modules'
 
 type Step = 'settings' | 'posts' | 'complete'
 type PostType = 'problem_post' | 'micro_lesson' | 'personal_insight'
@@ -88,6 +89,10 @@ export default function Module6Page() {
   const [clarityLoading, setClarityLoading] = useState(true)
   const [error, setError] = useState('')
 
+  // Lock state
+  const [locked, setLocked] = useState(false)
+  const [daysUntilUnlock, setDaysUntilUnlock] = useState(0)
+
   // Settings step
   const [selectedType, setSelectedType] = useState<PostType>('problem_post')
   const [selectedCount, setSelectedCount] = useState<PostCount>(5)
@@ -112,6 +117,23 @@ export default function Module6Page() {
     async function loadData() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login'); return }
+
+      // ── Access check ──────────────────────────────────────────
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('access_level, enrolled_at, unlocked_modules')
+        .eq('id', user.id)
+        .maybeSingle()
+
+      if (profile) {
+        const unlocked = isModuleUnlockedForStudent(profile.unlocked_modules, profile.access_level, profile.enrolled_at, 7)
+        if (!unlocked) {
+          setDaysUntilUnlock(profile.enrolled_at ? getDaysUntilUnlock(profile.enrolled_at, 7) : 0)
+          setLocked(true)
+          setClarityLoading(false)
+          return
+        }
+      }
 
       const { data: clarityData } = await supabase
         .from('clarity_sentences')
@@ -250,7 +272,7 @@ export default function Module6Page() {
       await supabase.from('module_progress').upsert(
         {
           user_id: user.id,
-          module_number: 6,
+          module_number: 7,
           status: 'complete',
           completed_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
@@ -319,6 +341,28 @@ export default function Module6Page() {
     )
   }
 
+  // ── Locked Screen ────────────────────────────────────────────
+  if (locked) {
+    return (
+      <div className="min-h-screen bg-gray-950 flex items-center justify-center px-4">
+        <div className="max-w-[380px] w-full text-center">
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-5" style={{ background: '#111827', border: '1px solid #374151' }}>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+          </div>
+          <h1 className="text-lg font-bold text-white mb-2">Module 7 — Not Yet Open</h1>
+          <p className="text-sm text-gray-400 mb-1">The Facebook Content Engine opens in</p>
+          <p className="text-3xl font-black mb-1" style={{ color: '#F4B942' }}>{daysUntilUnlock} {daysUntilUnlock === 1 ? 'day' : 'days'}</p>
+          <p className="text-xs text-gray-500 mb-8">Your lead magnet is saved and ready.</p>
+          <button onClick={() => router.push('/dashboard')} className="w-full py-3 rounded-xl font-bold text-sm" style={{ background: '#F4B942', color: '#1A1F36' }}>
+            Back to Dashboard
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   // ── Complete Screen ──────────────────────────────────────────
   if (step === 'complete') {
     return (
@@ -356,11 +400,11 @@ export default function Module6Page() {
           {/* All done card */}
           <div className="rounded-xl p-5 mb-4" style={{ background: '#1A1F36' }}>
             <div className="w-10 h-10 rounded-full flex items-center justify-center mb-3" style={{ background: '#F4B942' }}>
-              <span className="text-[#1A1F36] font-bold text-lg">6/6</span>
+              <span className="text-[#1A1F36] font-bold text-lg">7/7</span>
             </div>
-            <p className="text-white font-bold text-lg mb-1">All 6 Modules Done!</p>
+            <p className="text-white font-bold text-lg mb-1">All 7 Modules Done!</p>
             <p className="text-gray-300 text-sm mb-4">
-              You&apos;ve built your complete digital product business — ebook, offer, sales page, emails, lead magnet, and content. Time to publish and launch.
+              You&apos;ve built your complete digital product business — clarity, ebook, offer, sales page, emails, lead magnet, and content. Time to publish and launch.
             </p>
             <button
               onClick={() => router.push('/dashboard')}

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
 import GoldConfetti from '@/components/GoldConfetti'
+import { isModuleUnlockedForStudent, getDaysUntilUnlock } from '@/lib/modules'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -115,6 +116,10 @@ export default function Module3Page() {
   const [offerLoading, setOfferLoading] = useState(false)
   const [copied, setCopied] = useState(false)
 
+  // Module 4 lock state (shown on complete screen)
+  const [module4Unlocked, setModule4Unlocked] = useState(false)
+  const [module4DaysLeft, setModule4DaysLeft] = useState(0)
+
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -146,6 +151,26 @@ export default function Module3Page() {
 
       if (ebookData && ebookData.length > 0) {
         setEbookTitle(ebookData[0].title || '')
+      }
+
+      // Load profile for Module 4 unlock check
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('access_level, enrolled_at, unlocked_modules')
+        .eq('id', user.id)
+        .maybeSingle()
+
+      if (profile) {
+        const unlocked = isModuleUnlockedForStudent(
+          profile.unlocked_modules,
+          profile.access_level,
+          profile.enrolled_at,
+          4
+        )
+        setModule4Unlocked(unlocked)
+        if (!unlocked && profile.enrolled_at) {
+          setModule4DaysLeft(getDaysUntilUnlock(profile.enrolled_at, 4))
+        }
       }
 
       // Resume from saved offer if exists
@@ -496,13 +521,31 @@ export default function Module3Page() {
             </div>
           </div>
 
-          <button
-            onClick={() => router.push('/module/4')}
-            className="w-full py-4 rounded-xl font-bold text-sm mb-3"
-            style={{ background: '#F4B942', color: '#1A1F36' }}
-          >
-            Next: Write My Sales Page →
-          </button>
+          {module4Unlocked ? (
+            <button
+              onClick={() => router.push('/module/4')}
+              className="w-full py-4 rounded-xl font-bold text-sm mb-3"
+              style={{ background: '#F4B942', color: '#1A1F36' }}
+            >
+              Next: Write My Sales Page →
+            </button>
+          ) : (
+            <div
+              className="w-full py-4 rounded-xl text-sm mb-3 flex flex-col items-center gap-1"
+              style={{ background: '#111827', border: '1px solid #374151' }}
+            >
+              <div className="flex items-center gap-2 text-gray-400 font-semibold">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+                Module 4 — Write My Sales Page
+              </div>
+              <p className="text-xs text-gray-500">
+                {module4DaysLeft > 0 ? `Opens in ${module4DaysLeft} day${module4DaysLeft !== 1 ? 's' : ''}` : 'Coming soon'}
+              </p>
+            </div>
+          )}
           <button
             onClick={() => router.push('/dashboard')}
             className="w-full py-3 rounded-xl font-semibold text-sm text-gray-400 mb-2"

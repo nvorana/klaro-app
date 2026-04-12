@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
 import GoldConfetti from '@/components/GoldConfetti'
+import { isModuleUnlockedForStudent, getDaysUntilUnlock } from '@/lib/modules'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -127,6 +128,10 @@ export default function Module4Page() {
   const [savingComplete, setSavingComplete] = useState(false)
   const [copyAllDone, setCopyAllDone] = useState(false)
 
+  // Lock state
+  const [locked, setLocked] = useState(false)
+  const [daysUntilUnlock, setDaysUntilUnlock] = useState(0)
+
   // Prevent double-generate
   const generatingRef = useRef(false)
 
@@ -140,6 +145,29 @@ export default function Module4Page() {
     async function loadData() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login'); return }
+
+      // ── Access check ──────────────────────────────────────────
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('access_level, enrolled_at, unlocked_modules')
+        .eq('id', user.id)
+        .maybeSingle()
+
+      if (profile) {
+        const unlocked = isModuleUnlockedForStudent(
+          profile.unlocked_modules,
+          profile.access_level,
+          profile.enrolled_at,
+          4
+        )
+        if (!unlocked) {
+          const days = profile.enrolled_at ? getDaysUntilUnlock(profile.enrolled_at, 4) : 0
+          setDaysUntilUnlock(days)
+          setLocked(true)
+          setLoading(false)
+          return
+        }
+      }
 
       const { data: offerData } = await supabase
         .from('offers')
@@ -404,6 +432,40 @@ export default function Module4Page() {
         <div className="text-center">
           <div className="w-10 h-10 border-4 border-[#F4B942] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
           <p className="text-sm text-gray-500">Loading your offer data…</p>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Locked Screen ────────────────────────────────────────────────────────
+  if (locked) {
+    return (
+      <div className="min-h-screen bg-gray-950 flex items-center justify-center px-4">
+        <div className="max-w-[380px] w-full text-center">
+          <div
+            className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-5"
+            style={{ background: '#111827', border: '1px solid #374151' }}
+          >
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+          </div>
+          <h1 className="text-lg font-bold text-white mb-2">Module 4 — Not Yet Open</h1>
+          <p className="text-sm text-gray-400 mb-1">The Sales Page Builder opens in</p>
+          <p className="text-3xl font-black mb-1" style={{ color: '#F4B942' }}>
+            {daysUntilUnlock} {daysUntilUnlock === 1 ? 'day' : 'days'}
+          </p>
+          <p className="text-xs text-gray-500 mb-8">
+            Keep going — your offer is saved and ready.
+          </p>
+          <button
+            onClick={() => router.push('/dashboard')}
+            className="w-full py-3 rounded-xl font-bold text-sm"
+            style={{ background: '#F4B942', color: '#1A1F36' }}
+          >
+            Back to Dashboard
+          </button>
         </div>
       </div>
     )
