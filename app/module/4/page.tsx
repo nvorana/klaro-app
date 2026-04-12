@@ -1,34 +1,72 @@
 'use client'
 
-import GoldConfetti from '@/components/GoldConfetti'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
+import GoldConfetti from '@/components/GoldConfetti'
 
-type Step = 'url' | 'emails' | 'complete'
+// ── Types ─────────────────────────────────────────────────────────────────────
 
-interface Email {
-  day: number
-  type: 'value' | 'selling'
-  subject_a: string
-  subject_b: string
-  body: string
-  cta: string | null
-  // legacy fallback
-  subject?: string
+type Step = 'intro' | 'building' | 'complete'
+
+type SectionKey =
+  | 'headline'
+  | 'hook'
+  | 'analogy'
+  | 'pain'
+  | 'principle'
+  | 'offer_intro'
+  | 'objections'
+  | 'bonuses'
+  | 'price'
+  | 'cta'
+
+interface Bonus {
+  bonus_name: string
+  description: string
+  format: string
+  value_peso: number
+  objection_addressed: string
 }
 
-interface ClarityData {
+interface OfferData {
   target_market: string
   core_problem: string
   unique_mechanism: string
-  full_sentence: string
+  ebook_title: string
+  transformation: string
+  bonuses: Bonus[]
+  selling_price: number
+  ebook_value: number
+  total_value: number
+  price_justification: string
+  guarantee: string
+  offer_statement: string
 }
 
-const STEP_LABELS = ['Sales Page', 'Your Emails']
-const STEP_KEYS: Step[] = ['url', 'emails']
+interface HeadlineData {
+  options: string[]
+  recommended: number
+  recommended_reason: string
+}
 
-// ── SVG Icons ────────────────────────────────────────────────────
+// ── Constants ─────────────────────────────────────────────────────────────────
+
+const SECTIONS: { key: SectionKey; label: string; description: string }[] = [
+  { key: 'headline',   label: 'Headline',    description: 'The bold title that stops the scroll' },
+  { key: 'hook',       label: 'Hook',        description: 'The emotional opener that pulls readers in' },
+  { key: 'analogy',    label: 'Analogy',     description: 'A relatable Filipino story or metaphor' },
+  { key: 'pain',       label: 'Pain',        description: 'Agitate the problem so they feel seen' },
+  { key: 'principle',  label: 'Principle',   description: 'The truth reveal that reframes everything' },
+  { key: 'offer_intro',label: 'Offer Intro', description: 'Introduce your ebook as the answer' },
+  { key: 'objections', label: 'Objections',  description: 'Handle their doubts with empathy' },
+  { key: 'bonuses',    label: 'Bonuses',     description: 'Present the bonus stack and total value' },
+  { key: 'price',      label: 'Price',       description: 'Make the price feel like an easy yes' },
+  { key: 'cta',        label: 'CTA',         description: 'How to order + closing invitation' },
+]
+
+// ── Icons ─────────────────────────────────────────────────────────────────────
+
 const CheckIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
     <polyline points="20 6 9 17 4 12" />
@@ -41,13 +79,6 @@ const BackIcon = () => (
   </svg>
 )
 
-const CopyIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-  </svg>
-)
-
 const RefreshIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <polyline points="23 4 23 10 17 10" />
@@ -55,210 +86,253 @@ const RefreshIcon = () => (
   </svg>
 )
 
-const ChevronDownIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="6 9 12 15 18 9" />
+const CopyIcon = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
   </svg>
 )
 
-const ChevronUpIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="18 15 12 9 6 15" />
+const EditIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
   </svg>
 )
 
-const MailIcon = ({ selling }: { selling?: boolean }) => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={selling ? '#92400E' : '#6B7280'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-    <polyline points="22,6 12,13 2,6" />
-  </svg>
-)
+// ── Main Component ────────────────────────────────────────────────────────────
 
 export default function Module4Page() {
   const router = useRouter()
+  const [step, setStep] = useState<Step>('intro')
   const [showConfetti, setShowConfetti] = useState(false)
-  const [step, setStep] = useState<Step>('url')
-  const [clarity, setClarity] = useState<ClarityData | null>(null)
-  const [ebookTitle, setEbookTitle] = useState('')
-  const [clarityLoading, setClarityLoading] = useState(true)
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  // URL step
-  const [salesPageUrl, setSalesPageUrl] = useState('')
+  // Offer data loaded from Module 3
+  const [offer, setOffer] = useState<OfferData | null>(null)
 
-  // Emails step
-  const [generatingEmails, setGeneratingEmails] = useState(false)
-  const [emails, setEmails] = useState<Email[]>([])
-  const [reusablePrompt, setReusablePrompt] = useState('')
-  const [expandedDay, setExpandedDay] = useState<number | null>(1)
-  const [regeneratingDay, setRegeneratingDay] = useState<number | null>(null)
-  const [copiedLabel, setCopiedLabel] = useState<string | null>(null)
-  const [promptCopied, setPromptCopied] = useState(false)
+  // Section state
+  const [currentSection, setCurrentSection] = useState(0)
+  const [sectionContents, setSectionContents] = useState<Record<string, string>>({})
+  const [headlineData, setHeadlineData] = useState<HeadlineData | null>(null)
+  const [selectedHeadlineIndex, setSelectedHeadlineIndex] = useState<number | null>(null)
+  const [generating, setGenerating] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [editText, setEditText] = useState('')
+  const [copiedKey, setCopiedKey] = useState<string | null>(null)
+
+  // Complete step
+  const [publishedUrl, setPublishedUrl] = useState('')
+  const [savingComplete, setSavingComplete] = useState(false)
+  const [copyAllDone, setCopyAllDone] = useState(false)
+
+  // Prevent double-generate
+  const generatingRef = useRef(false)
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
 
-  const currentStepIndex = STEP_KEYS.indexOf(step === 'complete' ? 'emails' : step)
-
-  // ── Load data on mount ───────────────────────────────────────
+  // ── Load offer on mount ──────────────────────────────────────────────────
   useEffect(() => {
     async function loadData() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login'); return }
 
-      const { data: clarityData } = await supabase
-        .from('clarity_sentences')
-        .select('target_market, core_problem, unique_mechanism, full_sentence')
-        .eq('user_id', user.id)
-        .single()
-
-      if (!clarityData) { router.push('/module/1'); return }
-      setClarity(clarityData)
-
-      const { data: ebookData } = await supabase
-        .from('ebooks')
-        .select('title')
-        .eq('user_id', user.id)
-        .single()
-
-      setEbookTitle(ebookData?.title || '')
-
-      // Pre-load sales page URL from Module 3
-      const { data: spData } = await supabase
-        .from('sales_pages')
-        .select('published_url')
-        .eq('user_id', user.id)
-        .single()
-
-      if (spData?.published_url) setSalesPageUrl(spData.published_url)
-
-      // Restore existing sequence
-      const { data: seqData } = await supabase
-        .from('email_sequences')
+      const { data: offerData } = await supabase
+        .from('offers')
         .select('*')
         .eq('user_id', user.id)
-        .single()
+        .maybeSingle()
 
-      if (seqData?.emails && Array.isArray(seqData.emails) && seqData.emails.length > 0) {
-        setEmails(seqData.emails)
-        setReusablePrompt(seqData.reusable_prompt || '')
-        if (seqData.sales_page_url) setSalesPageUrl(seqData.sales_page_url)
-        setStep('emails')
+      if (!offerData) { router.push('/module/3'); return }
+
+      setOffer({
+        target_market:    offerData.target_market,
+        core_problem:     offerData.core_problem,
+        unique_mechanism: offerData.unique_mechanism,
+        ebook_title:      offerData.ebook_title,
+        transformation:   offerData.transformation,
+        bonuses:          offerData.bonuses || [],
+        selling_price:    offerData.selling_price || 0,
+        ebook_value:      offerData.ebook_value || 0,
+        total_value:      offerData.total_value || 0,
+        price_justification: offerData.price_justification || '',
+        guarantee:        offerData.guarantee || '30-day money-back guarantee',
+        offer_statement:  offerData.offer_statement || '',
+      })
+
+      // Restore existing progress from sales_pages
+      const { data: spData } = await supabase
+        .from('sales_pages')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle()
+
+      if (spData?.sections && typeof spData.sections === 'object') {
+        setSectionContents(spData.sections as Record<string, string>)
+        if (spData.published_url) setPublishedUrl(spData.published_url)
+        // Restore headline data if saved
+        if (spData.headline_options) {
+          try {
+            const hd = JSON.parse(spData.headline_options)
+            setHeadlineData(hd)
+          } catch { /* ignore */ }
+        }
+        if (spData.headline) {
+          // Find which index matches the saved headline
+          setSectionContents(prev => ({ ...prev, headline: spData.headline }))
+        }
+        // Determine which section to resume at
+        const keys = SECTIONS.map(s => s.key)
+        let resumeAt = 0
+        for (let i = 0; i < keys.length; i++) {
+          if ((spData.sections as Record<string, string>)[keys[i]]) {
+            resumeAt = i + 1
+          }
+        }
+        if (resumeAt >= SECTIONS.length) {
+          setCurrentSection(SECTIONS.length - 1)
+          setStep('complete')
+        } else {
+          setCurrentSection(Math.min(resumeAt, SECTIONS.length - 1))
+          if (resumeAt > 0) setStep('building')
+        }
       }
 
-      setClarityLoading(false)
+      setLoading(false)
     }
     loadData()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Generate all 7 emails ────────────────────────────────────
-  async function handleGenerateEmails() {
-    if (!clarity) return
+  // ── Auto-generate when section changes ──────────────────────────────────
+  useEffect(() => {
+    if (step !== 'building' || !offer) return
+    const sec = SECTIONS[currentSection]
+    if (!sec) return
+    // Skip if already generated
+    if (sectionContents[sec.key]) return
+    // Prevent double fire
+    if (generatingRef.current) return
+    generateSection(sec.key)
+  }, [currentSection, step]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Generate a section ───────────────────────────────────────────────────
+  async function generateSection(sectionKey: SectionKey) {
+    if (!offer || generatingRef.current) return
+    generatingRef.current = true
+    setGenerating(true)
     setError('')
-    setGeneratingEmails(true)
-    setStep('emails')
-    setEmails([])
+    setEditing(false)
 
     try {
-      const res = await fetch('/api/generate/email-sequence', {
+      const res = await fetch('/api/generate/sales-page/section', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          target_market: clarity.target_market,
-          problem: clarity.core_problem,
-          mechanism: clarity.unique_mechanism,
-          ebook_title: ebookTitle,
-          sales_page_url: salesPageUrl || 'https://your-sales-page-url.com',
+          section: sectionKey,
+          target_market: offer.target_market,
+          problem:       offer.core_problem,
+          mechanism:     offer.unique_mechanism,
+          ebook_title:   offer.ebook_title,
+          bonuses:       offer.bonuses,
+          total_value:   offer.total_value,
+          selling_price: offer.selling_price,
+          guarantee:     offer.guarantee,
         }),
       })
-      const { data, error: apiErr } = await res.json()
-      if (apiErr) throw new Error(apiErr)
-      setEmails(data.emails || [])
-      setReusablePrompt(data.reusable_prompt || '')
-      setExpandedDay(1)
-    } catch {
-      setError('Could not generate your email sequence. Please try again.')
-      setStep('url')
-    } finally {
-      setGeneratingEmails(false)
-    }
-  }
 
-  // ── Regenerate single email ──────────────────────────────────
-  async function handleRegenerateEmail(day: number) {
-    if (!clarity) return
-    setRegeneratingDay(day)
-    setError('')
-    try {
-      const res = await fetch('/api/generate/email-sequence', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          target_market: clarity.target_market,
-          problem: clarity.core_problem,
-          mechanism: clarity.unique_mechanism,
-          ebook_title: ebookTitle,
-          sales_page_url: salesPageUrl || 'https://your-sales-page-url.com',
-        }),
-      })
       const { data, error: apiErr } = await res.json()
       if (apiErr) throw new Error(apiErr)
-      const newEmail = (data.emails || []).find((e: Email) => e.day === day)
-      if (newEmail) {
-        setEmails(prev => prev.map(e => e.day === day ? newEmail : e))
+
+      if (sectionKey === 'headline') {
+        // data is a JSON string
+        const parsed: HeadlineData = typeof data === 'string' ? JSON.parse(data) : data
+        setHeadlineData(parsed)
+        setSelectedHeadlineIndex(parsed.recommended ?? 0)
+      } else {
+        setSectionContents(prev => ({ ...prev, [sectionKey]: data as string }))
       }
     } catch {
-      setError(`Could not rewrite Day ${day}. Please try again.`)
+      setError(`Could not generate ${sectionKey} section. Please try again.`)
     } finally {
-      setRegeneratingDay(null)
+      setGenerating(false)
+      generatingRef.current = false
     }
   }
 
-  // ── Copy helpers ─────────────────────────────────────────────
-  function copyToClipboard(text: string, label: string) {
+  // ── Handle headline pick ─────────────────────────────────────────────────
+  function confirmHeadline() {
+    if (!headlineData || selectedHeadlineIndex === null) return
+    const chosen = headlineData.options[selectedHeadlineIndex]
+    setSectionContents(prev => ({ ...prev, headline: chosen }))
+    advanceSection()
+  }
+
+  // ── Advance to next section ──────────────────────────────────────────────
+  function advanceSection() {
+    setEditing(false)
+    setEditText('')
+    if (currentSection < SECTIONS.length - 1) {
+      setCurrentSection(prev => prev + 1)
+    } else {
+      handleComplete()
+    }
+  }
+
+  // ── Save edit ────────────────────────────────────────────────────────────
+  function saveEdit() {
+    const key = SECTIONS[currentSection].key
+    setSectionContents(prev => ({ ...prev, [key]: editText }))
+    setEditing(false)
+  }
+
+  // ── Copy to clipboard ────────────────────────────────────────────────────
+  function copyText(text: string, key: string) {
     navigator.clipboard.writeText(text).catch(() => {})
-    setCopiedLabel(label)
-    setTimeout(() => setCopiedLabel(null), 2000)
+    setCopiedKey(key)
+    setTimeout(() => setCopiedKey(null), 2000)
   }
 
-  function buildCopyAllText(): string {
-    return emails.map(e => [
-      `=== DAY ${e.day} — ${e.type === 'selling' ? 'SELLING EMAIL' : 'VALUE EMAIL'} ===`,
-      `Subject A: ${e.subject_a || e.subject || ''}`,
-      e.subject_b ? `Subject B: ${e.subject_b}` : '',
-      '',
-      e.body,
-      e.cta ? `\nCTA: ${e.cta}` : '',
-    ].filter(line => line !== '').join('\n')).join('\n\n')
+  // ── Build full copy for "copy all" ───────────────────────────────────────
+  function buildFullCopy(): string {
+    return SECTIONS.map(s => {
+      const content = sectionContents[s.key] || ''
+      return `=== ${s.label.toUpperCase()} ===\n\n${content}`
+    }).join('\n\n\n')
   }
 
-  // ── Save & Complete ──────────────────────────────────────────
-  async function handleMarkComplete() {
-    if (!clarity || emails.length === 0) return
+  // ── Save to sales_pages + complete ───────────────────────────────────────
+  async function handleComplete() {
+    if (!offer) return
+    setSavingComplete(true)
     setError('')
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
-      // email_sequences — no unique constraint on user_id, so use delete + insert
-      await supabase.from('email_sequences').delete().eq('user_id', user.id)
-      const { error: seqErr } = await supabase.from('email_sequences').insert({
-        user_id: user.id,
-        sales_page_url: salesPageUrl || null,
-        emails,
-        reusable_prompt: reusablePrompt,
+      const headlineChosen = sectionContents['headline'] || ''
+
+      // Delete existing row then insert fresh (avoids needing unique constraint)
+      await supabase.from('sales_pages').delete().eq('user_id', user.id)
+      await supabase.from('sales_pages').insert({
+        user_id:          user.id,
+        headline:         headlineChosen,
+        headline_options: headlineData ? JSON.stringify(headlineData) : null,
+        sections:         sectionContents,
+        published_url:    publishedUrl || null,
+        updated_at:       new Date().toISOString(),
       })
-      if (seqErr) throw seqErr
 
       await supabase.from('module_progress').upsert(
         {
-          user_id: user.id,
+          user_id:      user.id,
           module_number: 4,
-          status: 'complete',
-          completed_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
+          status:        'complete',
+          completed_at:  new Date().toISOString(),
+          updated_at:    new Date().toISOString(),
         },
         { onConflict: 'user_id, module_number' }
       )
@@ -267,399 +341,551 @@ export default function Module4Page() {
       setStep('complete')
     } catch {
       setError('Could not save. Please try again.')
+    } finally {
+      setSavingComplete(false)
     }
   }
 
-  // ── Progress Dots ────────────────────────────────────────────
-  function ProgressDots() {
+  // ── Save URL on complete screen ──────────────────────────────────────────
+  async function savePublishedUrl() {
+    if (!publishedUrl.trim()) return
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    await supabase.from('sales_pages')
+      .update({ published_url: publishedUrl })
+      .eq('user_id', user.id)
+  }
+
+  // ── Section progress bar (in building step) ──────────────────────────────
+  function SectionProgress() {
     return (
-      <div className="flex items-center justify-center mb-6">
-        {STEP_LABELS.map((label, i) => {
-          const isDone = i < currentStepIndex
-          const isActive = i === currentStepIndex
-          return (
-            <div key={label} className="flex items-center">
-              <div className="flex flex-col items-center">
-                <div
-                  className="w-7 h-7 rounded-full flex items-center justify-center"
-                  style={{ background: isDone ? '#10B981' : isActive ? '#F4B942' : '#D1D5DB' }}
-                >
-                  {isDone ? (
-                    <span className="text-white"><CheckIcon /></span>
-                  ) : (
-                    <span className="text-xs font-bold" style={{ color: isActive ? '#1A1F36' : '#9CA3AF' }}>
-                      {i + 1}
-                    </span>
-                  )}
-                </div>
-                <span
-                  className="text-[10px] mt-1 font-medium whitespace-nowrap"
-                  style={{ color: isDone ? '#10B981' : isActive ? '#F4B942' : '#9CA3AF' }}
-                >
-                  {label}
-                </span>
-              </div>
-              {i < STEP_LABELS.length - 1 && (
-                <div
-                  className="h-0.5 w-12 mb-4 mx-1"
-                  style={{ background: i < currentStepIndex ? '#10B981' : '#D1D5DB' }}
-                />
-              )}
-            </div>
-          )
-        })}
+      <div className="mb-5">
+        <div className="flex items-center justify-between mb-1.5">
+          <span className="text-xs font-medium text-gray-400">
+            Section {currentSection + 1} of {SECTIONS.length}
+          </span>
+          <span className="text-xs font-medium" style={{ color: '#F4B942' }}>
+            {SECTIONS[currentSection]?.label}
+          </span>
+        </div>
+        <div className="w-full h-1.5 rounded-full" style={{ background: '#1f2937' }}>
+          <div
+            className="h-1.5 rounded-full transition-all duration-500"
+            style={{
+              width: `${((currentSection) / SECTIONS.length) * 100}%`,
+              background: '#F4B942',
+            }}
+          />
+        </div>
+        {/* Mini section dots */}
+        <div className="flex gap-1 mt-2 justify-center flex-wrap">
+          {SECTIONS.map((s, i) => (
+            <div
+              key={s.key}
+              className="w-1.5 h-1.5 rounded-full"
+              style={{
+                background: i < currentSection
+                  ? '#10B981'
+                  : i === currentSection
+                  ? '#F4B942'
+                  : '#374151',
+              }}
+            />
+          ))}
+        </div>
       </div>
     )
   }
 
-  // ── Loading ──────────────────────────────────────────────────
-  if (clarityLoading) {
+  // ── Loading ──────────────────────────────────────────────────────────────
+  if (loading) {
     return (
       <div className="min-h-screen bg-gray-950 flex items-center justify-center">
         <div className="text-center">
           <div className="w-10 h-10 border-4 border-[#F4B942] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-sm text-gray-500">Loading your progress…</p>
+          <p className="text-sm text-gray-500">Loading your offer data…</p>
         </div>
       </div>
     )
   }
 
-  // ── Complete Screen ──────────────────────────────────────────
+  // ── Complete Screen ──────────────────────────────────────────────────────
   if (step === 'complete') {
+    const allSections = SECTIONS.filter(s => sectionContents[s.key])
     return (
       <>
         <GoldConfetti trigger={showConfetti} onDone={() => setShowConfetti(false)} />
         <div className="min-h-screen bg-gray-950">
-        <div className="max-w-[430px] md:max-w-3xl mx-auto px-4 pt-6 pb-32">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: '#F4B942' }}>
-              <span className="font-bold text-white text-sm">4</span>
-            </div>
-            <div>
-              <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Module 4</p>
-              <h1 className="text-base font-bold text-white">7-Day Email Sequence</h1>
-            </div>
-          </div>
+          <div className="max-w-[430px] md:max-w-3xl mx-auto px-4 pt-6 pb-32">
 
-          <div className="rounded-xl px-4 py-4 mb-5 flex items-start gap-3" style={{ background: '#064e3b', border: '1px solid #10B981' }}>
-            <div className="w-6 h-6 rounded-full flex items-center justify-center mt-0.5 flex-shrink-0" style={{ background: '#10B981' }}>
-              <span className="text-white"><CheckIcon /></span>
-            </div>
-            <div>
-              <p className="font-bold text-emerald-300">Module 4 Complete!</p>
-              <p className="text-sm text-emerald-300 mt-0.5">Your 7-day email sequence is saved.</p>
-            </div>
-          </div>
-
-          <div className="bg-gray-900 rounded-xl p-4 mb-4" style={{ border: '1px solid #374151' }}>
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Your Sequence</p>
-            {emails.map(e => (
-              <div key={e.day} className="flex items-center gap-3 mb-2 last:mb-0">
-                <div
-                  className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
-                  style={{ background: e.type === 'selling' ? '#1c1500' : '#1f2937' }}
-                >
-                  <MailIcon selling={e.type === 'selling'} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-white truncate">{e.subject_a || e.subject}</p>
-                  <p className="text-xs text-gray-500">Day {e.day} &middot; {e.type === 'selling' ? 'Selling email' : 'Value email'}</p>
-                </div>
+            {/* Header */}
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: '#F4B942' }}>
+                <span className="font-bold text-[#1A1F36] text-sm">4</span>
               </div>
-            ))}
-          </div>
+              <div>
+                <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Module 4</p>
+                <h1 className="text-base font-bold text-white">The Sales Page Builder</h1>
+              </div>
+            </div>
 
-          <div className="rounded-xl p-4 mb-4" style={{ background: '#1A1F36', border: '2px solid #F4B942' }}>
-            <p className="text-xs font-medium mb-1" style={{ color: '#F4B942' }}>Up Next</p>
-            <p className="text-white font-bold">Module 5 — Lead Magnet Builder</p>
-            <p className="text-gray-300 text-sm mt-1">Create a free lead magnet that builds your email list.</p>
+            {/* Success banner */}
+            <div className="rounded-xl px-4 py-4 mb-5 flex items-start gap-3" style={{ background: '#064e3b', border: '1px solid #10B981' }}>
+              <div className="w-6 h-6 rounded-full flex items-center justify-center mt-0.5 flex-shrink-0" style={{ background: '#10B981' }}>
+                <span className="text-white"><CheckIcon /></span>
+              </div>
+              <div>
+                <p className="font-bold text-emerald-300">Your Sales Page Copy Is Ready!</p>
+                <p className="text-sm text-emerald-300 mt-0.5">All 10 sections written. Copy them into Systeme.io or your page builder.</p>
+              </div>
+            </div>
+
+            {/* Copy all */}
             <button
-              onClick={() => router.push('/module/5')}
-              className="mt-3 w-full py-2.5 rounded-lg font-bold text-sm"
-              style={{ background: '#F4B942', color: '#1A1F36' }}
+              onClick={() => {
+                copyText(buildFullCopy(), 'all')
+                setCopyAllDone(true)
+                setTimeout(() => setCopyAllDone(false), 2500)
+              }}
+              className="w-full py-3 rounded-xl font-semibold text-sm mb-4 flex items-center justify-center gap-2"
+              style={{
+                background: copyAllDone ? '#065F46' : '#1f2937',
+                color: copyAllDone ? '#6EE7B7' : '#F4B942',
+                border: `1px solid ${copyAllDone ? '#10B981' : '#374151'}`,
+              }}
             >
-              Start Module 5
+              <CopyIcon />
+              {copyAllDone ? 'Copied All Sections!' : 'Copy All Sales Page Copy'}
+            </button>
+
+            {/* Section list */}
+            <div className="space-y-3 mb-5">
+              {allSections.map(s => (
+                <div key={s.key} className="bg-gray-900 rounded-xl overflow-hidden" style={{ border: '1px solid #374151' }}>
+                  <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid #374151' }}>
+                    <div className="flex items-center gap-2">
+                      <div className="w-5 h-5 rounded-full flex items-center justify-center" style={{ background: '#10B981' }}>
+                        <span className="text-white"><CheckIcon /></span>
+                      </div>
+                      <span className="text-sm font-semibold text-white">{s.label}</span>
+                    </div>
+                    <button
+                      onClick={() => copyText(sectionContents[s.key], s.key)}
+                      className="flex items-center gap-1 text-xs"
+                      style={{ color: copiedKey === s.key ? '#6EE7B7' : '#9CA3AF' }}
+                    >
+                      <CopyIcon />
+                      {copiedKey === s.key ? 'Copied!' : 'Copy'}
+                    </button>
+                  </div>
+                  <div className="px-4 py-3">
+                    <p className="text-xs text-gray-400 leading-relaxed whitespace-pre-wrap line-clamp-3">
+                      {sectionContents[s.key]}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Published URL */}
+            <div className="bg-gray-900 rounded-xl p-4 mb-4" style={{ border: '1px solid #374151' }}>
+              <label className="block text-sm font-semibold text-white mb-1">
+                Sales Page URL <span className="text-gray-500 font-normal">(optional)</span>
+              </label>
+              <p className="text-xs text-gray-400 mb-3">
+                Once you publish it in Systeme.io, paste the link here so Module 5 can use it.
+              </p>
+              <div className="flex gap-2">
+                <input
+                  type="url"
+                  value={publishedUrl}
+                  onChange={e => setPublishedUrl(e.target.value)}
+                  placeholder="https://yourpage.systeme.io/ebook"
+                  className="flex-1 border rounded-xl px-3 py-2.5 text-sm bg-gray-950 text-white focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
+                  style={{ borderColor: '#374151' }}
+                />
+                <button
+                  onClick={savePublishedUrl}
+                  className="px-4 py-2.5 rounded-xl text-sm font-semibold"
+                  style={{ background: '#F4B942', color: '#1A1F36' }}
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+
+            {/* Next module CTA */}
+            <div className="rounded-xl p-4 mb-4" style={{ background: '#1A1F36', border: '2px solid #F4B942' }}>
+              <p className="text-xs font-medium mb-1" style={{ color: '#F4B942' }}>Up Next</p>
+              <p className="text-white font-bold">Module 5 — 7-Day Email Sequence</p>
+              <p className="text-gray-300 text-sm mt-1">Write 7 emails that nurture readers and sell your ebook.</p>
+              <button
+                onClick={() => router.push('/module/5')}
+                className="mt-3 w-full py-3 rounded-lg font-bold text-sm"
+                style={{ background: '#F4B942', color: '#1A1F36' }}
+              >
+                Next: Write My Email Sequence →
+              </button>
+            </div>
+
+            <button
+              onClick={() => router.push('/dashboard')}
+              className="w-full text-center text-sm text-gray-500 underline py-2"
+            >
+              Back to Dashboard
             </button>
           </div>
-
-          <button
-            onClick={() => router.push('/dashboard')}
-            className="w-full text-center text-sm text-gray-500 underline py-2"
-          >
-            Back to Dashboard
-          </button>
         </div>
-      </div>
       </>
     )
   }
 
-  // ── Main Wizard ──────────────────────────────────────────────
+  // ── Intro Screen ─────────────────────────────────────────────────────────
+  if (step === 'intro') {
+    return (
+      <div className="min-h-screen bg-gray-950">
+        <div className="max-w-[430px] md:max-w-3xl mx-auto px-4 pt-6 pb-36">
+
+          {/* Header */}
+          <div className="flex items-center gap-3 mb-6">
+            <button
+              onClick={() => router.push('/module/3')}
+              className="w-8 h-8 flex items-center justify-center rounded-full flex-shrink-0"
+              style={{ background: '#F4B942' }}
+              aria-label="Go back"
+            >
+              <span style={{ color: '#1A1F36' }}><BackIcon /></span>
+            </button>
+            <div>
+              <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Module 4</p>
+              <h1 className="text-base font-bold text-white">The Sales Page Builder</h1>
+            </div>
+          </div>
+
+          {/* What this module does */}
+          <div className="rounded-xl p-4 mb-4" style={{ background: '#1c1500', borderLeft: '4px solid #F4B942', borderTop: '1px solid #374151', borderRight: '1px solid #374151', borderBottom: '1px solid #374151' }}>
+            <p className="text-sm font-semibold text-white mb-1">What you&apos;ll build</p>
+            <p className="text-sm text-gray-400 leading-relaxed">
+              A complete 10-section sales page in your voice — written section by section using your offer from Module 3. No blank pages, no guessing. Just review, refine, and copy into Systeme.io.
+            </p>
+          </div>
+
+          {/* Section roadmap */}
+          <div className="bg-gray-900 rounded-xl p-4 mb-4" style={{ border: '1px solid #374151' }}>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">The 10 sections</p>
+            <div className="space-y-2">
+              {SECTIONS.map((s, i) => (
+                <div key={s.key} className="flex items-start gap-3">
+                  <div
+                    className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
+                    style={{ background: '#1f2937' }}
+                  >
+                    <span className="text-[10px] font-bold text-gray-500">{i + 1}</span>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-white">{s.label}</p>
+                    <p className="text-xs text-gray-500">{s.description}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Offer summary from M3 */}
+          {offer && (
+            <div className="bg-gray-900 rounded-xl p-4 mb-4" style={{ border: '1px solid #374151' }}>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Your offer (from Module 3)</p>
+              <div className="space-y-2">
+                <div>
+                  <p className="text-[10px] text-gray-500 uppercase tracking-wide">Ebook</p>
+                  <p className="text-sm font-semibold text-white">{offer.ebook_title}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-gray-500 uppercase tracking-wide">For</p>
+                  <p className="text-sm text-gray-300">{offer.target_market}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-gray-500 uppercase tracking-wide">Price</p>
+                  <p className="text-sm font-semibold text-white">₱{offer.selling_price.toLocaleString()}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-gray-500 uppercase tracking-wide">Guarantee</p>
+                  <p className="text-sm text-gray-300">{offer.guarantee}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-gray-500 uppercase tracking-wide">Bonuses</p>
+                  <p className="text-sm text-gray-300">{offer.bonuses.length} bonus{offer.bonuses.length !== 1 ? 'es' : ''} — total value ₱{offer.total_value.toLocaleString()}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+        </div>
+
+        {/* Fixed bottom CTA */}
+        <div
+          className="fixed bottom-0 bg-gray-900 px-4 py-4"
+          style={{ borderTop: '1px solid #374151', width: '100%', maxWidth: '430px', left: '50%', transform: 'translateX(-50%)' }}
+        >
+          <button
+            onClick={() => setStep('building')}
+            className="w-full py-4 rounded-xl font-bold text-base"
+            style={{ background: '#F4B942', color: '#1A1F36' }}
+          >
+            Start Writing My Sales Page →
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Building Screen ──────────────────────────────────────────────────────
+  const sec = SECTIONS[currentSection]
+  const isHeadline = sec?.key === 'headline'
+  const isLastSection = currentSection === SECTIONS.length - 1
+  const currentContent = sectionContents[sec?.key] || ''
+  const hasContent = isHeadline ? !!headlineData : !!currentContent
+
   return (
     <>
       <GoldConfetti trigger={showConfetti} onDone={() => setShowConfetti(false)} />
       <div className="min-h-screen bg-gray-950">
-      <div className="max-w-[430px] md:max-w-3xl mx-auto px-4 pt-6 pb-36">
+        <div className="max-w-[430px] md:max-w-3xl mx-auto px-4 pt-6 pb-36">
 
-        {/* Header */}
-        <div className="flex items-center gap-3 mb-5">
-          <button
-            onClick={() => {
-              if (step === 'emails' && !generatingEmails) setStep('url')
-              else router.push('/dashboard')
-            }}
-            className="w-8 h-8 flex items-center justify-center rounded-full flex-shrink-0"
-            style={{ background: '#F4B942' }}
-            aria-label="Go back"
-          >
-            <span style={{ color: '#1A1F36' }}><BackIcon /></span>
-          </button>
-          <div>
-            <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Module 4</p>
-            <h1 className="text-base font-bold text-white">7-Day Email Sequence</h1>
-          </div>
-        </div>
-
-        <ProgressDots />
-
-        {error && (
-          <div className="bg-red-900/40 border border-red-700 text-red-300 text-sm rounded-lg px-4 py-3 mb-4">
-            {error}
-          </div>
-        )}
-
-        {/* ── URL Step ──────────────────────────────────────── */}
-        {step === 'url' && (
-          <div>
-            <div className="bg-gray-900 rounded-xl p-4 mb-4" style={{ border: '1px solid #374151' }}>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Writing emails for</p>
-              {ebookTitle && <p className="text-sm font-semibold text-white mb-1">{ebookTitle}</p>}
-              {clarity && <p className="text-xs text-gray-400">For: {clarity.target_market}</p>}
-            </div>
-
-            <div className="bg-gray-900 rounded-xl p-4 mb-4" style={{ border: '1px solid #374151' }}>
-              <label className="block text-sm font-semibold text-white mb-1">
-                Your Sales Page URL
-              </label>
-              <p className="text-xs text-gray-400 mb-3">
-                Emails 5–7 will link to this. You can skip it for now and add it in Systeme.io.
-              </p>
-              <input
-                type="url"
-                value={salesPageUrl}
-                onChange={e => setSalesPageUrl(e.target.value)}
-                className="w-full border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400/40 bg-gray-950 text-white"
-                style={{ borderColor: '#374151' }}
-                placeholder="https://yourpage.systeme.io/ebook"
-              />
-            </div>
-
-            <div className="rounded-xl p-4" style={{ background: '#1c1500', borderTop: '1px solid #374151', borderRight: '1px solid #374151', borderBottom: '1px solid #374151', borderLeft: '4px solid #F4B942' }}>
-              <p className="text-xs font-semibold text-white mb-1">What you&apos;ll get</p>
-              <p className="text-sm text-gray-400">
-                7 short, personal emails. Days 1–4 build trust with pure value. Days 5–7 gently sell your ebook — no hype, no fake urgency.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* ── Emails Step ───────────────────────────────────── */}
-        {step === 'emails' && (
-          <div>
-            {/* Generating */}
-            {generatingEmails && (
-              <div className="text-center py-16">
-                <div className="w-12 h-12 border-4 border-[#F4B942] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-                <p className="text-sm font-medium text-white">Writing your 7-day sequence…</p>
-                <p className="text-xs text-gray-400 mt-1">Making each email feel personal and real</p>
-              </div>
-            )}
-
-            {/* Emails ready */}
-            {!generatingEmails && emails.length > 0 && (
-              <div>
-                {/* Copy all */}
-                <button
-                  onClick={() => copyToClipboard(buildCopyAllText(), 'all')}
-                  className="w-full py-3 rounded-xl font-semibold text-sm mb-4 flex items-center justify-center gap-2 transition-all"
-                  style={{
-                    background: copiedLabel === 'all' ? '#065F46' : '#1f2937',
-                    color: copiedLabel === 'all' ? '#6EE7B7' : '#F4B942',
-                    border: `1px solid ${copiedLabel === 'all' ? '#10B981' : '#374151'}`,
-                  }}
-                >
-                  <CopyIcon />
-                  {copiedLabel === 'all' ? 'Copied All 7 Emails!' : 'Copy All 7 Emails'}
-                </button>
-
-                {/* Accordion */}
-                <div className="space-y-2 mb-5">
-                  {emails.map(email => {
-                    const isExpanded = expandedDay === email.day
-                    const isRegenerating = regeneratingDay === email.day
-                    return (
-                      <div
-                        key={email.day}
-                        className="bg-gray-900 rounded-xl overflow-hidden"
-                        style={{ border: `1.5px solid ${isExpanded ? '#F4B942' : '#374151'}` }}
-                      >
-                        {/* Header row */}
-                        <button
-                          onClick={() => setExpandedDay(isExpanded ? null : email.day)}
-                          className="w-full px-4 py-3 flex items-center gap-3 text-left"
-                        >
-                          <div
-                            className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
-                            style={{ background: email.type === 'selling' ? '#1c1500' : '#1f2937' }}
-                          >
-                            <MailIcon selling={email.type === 'selling'} />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-0.5">
-                              <span className="text-xs font-bold text-gray-500">Day {email.day}</span>
-                              <span
-                                className="text-[10px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wide"
-                                style={{
-                                  background: email.type === 'selling' ? '#1c1500' : '#1f2937',
-                                  color: email.type === 'selling' ? '#F4B942' : '#9CA3AF',
-                                }}
-                              >
-                                {email.type === 'selling' ? 'Selling' : 'Value'}
-                              </span>
-                            </div>
-                            <p className="text-sm font-medium text-white truncate pr-2">
-                              {email.subject_a || email.subject || ''}
-                            </p>
-                          </div>
-                          <span className="text-gray-500 flex-shrink-0">
-                            {isExpanded ? <ChevronUpIcon /> : <ChevronDownIcon />}
-                          </span>
-                        </button>
-
-                        {/* Expanded body */}
-                        {isExpanded && (
-                          <div className="px-4 pb-4 border-t" style={{ borderColor: '#F4B942' }}>
-                            <div className="flex items-center justify-between pt-3 mb-3">
-                              <p className="text-xs text-gray-500">Subject line + body</p>
-                              <div className="flex items-center gap-3">
-                                <button
-                                  onClick={() => handleRegenerateEmail(email.day)}
-                                  disabled={regeneratingDay !== null}
-                                  className="flex items-center gap-1 text-xs text-gray-400 disabled:opacity-40"
-                                >
-                                  <RefreshIcon />
-                                  <span>{isRegenerating ? 'Rewriting…' : 'Rewrite'}</span>
-                                </button>
-                                <button
-                                  onClick={() => copyToClipboard(
-                                    [
-                                      `Subject A: ${email.subject_a || email.subject || ''}`,
-                                      email.subject_b ? `Subject B: ${email.subject_b}` : '',
-                                      '',
-                                      email.body,
-                                      email.cta ? `\nCTA: ${email.cta}` : '',
-                                    ].filter(l => l !== '').join('\n'),
-                                    `day-${email.day}`
-                                  )}
-                                  className="flex items-center gap-1 text-xs"
-                                  style={{ color: copiedLabel === `day-${email.day}` ? '#6EE7B7' : '#9CA3AF' }}
-                                >
-                                  <CopyIcon />
-                                  <span>{copiedLabel === `day-${email.day}` ? 'Copied!' : 'Copy'}</span>
-                                </button>
-                              </div>
-                            </div>
-
-                            {isRegenerating ? (
-                              <div className="flex items-center gap-2 py-4">
-                                <div className="w-4 h-4 border-2 border-[#F4B942] border-t-transparent rounded-full animate-spin" />
-                                <p className="text-sm text-gray-400">Rewriting Day {email.day}…</p>
-                              </div>
-                            ) : (
-                              <>
-                                {/* Subject line options */}
-                                <div className="mb-3 pb-3 space-y-1.5" style={{ borderBottom: '1px solid #374151' }}>
-                                  <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-2">Subject Lines (pick one)</p>
-                                  <div className="flex items-start gap-2">
-                                    <span className="text-[10px] font-bold text-[#F4B942] mt-0.5 flex-shrink-0">A</span>
-                                    <p className="text-sm font-semibold text-white">{email.subject_a || email.subject}</p>
-                                  </div>
-                                  {email.subject_b && (
-                                    <div className="flex items-start gap-2">
-                                      <span className="text-[10px] font-bold text-gray-500 mt-0.5 flex-shrink-0">B</span>
-                                      <p className="text-sm font-medium text-gray-400">{email.subject_b}</p>
-                                    </div>
-                                  )}
-                                </div>
-                                <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap mb-3">
-                                  {email.body}
-                                </p>
-                                {email.cta && (
-                                  <div className="rounded-lg px-3 py-2" style={{ background: '#1c1500', border: '1px solid #F4B942' }}>
-                                    <p className="text-xs font-semibold mb-1" style={{ color: '#F4B942' }}>CTA Link</p>
-                                    <p className="text-xs text-yellow-200 break-all">{email.cta}</p>
-                                  </div>
-                                )}
-                              </>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-
-              </div>
-            )}
-          </div>
-        )}
-
-      </div>
-
-      {/* ── Fixed Bottom Action Bar ──────────────────────────── */}
-      {step !== 'complete' && (
-        <div
-          className="fixed bottom-0 bg-gray-900 px-4 py-4"
-          style={{
-            borderTop: '1px solid #374151',
-            width: '100%',
-            maxWidth: '430px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-          }}
-        >
-          {step === 'url' && (
+          {/* Header */}
+          <div className="flex items-center gap-3 mb-5">
             <button
-              onClick={handleGenerateEmails}
-              className="w-full py-4 rounded-xl font-bold text-base"
-              style={{ background: '#F4B942', color: '#1A1F36' }}
+              onClick={() => {
+                if (currentSection > 0) {
+                  setEditing(false)
+                  setCurrentSection(prev => prev - 1)
+                } else {
+                  setStep('intro')
+                }
+              }}
+              className="w-8 h-8 flex items-center justify-center rounded-full flex-shrink-0"
+              style={{ background: '#F4B942' }}
+              aria-label="Go back"
             >
-              Write My 7 Emails
+              <span style={{ color: '#1A1F36' }}><BackIcon /></span>
             </button>
+            <div>
+              <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Module 4</p>
+              <h1 className="text-base font-bold text-white">The Sales Page Builder</h1>
+            </div>
+          </div>
+
+          <SectionProgress />
+
+          {error && (
+            <div className="bg-red-900/40 border border-red-700 text-red-300 text-sm rounded-lg px-4 py-3 mb-4">
+              {error}
+              <button
+                onClick={() => { setError(''); generateSection(sec.key) }}
+                className="ml-2 underline text-xs"
+              >
+                Try again
+              </button>
+            </div>
           )}
 
-          {step === 'emails' && generatingEmails && (
+          {/* Section header */}
+          <div className="mb-4">
+            <h2 className="text-lg font-bold text-white">{sec?.label}</h2>
+            <p className="text-sm text-gray-400">{sec?.description}</p>
+          </div>
+
+          {/* ── Generating spinner ── */}
+          {generating && (
+            <div className="text-center py-14">
+              <div className="w-12 h-12 border-4 border-[#F4B942] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+              <p className="text-sm font-medium text-white">Writing your {sec?.label} section…</p>
+              <p className="text-xs text-gray-400 mt-1">Using your offer data for context</p>
+            </div>
+          )}
+
+          {/* ── Headline section ── */}
+          {!generating && isHeadline && headlineData && (
+            <div>
+              <p className="text-xs text-gray-500 mb-3">Pick the headline that feels most like you:</p>
+
+              {/* Recommended note */}
+              <div className="rounded-lg px-3 py-2 mb-4 text-xs" style={{ background: '#1c1500', border: '1px solid #374151' }}>
+                <span className="font-semibold" style={{ color: '#F4B942' }}>Recommended: </span>
+                <span className="text-gray-300">{headlineData.recommended_reason}</span>
+              </div>
+
+              <div className="space-y-3 mb-4">
+                {headlineData.options.map((option, i) => {
+                  const lines = option.split('\n')
+                  const isSelected = selectedHeadlineIndex === i
+                  const isRecommended = i === headlineData.recommended
+                  return (
+                    <button
+                      key={i}
+                      onClick={() => setSelectedHeadlineIndex(i)}
+                      className="w-full text-left rounded-xl p-4 transition-all"
+                      style={{
+                        background: isSelected ? '#1c1500' : '#111827',
+                        border: `2px solid ${isSelected ? '#F4B942' : '#374151'}`,
+                      }}
+                    >
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0"
+                            style={{ borderColor: isSelected ? '#F4B942' : '#6B7280' }}
+                          >
+                            {isSelected && (
+                              <div className="w-2.5 h-2.5 rounded-full" style={{ background: '#F4B942' }} />
+                            )}
+                          </div>
+                          {isRecommended && (
+                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wide" style={{ background: '#1c1500', color: '#F4B942' }}>
+                              Recommended
+                            </span>
+                          )}
+                        </div>
+                        <button
+                          onClick={e => { e.stopPropagation(); copyText(option, `h-${i}`) }}
+                          className="text-gray-500 hover:text-gray-300 flex-shrink-0"
+                        >
+                          <CopyIcon />
+                        </button>
+                      </div>
+                      <p className="text-sm font-bold text-white leading-snug">{lines[0]}</p>
+                      {lines[1] && <p className="text-sm text-gray-300 mt-1 leading-snug">{lines[1]}</p>}
+                    </button>
+                  )
+                })}
+              </div>
+
+              {/* Regenerate */}
+              <button
+                onClick={() => { setHeadlineData(null); generateSection('headline') }}
+                className="flex items-center gap-1.5 text-sm text-gray-400 mx-auto"
+              >
+                <RefreshIcon />
+                Generate different options
+              </button>
+            </div>
+          )}
+
+          {/* ── Regular section content ── */}
+          {!generating && !isHeadline && currentContent && !editing && (
+            <div>
+              {/* Action row */}
+              <div className="flex items-center gap-4 mb-3">
+                <button
+                  onClick={() => { generateSection(sec.key) }}
+                  className="flex items-center gap-1.5 text-xs text-gray-400"
+                >
+                  <RefreshIcon />
+                  Regenerate
+                </button>
+                <button
+                  onClick={() => { setEditText(currentContent); setEditing(true) }}
+                  className="flex items-center gap-1.5 text-xs text-gray-400"
+                >
+                  <EditIcon />
+                  Edit
+                </button>
+                <button
+                  onClick={() => copyText(currentContent, sec.key)}
+                  className="flex items-center gap-1.5 text-xs ml-auto"
+                  style={{ color: copiedKey === sec.key ? '#6EE7B7' : '#9CA3AF' }}
+                >
+                  <CopyIcon />
+                  {copiedKey === sec.key ? 'Copied!' : 'Copy'}
+                </button>
+              </div>
+
+              {/* Content */}
+              <div className="bg-gray-900 rounded-xl p-4" style={{ border: '1px solid #374151' }}>
+                <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap">{currentContent}</p>
+              </div>
+            </div>
+          )}
+
+          {/* ── Edit mode ── */}
+          {!generating && editing && (
+            <div>
+              <textarea
+                value={editText}
+                onChange={e => setEditText(e.target.value)}
+                className="w-full border rounded-xl px-3 py-3 text-sm bg-gray-950 text-white focus:outline-none focus:ring-2 focus:ring-yellow-400/40 leading-relaxed"
+                style={{ borderColor: '#374151', minHeight: '240px', resize: 'vertical' }}
+                autoFocus
+              />
+              <div className="flex gap-3 mt-3">
+                <button
+                  onClick={saveEdit}
+                  className="flex-1 py-2.5 rounded-xl font-semibold text-sm"
+                  style={{ background: '#F4B942', color: '#1A1F36' }}
+                >
+                  Save Edit
+                </button>
+                <button
+                  onClick={() => setEditing(false)}
+                  className="flex-1 py-2.5 rounded-xl font-semibold text-sm"
+                  style={{ background: '#1f2937', color: '#9CA3AF', border: '1px solid #374151' }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
+        </div>
+
+        {/* ── Fixed Bottom Bar ── */}
+        {!generating && hasContent && !editing && (
+          <div
+            className="fixed bottom-0 bg-gray-900 px-4 py-4"
+            style={{ borderTop: '1px solid #374151', width: '100%', maxWidth: '430px', left: '50%', transform: 'translateX(-50%)' }}
+          >
+            {isHeadline ? (
+              <button
+                onClick={confirmHeadline}
+                disabled={selectedHeadlineIndex === null}
+                className="w-full py-4 rounded-xl font-bold text-base disabled:opacity-40"
+                style={{ background: '#F4B942', color: '#1A1F36' }}
+              >
+                Use This Headline →
+              </button>
+            ) : (
+              <button
+                onClick={advanceSection}
+                disabled={savingComplete}
+                className="w-full py-4 rounded-xl font-bold text-base disabled:opacity-50"
+                style={{ background: '#F4B942', color: '#1A1F36' }}
+              >
+                {savingComplete
+                  ? 'Saving…'
+                  : isLastSection
+                  ? 'Save & Complete Module 4 →'
+                  : `Save & Write ${SECTIONS[currentSection + 1]?.label} →`}
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Generating bottom placeholder */}
+        {generating && (
+          <div
+            className="fixed bottom-0 bg-gray-900 px-4 py-4"
+            style={{ borderTop: '1px solid #374151', width: '100%', maxWidth: '430px', left: '50%', transform: 'translateX(-50%)' }}
+          >
             <div
-              className="w-full py-4 rounded-xl font-bold text-base flex items-center justify-center gap-2 opacity-60"
+              className="w-full py-4 rounded-xl font-bold text-base flex items-center justify-center gap-2 opacity-40"
               style={{ background: '#111827', color: '#9CA3AF', border: '1px solid #374151' }}
             >
               <div className="w-4 h-4 border-2 border-gray-500 border-t-transparent rounded-full animate-spin" />
-              Writing your sequence…
+              Writing section…
             </div>
-          )}
-
-          {step === 'emails' && !generatingEmails && emails.length > 0 && (
-            <button
-              onClick={handleMarkComplete}
-              className="w-full py-4 rounded-xl font-bold text-base"
-              style={{ background: '#F4B942', color: '#1A1F36' }}
-            >
-              Save &amp; Complete Module 4
-            </button>
-          )}
-        </div>
-      )}
-    </div>
+          </div>
+        )}
+      </div>
     </>
   )
 }

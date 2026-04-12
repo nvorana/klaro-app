@@ -33,6 +33,7 @@ export default async function DashboardPage() {
     { data: clarity },
     { data: ebook },
     { data: offer },
+    { data: salesPage },
     { data: emailSeq },
     { data: leadMagnet },
     { data: contentPost },
@@ -40,14 +41,15 @@ export default async function DashboardPage() {
     supabase.from('clarity_sentences').select('id').eq('user_id', user.id).maybeSingle(),
     supabase.from('ebooks').select('id').eq('user_id', user.id).eq('status', 'complete').maybeSingle(),
     supabase.from('offers').select('id').eq('user_id', user.id).maybeSingle(),
+    supabase.from('sales_pages').select('id').eq('user_id', user.id).maybeSingle(),
     supabase.from('email_sequences').select('id').eq('user_id', user.id).maybeSingle(),
     supabase.from('lead_magnets').select('id').eq('user_id', user.id).maybeSingle(),
     supabase.from('content_posts').select('id').eq('user_id', user.id).maybeSingle(),
   ])
 
-  const completed = [!!clarity, !!ebook, !!offer, !!emailSeq, !!leadMagnet, !!contentPost]
+  const completed = [!!clarity, !!ebook, !!offer, !!salesPage, !!emailSeq, !!leadMagnet, !!contentPost]
   const completedCount = completed.filter(Boolean).length
-  const progressPercent = Math.round((completedCount / 6) * 100)
+  const progressPercent = Math.round((completedCount / 7) * 100)
 
   // ── Week calculation ──────────────────────────────────────
   const enrolledAt = profile.enrolled_at as string | null
@@ -63,7 +65,7 @@ export default async function DashboardPage() {
 
   // ── Next step module ──────────────────────────────────────
   let nextStepModule = -1
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < 7; i++) {
     const unlocked = isModuleUnlockedForStudent(unlockedModules, accessLevel, enrolledAt, i + 1)
     if (unlocked && !completed[i]) {
       nextStepModule = i + 1
@@ -171,7 +173,7 @@ export default async function DashboardPage() {
           />
         </div>
         <div className="flex justify-between mt-1.5">
-          <span className="text-white/40 text-[11px]">{completedCount} of 6 modules done</span>
+          <span className="text-white/40 text-[11px]">{completedCount} of 7 modules done</span>
           <span className="text-white/40 text-[11px]">{progressPercent}%</span>
         </div>
       </div>

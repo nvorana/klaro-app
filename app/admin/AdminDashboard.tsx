@@ -36,7 +36,7 @@ interface Props {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const MODULE_LABELS = ['Clarity', 'Ebook', 'Sales Page', 'Email Seq.', 'Lead Magnet', 'FB Content']
+const MODULE_LABELS = ['Clarity', 'Ebook', 'Offer', 'Sales Page', 'Email Seq.', 'Lead Magnet', 'FB Content']
 
 function paymentBadge(s: Student) {
   if (s.suspended) return { label: 'Unsettled', cls: 'bg-red-900/40 text-red-400 border border-red-800' }

@@ -1,10 +1,10 @@
 // Tier → max module number unlocked (immediate, no time-gating)
 export const TIER_MODULE_LIMITS: Record<string, number> = {
   'tier1':       1,
-  'tier2':       3,
-  'tier3':       6,
-  'full_access': 6,
-  'enrolled':    6, // legacy: treat as full for time-gated logic
+  'tier2':       4,
+  'tier3':       7,
+  'full_access': 7,
+  'enrolled':    7, // legacy: treat as full for time-gated logic
 }
 
 /**
@@ -55,6 +55,7 @@ export const MODULE_UNLOCK_DAYS: Record<number, number> = {
   4: 21,  // Week 4
   5: 28,  // Week 5
   6: 35,  // Week 6
+  7: 42,  // Week 7
 }
 
 export const MODULE_INFO = [
@@ -78,18 +79,24 @@ export const MODULE_INFO = [
   },
   {
     number: 4,
+    title: 'The Sales Page Builder',
+    description: 'Generate your full sales page copy section by section using your offer.',
+    output: 'Your Sales Page Copy',
+  },
+  {
+    number: 5,
     title: 'The 7-Day Email Sequence',
     description: 'Generate 7 emails that nurture readers and sell your ebook.',
     output: 'Your Email Sequence',
   },
   {
-    number: 5,
+    number: 6,
     title: 'The Lead Magnet Builder',
     description: 'Create a free lead magnet that attracts subscribers and builds trust.',
     output: 'Your Lead Magnet (.docx)',
   },
   {
-    number: 6,
+    number: 7,
     title: 'The Facebook Content Engine',
     description: 'Generate ready-to-post Facebook content that drives conversations.',
     output: 'Your Facebook Posts',

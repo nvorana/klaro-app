@@ -50,6 +50,7 @@ export default async function AdminPage() {
     { data: clarities },
     { data: ebooks },
     { data: offers },
+    { data: salesPages },
     { data: emailSeqs },
     { data: leadMagnets },
     { data: contentPosts },
@@ -57,6 +58,7 @@ export default async function AdminPage() {
     adminClient.from('clarity_sentences').select('user_id').in('user_id', ids),
     adminClient.from('ebooks').select('user_id').in('user_id', ids).eq('status', 'complete'),
     adminClient.from('offers').select('user_id').in('user_id', ids),
+    adminClient.from('sales_pages').select('user_id').in('user_id', ids),
     adminClient.from('email_sequences').select('user_id').in('user_id', ids),
     adminClient.from('lead_magnets').select('user_id').in('user_id', ids),
     adminClient.from('content_posts').select('user_id').in('user_id', ids),
@@ -68,12 +70,13 @@ export default async function AdminPage() {
     return (id: string) => set.has(id)
   }
 
-  const hasClarity  = completed(clarities)
-  const hasEbook    = completed(ebooks)
-  const hasOffer    = completed(offers)
-  const hasEmail    = completed(emailSeqs)
-  const hasMagnet   = completed(leadMagnets)
-  const hasPosts    = completed(contentPosts)
+  const hasClarity   = completed(clarities)
+  const hasEbook     = completed(ebooks)
+  const hasOffer     = completed(offers)
+  const hasSalesPage = completed(salesPages)
+  const hasEmail     = completed(emailSeqs)
+  const hasMagnet    = completed(leadMagnets)
+  const hasPosts     = completed(contentPosts)
 
   // ── Assemble student records ─────────────────────────────────────────────────
   const enriched = students.map(s => ({
@@ -92,6 +95,7 @@ export default async function AdminPage() {
       hasClarity(s.id),
       hasEbook(s.id),
       hasOffer(s.id),
+      hasSalesPage(s.id),
       hasEmail(s.id),
       hasMagnet(s.id),
       hasPosts(s.id),

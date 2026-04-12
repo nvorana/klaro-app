@@ -5,16 +5,17 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
 
-type Step = 'format' | 'preview' | 'complete'
-type Format = 'checklist' | 'quick_guide' | 'free_report'
+type Step = 'url' | 'emails' | 'complete'
 
-interface LeadMagnet {
-  title: string
-  hook: string
-  introduction: string
-  main_content: string
-  quick_win: string
-  bridge_to_ebook: string
+interface Email {
+  day: number
+  type: 'value' | 'selling'
+  subject_a: string
+  subject_b: string
+  body: string
+  cta: string | null
+  // legacy fallback
+  subject?: string
 }
 
 interface ClarityData {
@@ -24,38 +25,8 @@ interface ClarityData {
   full_sentence: string
 }
 
-const STEP_LABELS = ['Format', 'Preview']
-const STEP_KEYS: Step[] = ['format', 'preview']
-
-const FORMAT_OPTIONS: { key: Format; label: string; description: string; icon: string }[] = [
-  {
-    key: 'checklist',
-    label: 'Checklist',
-    description: 'A quick, scannable list of action items. Great for busy readers who want fast wins.',
-    icon: 'checklist',
-  },
-  {
-    key: 'quick_guide',
-    label: 'Quick Guide',
-    description: 'A short 3–5 page how-to guide. Gives step-by-step direction on one specific problem.',
-    icon: 'guide',
-  },
-  {
-    key: 'free_report',
-    label: 'Free Report',
-    description: 'A slightly longer insight document with key findings. Builds authority and trust.',
-    icon: 'report',
-  },
-]
-
-const SECTION_LABELS: { key: keyof LeadMagnet; label: string }[] = [
-  { key: 'title', label: 'Title' },
-  { key: 'hook', label: 'Opening Hook' },
-  { key: 'introduction', label: 'Introduction' },
-  { key: 'main_content', label: 'Main Content' },
-  { key: 'quick_win', label: 'Quick Win' },
-  { key: 'bridge_to_ebook', label: 'Bridge to Ebook' },
-]
+const STEP_LABELS = ['Sales Page', 'Your Emails']
+const STEP_KEYS: Step[] = ['url', 'emails']
 
 // ── SVG Icons ────────────────────────────────────────────────────
 const CheckIcon = () => (
@@ -84,81 +55,54 @@ const RefreshIcon = () => (
   </svg>
 )
 
-const EditIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+const ChevronDownIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="6 9 12 15 18 9" />
   </svg>
 )
 
-const DownloadIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-    <polyline points="7 10 12 15 17 10" />
-    <line x1="12" y1="15" x2="12" y2="3" />
+const ChevronUpIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="18 15 12 9 6 15" />
   </svg>
 )
 
-const ChecklistIcon = () => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#F4B942" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="9 11 12 14 22 4" />
-    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+const MailIcon = ({ selling }: { selling?: boolean }) => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={selling ? '#92400E' : '#6B7280'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+    <polyline points="22,6 12,13 2,6" />
   </svg>
 )
 
-const GuideIcon = () => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#F4B942" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
-    <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
-  </svg>
-)
-
-const ReportIcon = () => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#F4B942" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-    <polyline points="14 2 14 8 20 8" />
-    <line x1="16" y1="13" x2="8" y2="13" />
-    <line x1="16" y1="17" x2="8" y2="17" />
-    <polyline points="10 9 9 9 8 9" />
-  </svg>
-)
-
-function FormatIcon({ format }: { format: string }) {
-  if (format === 'checklist') return <ChecklistIcon />
-  if (format === 'quick_guide') return <GuideIcon />
-  return <ReportIcon />
-}
-
-export default function Module5Page() {
+export default function Module4Page() {
   const router = useRouter()
   const [showConfetti, setShowConfetti] = useState(false)
-  const [step, setStep] = useState<Step>('format')
+  const [step, setStep] = useState<Step>('url')
   const [clarity, setClarity] = useState<ClarityData | null>(null)
   const [ebookTitle, setEbookTitle] = useState('')
   const [clarityLoading, setClarityLoading] = useState(true)
   const [error, setError] = useState('')
 
-  // Format step
-  const [selectedFormat, setSelectedFormat] = useState<Format | null>(null)
+  // URL step
+  const [salesPageUrl, setSalesPageUrl] = useState('')
 
-  // Preview step
-  const [generating, setGenerating] = useState(false)
-  const [leadMagnet, setLeadMagnet] = useState<LeadMagnet | null>(null)
-  const [editedSections, setEditedSections] = useState<Partial<LeadMagnet>>({})
-  const [editingSection, setEditingSection] = useState<string | null>(null)
-  const [regeneratingSection, setRegeneratingSection] = useState<string | null>(null)
-  const [exporting, setExporting] = useState(false)
-  const [exportDone, setExportDone] = useState(false)
-  const [copiedSection, setCopiedSection] = useState<string | null>(null)
+  // Emails step
+  const [generatingEmails, setGeneratingEmails] = useState(false)
+  const [emails, setEmails] = useState<Email[]>([])
+  const [reusablePrompt, setReusablePrompt] = useState('')
+  const [expandedDay, setExpandedDay] = useState<number | null>(1)
+  const [regeneratingDay, setRegeneratingDay] = useState<number | null>(null)
+  const [copiedLabel, setCopiedLabel] = useState<string | null>(null)
+  const [promptCopied, setPromptCopied] = useState(false)
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
 
-  const currentStepIndex = STEP_KEYS.indexOf(step === 'complete' ? 'preview' : step)
+  const currentStepIndex = STEP_KEYS.indexOf(step === 'complete' ? 'emails' : step)
 
-  // ── Load data ────────────────────────────────────────────────
+  // ── Load data on mount ───────────────────────────────────────
   useEffect(() => {
     async function loadData() {
       const { data: { user } } = await supabase.auth.getUser()
@@ -181,24 +125,27 @@ export default function Module5Page() {
 
       setEbookTitle(ebookData?.title || '')
 
-      // Restore existing lead magnet
-      const { data: lmData } = await supabase
-        .from('lead_magnets')
+      // Pre-load sales page URL from Module 3
+      const { data: spData } = await supabase
+        .from('sales_pages')
+        .select('published_url')
+        .eq('user_id', user.id)
+        .single()
+
+      if (spData?.published_url) setSalesPageUrl(spData.published_url)
+
+      // Restore existing sequence
+      const { data: seqData } = await supabase
+        .from('email_sequences')
         .select('*')
         .eq('user_id', user.id)
         .single()
 
-      if (lmData?.title) {
-        setSelectedFormat((lmData.format as Format) || 'checklist')
-        setLeadMagnet({
-          title: lmData.title || '',
-          hook: lmData.hook || '',
-          introduction: lmData.introduction || '',
-          main_content: lmData.main_content || '',
-          quick_win: lmData.quick_win || '',
-          bridge_to_ebook: lmData.bridge_to_ebook || '',
-        })
-        setStep('preview')
+      if (seqData?.emails && Array.isArray(seqData.emails) && seqData.emails.length > 0) {
+        setEmails(seqData.emails)
+        setReusablePrompt(seqData.reusable_prompt || '')
+        if (seqData.sales_page_url) setSalesPageUrl(seqData.sales_page_url)
+        setStep('emails')
       }
 
       setClarityLoading(false)
@@ -206,15 +153,16 @@ export default function Module5Page() {
     loadData()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Generate ─────────────────────────────────────────────────
-  async function handleGenerate() {
-    if (!clarity || !selectedFormat) return
+  // ── Generate all 7 emails ────────────────────────────────────
+  async function handleGenerateEmails() {
+    if (!clarity) return
     setError('')
-    setGenerating(true)
-    setStep('preview')
+    setGeneratingEmails(true)
+    setStep('emails')
+    setEmails([])
 
     try {
-      const res = await fetch('/api/generate/lead-magnet', {
+      const res = await fetch('/api/generate/email-sequence', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -222,28 +170,29 @@ export default function Module5Page() {
           problem: clarity.core_problem,
           mechanism: clarity.unique_mechanism,
           ebook_title: ebookTitle,
-          format: selectedFormat,
+          sales_page_url: salesPageUrl || 'https://your-sales-page-url.com',
         }),
       })
       const { data, error: apiErr } = await res.json()
       if (apiErr) throw new Error(apiErr)
-      setLeadMagnet(data)
-      setEditedSections({})
+      setEmails(data.emails || [])
+      setReusablePrompt(data.reusable_prompt || '')
+      setExpandedDay(1)
     } catch {
-      setError('Could not generate your lead magnet. Please try again.')
-      setStep('format')
+      setError('Could not generate your email sequence. Please try again.')
+      setStep('url')
     } finally {
-      setGenerating(false)
+      setGeneratingEmails(false)
     }
   }
 
-  // ── Regenerate single section ────────────────────────────────
-  async function handleRegenerateSection(sectionKey: keyof LeadMagnet) {
-    if (!clarity || !selectedFormat) return
-    setRegeneratingSection(sectionKey)
+  // ── Regenerate single email ──────────────────────────────────
+  async function handleRegenerateEmail(day: number) {
+    if (!clarity) return
+    setRegeneratingDay(day)
     setError('')
     try {
-      const res = await fetch('/api/generate/lead-magnet', {
+      const res = await fetch('/api/generate/email-sequence', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -251,102 +200,62 @@ export default function Module5Page() {
           problem: clarity.core_problem,
           mechanism: clarity.unique_mechanism,
           ebook_title: ebookTitle,
-          format: selectedFormat,
+          sales_page_url: salesPageUrl || 'https://your-sales-page-url.com',
         }),
       })
       const { data, error: apiErr } = await res.json()
       if (apiErr) throw new Error(apiErr)
-      setLeadMagnet(prev => prev ? { ...prev, [sectionKey]: data[sectionKey] } : prev)
-      setEditedSections(prev => {
-        const updated = { ...prev }
-        delete updated[sectionKey]
-        return updated
-      })
+      const newEmail = (data.emails || []).find((e: Email) => e.day === day)
+      if (newEmail) {
+        setEmails(prev => prev.map(e => e.day === day ? newEmail : e))
+      }
     } catch {
-      setError('Could not regenerate this section. Please try again.')
+      setError(`Could not rewrite Day ${day}. Please try again.`)
     } finally {
-      setRegeneratingSection(null)
+      setRegeneratingDay(null)
     }
   }
 
-  function getSection(key: keyof LeadMagnet): string {
-    return editedSections[key] ?? leadMagnet?.[key] ?? ''
-  }
-
-  // ── Export ───────────────────────────────────────────────────
-  async function handleExport() {
-    if (!leadMagnet) return
-    setExporting(true)
-    setError('')
-    try {
-      const res = await fetch('/api/export/lead-magnet', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: getSection('title'),
-          format: selectedFormat,
-          hook: getSection('hook'),
-          introduction: getSection('introduction'),
-          main_content: getSection('main_content'),
-          quick_win: getSection('quick_win'),
-          bridge_to_ebook: getSection('bridge_to_ebook'),
-        }),
-      })
-      if (!res.ok) throw new Error('Export failed')
-      const blob = await res.blob()
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      const safeTitle = getSection('title').replace(/[^a-zA-Z0-9\s-]/g, '').trim().replace(/\s+/g, '-').toLowerCase()
-      a.download = `${safeTitle || 'lead-magnet'}.docx`
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
-      setExportDone(true)
-    } catch {
-      setError('Export failed. Please try again.')
-    } finally {
-      setExporting(false)
-    }
-  }
-
-  // ── Copy helper ──────────────────────────────────────────────
+  // ── Copy helpers ─────────────────────────────────────────────
   function copyToClipboard(text: string, label: string) {
     navigator.clipboard.writeText(text).catch(() => {})
-    setCopiedSection(label)
-    setTimeout(() => setCopiedSection(null), 2000)
+    setCopiedLabel(label)
+    setTimeout(() => setCopiedLabel(null), 2000)
+  }
+
+  function buildCopyAllText(): string {
+    return emails.map(e => [
+      `=== DAY ${e.day} — ${e.type === 'selling' ? 'SELLING EMAIL' : 'VALUE EMAIL'} ===`,
+      `Subject A: ${e.subject_a || e.subject || ''}`,
+      e.subject_b ? `Subject B: ${e.subject_b}` : '',
+      '',
+      e.body,
+      e.cta ? `\nCTA: ${e.cta}` : '',
+    ].filter(line => line !== '').join('\n')).join('\n\n')
   }
 
   // ── Save & Complete ──────────────────────────────────────────
   async function handleMarkComplete() {
-    if (!clarity || !leadMagnet) return
+    if (!clarity || emails.length === 0) return
     setError('')
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
-      const lm = { ...leadMagnet, ...editedSections }
-
-      // lead_magnets — no unique constraint on user_id, so use delete + insert
-      await supabase.from('lead_magnets').delete().eq('user_id', user.id)
-      const { error: lmErr } = await supabase.from('lead_magnets').insert({
+      // email_sequences — no unique constraint on user_id, so use delete + insert
+      await supabase.from('email_sequences').delete().eq('user_id', user.id)
+      const { error: seqErr } = await supabase.from('email_sequences').insert({
         user_id: user.id,
-        format: selectedFormat,
-        title: lm.title,
-        hook: lm.hook,
-        introduction: lm.introduction,
-        main_content: lm.main_content,
-        quick_win: lm.quick_win,
-        bridge_to_ebook: lm.bridge_to_ebook,
-        full_content: Object.values(lm).join('\n\n'),
+        sales_page_url: salesPageUrl || null,
+        emails,
+        reusable_prompt: reusablePrompt,
       })
-      if (lmErr) throw lmErr
+      if (seqErr) throw seqErr
 
       await supabase.from('module_progress').upsert(
         {
           user_id: user.id,
-          module_number: 5,
+          module_number: 4,
           status: 'complete',
           completed_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
@@ -373,7 +282,7 @@ export default function Module5Page() {
               <div className="flex flex-col items-center">
                 <div
                   className="w-7 h-7 rounded-full flex items-center justify-center"
-                  style={{ background: isDone ? '#10B981' : isActive ? '#F4B942' : '#374151' }}
+                  style={{ background: isDone ? '#10B981' : isActive ? '#F4B942' : '#D1D5DB' }}
                 >
                   {isDone ? (
                     <span className="text-white"><CheckIcon /></span>
@@ -392,8 +301,8 @@ export default function Module5Page() {
               </div>
               {i < STEP_LABELS.length - 1 && (
                 <div
-                  className="h-0.5 w-16 mb-4 mx-1"
-                  style={{ background: i < currentStepIndex ? '#10B981' : '#374151' }}
+                  className="h-0.5 w-12 mb-4 mx-1"
+                  style={{ background: i < currentStepIndex ? '#10B981' : '#D1D5DB' }}
                 />
               )}
             </div>
@@ -409,7 +318,7 @@ export default function Module5Page() {
       <div className="min-h-screen bg-gray-950 flex items-center justify-center">
         <div className="text-center">
           <div className="w-10 h-10 border-4 border-[#F4B942] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-sm text-gray-400">Loading your progress…</p>
+          <p className="text-sm text-gray-500">Loading your progress…</p>
         </div>
       </div>
     )
@@ -424,11 +333,11 @@ export default function Module5Page() {
         <div className="max-w-[430px] md:max-w-3xl mx-auto px-4 pt-6 pb-32">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: '#F4B942' }}>
-              <span className="font-bold text-[#1A1F36] text-sm">5</span>
+              <span className="font-bold text-white text-sm">4</span>
             </div>
             <div>
-              <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Module 5</p>
-              <h1 className="text-base font-bold text-white">Lead Magnet Builder</h1>
+              <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Module 4</p>
+              <h1 className="text-base font-bold text-white">7-Day Email Sequence</h1>
             </div>
           </div>
 
@@ -437,35 +346,45 @@ export default function Module5Page() {
               <span className="text-white"><CheckIcon /></span>
             </div>
             <div>
-              <p className="font-bold text-emerald-300">Module 5 Complete!</p>
-              <p className="text-sm text-emerald-300 mt-0.5">Your lead magnet is saved.</p>
+              <p className="font-bold text-emerald-300">Module 4 Complete!</p>
+              <p className="text-sm text-emerald-300 mt-0.5">Your 7-day email sequence is saved.</p>
             </div>
           </div>
 
-          {leadMagnet && (
-            <div className="bg-gray-900 rounded-xl p-4 mb-4" style={{ border: '1px solid #374151' }}>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Your Lead Magnet</p>
-              <p className="text-sm font-bold text-white mb-1">{getSection('title')}</p>
-              <p className="text-xs text-gray-400 capitalize">{selectedFormat?.replace('_', ' ')} format</p>
-            </div>
-          )}
+          <div className="bg-gray-900 rounded-xl p-4 mb-4" style={{ border: '1px solid #374151' }}>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Your Sequence</p>
+            {emails.map(e => (
+              <div key={e.day} className="flex items-center gap-3 mb-2 last:mb-0">
+                <div
+                  className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                  style={{ background: e.type === 'selling' ? '#1c1500' : '#1f2937' }}
+                >
+                  <MailIcon selling={e.type === 'selling'} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-white truncate">{e.subject_a || e.subject}</p>
+                  <p className="text-xs text-gray-500">Day {e.day} &middot; {e.type === 'selling' ? 'Selling email' : 'Value email'}</p>
+                </div>
+              </div>
+            ))}
+          </div>
 
           <div className="rounded-xl p-4 mb-4" style={{ background: '#1A1F36', border: '2px solid #F4B942' }}>
             <p className="text-xs font-medium mb-1" style={{ color: '#F4B942' }}>Up Next</p>
-            <p className="text-white font-bold">Module 6 — Facebook Content Engine</p>
-            <p className="text-gray-300 text-sm mt-1">Generate Facebook posts that attract your ideal buyers.</p>
+            <p className="text-white font-bold">Module 5 — Lead Magnet Builder</p>
+            <p className="text-gray-300 text-sm mt-1">Create a free lead magnet that builds your email list.</p>
             <button
-              onClick={() => router.push('/module/6')}
+              onClick={() => router.push('/module/5')}
               className="mt-3 w-full py-2.5 rounded-lg font-bold text-sm"
               style={{ background: '#F4B942', color: '#1A1F36' }}
             >
-              Start Module 6
+              Start Module 5
             </button>
           </div>
 
           <button
             onClick={() => router.push('/dashboard')}
-            className="w-full text-center text-sm text-gray-400 underline py-2"
+            className="w-full text-center text-sm text-gray-500 underline py-2"
           >
             Back to Dashboard
           </button>
@@ -486,7 +405,7 @@ export default function Module5Page() {
         <div className="flex items-center gap-3 mb-5">
           <button
             onClick={() => {
-              if (step === 'preview' && !generating) setStep('format')
+              if (step === 'emails' && !generatingEmails) setStep('url')
               else router.push('/dashboard')
             }}
             className="w-8 h-8 flex items-center justify-center rounded-full flex-shrink-0"
@@ -496,164 +415,200 @@ export default function Module5Page() {
             <span style={{ color: '#1A1F36' }}><BackIcon /></span>
           </button>
           <div>
-            <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Module 5</p>
-            <h1 className="text-base font-bold text-white">Lead Magnet Builder</h1>
+            <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Module 4</p>
+            <h1 className="text-base font-bold text-white">7-Day Email Sequence</h1>
           </div>
         </div>
 
         <ProgressDots />
 
         {error && (
-          <div className="text-red-400 text-sm rounded-lg px-4 py-3 mb-4" style={{ background: '#1a0000', border: '1px solid #7f1d1d' }}>
+          <div className="bg-red-900/40 border border-red-700 text-red-300 text-sm rounded-lg px-4 py-3 mb-4">
             {error}
           </div>
         )}
 
-        {/* ── Format Step ───────────────────────────────────── */}
-        {step === 'format' && (
+        {/* ── URL Step ──────────────────────────────────────── */}
+        {step === 'url' && (
           <div>
-            <p className="text-sm text-gray-400 mb-4">
-              Choose the format for your free lead magnet. This will be the gift you offer in exchange for someone&apos;s email.
-            </p>
-
-            <div className="space-y-3">
-              {FORMAT_OPTIONS.map(opt => {
-                const isSelected = selectedFormat === opt.key
-                return (
-                  <button
-                    key={opt.key}
-                    onClick={() => setSelectedFormat(opt.key)}
-                    className="w-full text-left rounded-xl p-4 transition-all"
-                    style={{
-                      background: isSelected ? '#1c1500' : '#111827',
-                      border: `2px solid ${isSelected ? '#F4B942' : '#374151'}`,
-                    }}
-                  >
-                    <div className="flex items-start gap-4">
-                      <div className="flex-shrink-0 mt-0.5">
-                        <FormatIcon format={opt.key} />
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <p className="text-sm font-bold text-white">{opt.label}</p>
-                          {isSelected && (
-                            <div
-                              className="w-5 h-5 rounded-full flex items-center justify-center"
-                              style={{ background: '#F4B942' }}
-                            >
-                              <span className="text-[#1A1F36]"><CheckIcon /></span>
-                            </div>
-                          )}
-                        </div>
-                        <p className="text-xs text-gray-400 leading-relaxed">{opt.description}</p>
-                      </div>
-                    </div>
-                  </button>
-                )
-              })}
+            <div className="bg-gray-900 rounded-xl p-4 mb-4" style={{ border: '1px solid #374151' }}>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Writing emails for</p>
+              {ebookTitle && <p className="text-sm font-semibold text-white mb-1">{ebookTitle}</p>}
+              {clarity && <p className="text-xs text-gray-400">For: {clarity.target_market}</p>}
             </div>
 
-            {clarity && (
-              <div className="bg-gray-900 rounded-xl p-4 mt-4" style={{ borderTop: '1px solid #374151', borderRight: '1px solid #374151', borderBottom: '1px solid #374151', borderLeft: '4px solid #F4B942' }}>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Writing for</p>
-                <p className="text-sm text-gray-200">{clarity.target_market}</p>
-              </div>
-            )}
+            <div className="bg-gray-900 rounded-xl p-4 mb-4" style={{ border: '1px solid #374151' }}>
+              <label className="block text-sm font-semibold text-white mb-1">
+                Your Sales Page URL
+              </label>
+              <p className="text-xs text-gray-400 mb-3">
+                Emails 5–7 will link to this. You can skip it for now and add it in Systeme.io.
+              </p>
+              <input
+                type="url"
+                value={salesPageUrl}
+                onChange={e => setSalesPageUrl(e.target.value)}
+                className="w-full border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400/40 bg-gray-950 text-white"
+                style={{ borderColor: '#374151' }}
+                placeholder="https://yourpage.systeme.io/ebook"
+              />
+            </div>
+
+            <div className="rounded-xl p-4" style={{ background: '#1c1500', borderTop: '1px solid #374151', borderRight: '1px solid #374151', borderBottom: '1px solid #374151', borderLeft: '4px solid #F4B942' }}>
+              <p className="text-xs font-semibold text-white mb-1">What you&apos;ll get</p>
+              <p className="text-sm text-gray-400">
+                7 short, personal emails. Days 1–4 build trust with pure value. Days 5–7 gently sell your ebook — no hype, no fake urgency.
+              </p>
+            </div>
           </div>
         )}
 
-        {/* ── Preview Step ──────────────────────────────────── */}
-        {step === 'preview' && (
+        {/* ── Emails Step ───────────────────────────────────── */}
+        {step === 'emails' && (
           <div>
             {/* Generating */}
-            {generating && (
+            {generatingEmails && (
               <div className="text-center py-16">
                 <div className="w-12 h-12 border-4 border-[#F4B942] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-                <p className="text-sm font-medium text-white">Creating your lead magnet…</p>
-                <p className="text-xs text-gray-400 mt-1">Making sure it&apos;s useful enough to share, irresistible enough to download</p>
+                <p className="text-sm font-medium text-white">Writing your 7-day sequence…</p>
+                <p className="text-xs text-gray-400 mt-1">Making each email feel personal and real</p>
               </div>
             )}
 
-            {/* Sections */}
-            {!generating && leadMagnet && (
+            {/* Emails ready */}
+            {!generatingEmails && emails.length > 0 && (
               <div>
-                {SECTION_LABELS.map(({ key, label }) => (
-                  <div key={key} className="bg-gray-900 rounded-xl p-4 mb-3" style={{ border: '1px solid #374151' }}>
-                    <div className="flex items-center justify-between mb-2">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">{label}</p>
-                      <div className="flex items-center gap-3">
-                        <button
-                          onClick={() => setEditingSection(editingSection === key ? null : key)}
-                          className="flex items-center gap-1 text-xs text-gray-400 hover:text-white"
-                        >
-                          <EditIcon />
-                          <span>{editingSection === key ? 'Done' : 'Edit'}</span>
-                        </button>
-                        <button
-                          onClick={() => handleRegenerateSection(key)}
-                          disabled={regeneratingSection !== null}
-                          className="flex items-center gap-1 text-xs text-gray-400 hover:text-[#F4B942] disabled:opacity-40"
-                        >
-                          <RefreshIcon />
-                          <span>{regeneratingSection === key ? '…' : 'Redo'}</span>
-                        </button>
-                        <button
-                          onClick={() => copyToClipboard(getSection(key), key)}
-                          className="flex items-center gap-1 text-xs text-gray-400 hover:text-white"
-                        >
-                          <CopyIcon />
-                          <span>{copiedSection === key ? 'Copied!' : 'Copy'}</span>
-                        </button>
-                      </div>
-                    </div>
-
-                    {regeneratingSection === key ? (
-                      <div className="flex items-center gap-2 py-3">
-                        <div className="w-4 h-4 border-2 border-[#F4B942] border-t-transparent rounded-full animate-spin" />
-                        <p className="text-sm text-gray-400">Rewriting {label.toLowerCase()}…</p>
-                      </div>
-                    ) : editingSection === key ? (
-                      <textarea
-                        value={getSection(key)}
-                        onChange={e => setEditedSections(prev => ({ ...prev, [key]: e.target.value }))}
-                        rows={key === 'main_content' ? 10 : 4}
-                        className="w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 bg-gray-950 text-white"
-                        style={{ borderColor: '#F4B942' }}
-                      />
-                    ) : (
-                      <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap">
-                        {getSection(key)}
-                      </p>
-                    )}
-                  </div>
-                ))}
-
-                {/* Export button */}
+                {/* Copy all */}
                 <button
-                  onClick={handleExport}
-                  disabled={exporting}
-                  className="w-full py-3 rounded-xl font-semibold text-sm mb-3 flex items-center justify-center gap-2 transition-all disabled:opacity-60"
+                  onClick={() => copyToClipboard(buildCopyAllText(), 'all')}
+                  className="w-full py-3 rounded-xl font-semibold text-sm mb-4 flex items-center justify-center gap-2 transition-all"
                   style={{
-                    background: exportDone ? '#10B981' : '#1A1F36',
-                    color: exportDone ? 'white' : '#F4B942',
+                    background: copiedLabel === 'all' ? '#065F46' : '#1f2937',
+                    color: copiedLabel === 'all' ? '#6EE7B7' : '#F4B942',
+                    border: `1px solid ${copiedLabel === 'all' ? '#10B981' : '#374151'}`,
                   }}
                 >
-                  <DownloadIcon />
-                  {exporting ? 'Exporting…' : exportDone ? 'Downloaded!' : 'Export as Word Document (.docx)'}
+                  <CopyIcon />
+                  {copiedLabel === 'all' ? 'Copied All 7 Emails!' : 'Copy All 7 Emails'}
                 </button>
 
-                {/* PDF tip */}
-                {exportDone && (
-                  <div
-                    className="rounded-xl p-3 mb-3 text-sm"
-                    style={{ background: '#1c1500', border: '1px solid #92400E' }}
-                  >
-                    <p className="font-semibold text-yellow-300 mb-1">Next step: Save as PDF</p>
-                    <p className="text-xs text-yellow-500">
-                      Open the downloaded file in Word → File → Save As → PDF. Share the PDF version with your audience.
-                    </p>
-                  </div>
-                )}
+                {/* Accordion */}
+                <div className="space-y-2 mb-5">
+                  {emails.map(email => {
+                    const isExpanded = expandedDay === email.day
+                    const isRegenerating = regeneratingDay === email.day
+                    return (
+                      <div
+                        key={email.day}
+                        className="bg-gray-900 rounded-xl overflow-hidden"
+                        style={{ border: `1.5px solid ${isExpanded ? '#F4B942' : '#374151'}` }}
+                      >
+                        {/* Header row */}
+                        <button
+                          onClick={() => setExpandedDay(isExpanded ? null : email.day)}
+                          className="w-full px-4 py-3 flex items-center gap-3 text-left"
+                        >
+                          <div
+                            className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                            style={{ background: email.type === 'selling' ? '#1c1500' : '#1f2937' }}
+                          >
+                            <MailIcon selling={email.type === 'selling'} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-0.5">
+                              <span className="text-xs font-bold text-gray-500">Day {email.day}</span>
+                              <span
+                                className="text-[10px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wide"
+                                style={{
+                                  background: email.type === 'selling' ? '#1c1500' : '#1f2937',
+                                  color: email.type === 'selling' ? '#F4B942' : '#9CA3AF',
+                                }}
+                              >
+                                {email.type === 'selling' ? 'Selling' : 'Value'}
+                              </span>
+                            </div>
+                            <p className="text-sm font-medium text-white truncate pr-2">
+                              {email.subject_a || email.subject || ''}
+                            </p>
+                          </div>
+                          <span className="text-gray-500 flex-shrink-0">
+                            {isExpanded ? <ChevronUpIcon /> : <ChevronDownIcon />}
+                          </span>
+                        </button>
+
+                        {/* Expanded body */}
+                        {isExpanded && (
+                          <div className="px-4 pb-4 border-t" style={{ borderColor: '#F4B942' }}>
+                            <div className="flex items-center justify-between pt-3 mb-3">
+                              <p className="text-xs text-gray-500">Subject line + body</p>
+                              <div className="flex items-center gap-3">
+                                <button
+                                  onClick={() => handleRegenerateEmail(email.day)}
+                                  disabled={regeneratingDay !== null}
+                                  className="flex items-center gap-1 text-xs text-gray-400 disabled:opacity-40"
+                                >
+                                  <RefreshIcon />
+                                  <span>{isRegenerating ? 'Rewriting…' : 'Rewrite'}</span>
+                                </button>
+                                <button
+                                  onClick={() => copyToClipboard(
+                                    [
+                                      `Subject A: ${email.subject_a || email.subject || ''}`,
+                                      email.subject_b ? `Subject B: ${email.subject_b}` : '',
+                                      '',
+                                      email.body,
+                                      email.cta ? `\nCTA: ${email.cta}` : '',
+                                    ].filter(l => l !== '').join('\n'),
+                                    `day-${email.day}`
+                                  )}
+                                  className="flex items-center gap-1 text-xs"
+                                  style={{ color: copiedLabel === `day-${email.day}` ? '#6EE7B7' : '#9CA3AF' }}
+                                >
+                                  <CopyIcon />
+                                  <span>{copiedLabel === `day-${email.day}` ? 'Copied!' : 'Copy'}</span>
+                                </button>
+                              </div>
+                            </div>
+
+                            {isRegenerating ? (
+                              <div className="flex items-center gap-2 py-4">
+                                <div className="w-4 h-4 border-2 border-[#F4B942] border-t-transparent rounded-full animate-spin" />
+                                <p className="text-sm text-gray-400">Rewriting Day {email.day}…</p>
+                              </div>
+                            ) : (
+                              <>
+                                {/* Subject line options */}
+                                <div className="mb-3 pb-3 space-y-1.5" style={{ borderBottom: '1px solid #374151' }}>
+                                  <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-2">Subject Lines (pick one)</p>
+                                  <div className="flex items-start gap-2">
+                                    <span className="text-[10px] font-bold text-[#F4B942] mt-0.5 flex-shrink-0">A</span>
+                                    <p className="text-sm font-semibold text-white">{email.subject_a || email.subject}</p>
+                                  </div>
+                                  {email.subject_b && (
+                                    <div className="flex items-start gap-2">
+                                      <span className="text-[10px] font-bold text-gray-500 mt-0.5 flex-shrink-0">B</span>
+                                      <p className="text-sm font-medium text-gray-400">{email.subject_b}</p>
+                                    </div>
+                                  )}
+                                </div>
+                                <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap mb-3">
+                                  {email.body}
+                                </p>
+                                {email.cta && (
+                                  <div className="rounded-lg px-3 py-2" style={{ background: '#1c1500', border: '1px solid #F4B942' }}>
+                                    <p className="text-xs font-semibold mb-1" style={{ color: '#F4B942' }}>CTA Link</p>
+                                    <p className="text-xs text-yellow-200 break-all">{email.cta}</p>
+                                  </div>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+
               </div>
             )}
           </div>
@@ -673,36 +628,33 @@ export default function Module5Page() {
             transform: 'translateX(-50%)',
           }}
         >
-          {step === 'format' && (
+          {step === 'url' && (
             <button
-              onClick={handleGenerate}
-              disabled={!selectedFormat}
-              className="w-full py-4 rounded-xl font-bold text-base disabled:opacity-40 transition-all"
-              style={{ background: selectedFormat ? '#F4B942' : '#374151', color: selectedFormat ? '#1A1F36' : '#9CA3AF' }}
+              onClick={handleGenerateEmails}
+              className="w-full py-4 rounded-xl font-bold text-base"
+              style={{ background: '#F4B942', color: '#1A1F36' }}
             >
-              {selectedFormat
-                ? `Generate My ${FORMAT_OPTIONS.find(f => f.key === selectedFormat)?.label}`
-                : 'Pick a Format to Continue'}
+              Write My 7 Emails
             </button>
           )}
 
-          {step === 'preview' && generating && (
+          {step === 'emails' && generatingEmails && (
             <div
               className="w-full py-4 rounded-xl font-bold text-base flex items-center justify-center gap-2 opacity-60"
-              style={{ background: '#374151', color: '#9CA3AF' }}
+              style={{ background: '#111827', color: '#9CA3AF', border: '1px solid #374151' }}
             >
-              <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
-              Creating your lead magnet…
+              <div className="w-4 h-4 border-2 border-gray-500 border-t-transparent rounded-full animate-spin" />
+              Writing your sequence…
             </div>
           )}
 
-          {step === 'preview' && !generating && leadMagnet && (
+          {step === 'emails' && !generatingEmails && emails.length > 0 && (
             <button
               onClick={handleMarkComplete}
               className="w-full py-4 rounded-xl font-bold text-base"
               style={{ background: '#F4B942', color: '#1A1F36' }}
             >
-              Save &amp; Complete Module 5
+              Save &amp; Complete Module 4
             </button>
           )}
         </div>
