@@ -672,7 +672,7 @@ export default function Module3Page() {
           <div className="space-y-4">
             <div>
               <p className="text-white font-bold text-lg mb-1">What holds them back?</p>
-              <p className="text-gray-400 text-sm">Before someone buys, they have doubts. Pick 3 to 5 that you want your offer to answer directly.</p>
+              <p className="text-gray-400 text-sm">These are doubts your buyer has about <span className="text-white font-semibold">themselves</span> — not about you. Things like &ldquo;I&apos;ve tried this before and it didn&apos;t work&rdquo; or &ldquo;What if this doesn&apos;t apply to my situation?&rdquo; Pick 3 to 5 to answer with your bonuses.</p>
             </div>
 
             {!objectionsLoading && objections.length === 0 && (
