@@ -74,6 +74,14 @@ export default function SignupPage() {
         role: 'student',
       }, { onConflict: 'id' })
 
+      // Check if a tier tag was already sent by Systeme.io before this signup
+      // If so, apply it now via server-side API
+      await fetch('/api/apply-pending-access', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, userId: data.user.id }),
+      })
+
       const { data: profile } = await supabase
         .from('profiles')
         .select('access_level')
