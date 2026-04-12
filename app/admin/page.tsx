@@ -49,14 +49,14 @@ export default async function AdminPage() {
   const [
     { data: clarities },
     { data: ebooks },
-    { data: salesPages },
+    { data: offers },
     { data: emailSeqs },
     { data: leadMagnets },
     { data: contentPosts },
   ] = await Promise.all([
     adminClient.from('clarity_sentences').select('user_id').in('user_id', ids),
     adminClient.from('ebooks').select('user_id').in('user_id', ids).eq('status', 'complete'),
-    adminClient.from('sales_pages').select('user_id').in('user_id', ids),
+    adminClient.from('offers').select('user_id').in('user_id', ids),
     adminClient.from('email_sequences').select('user_id').in('user_id', ids),
     adminClient.from('lead_magnets').select('user_id').in('user_id', ids),
     adminClient.from('content_posts').select('user_id').in('user_id', ids),
@@ -70,7 +70,7 @@ export default async function AdminPage() {
 
   const hasClarity  = completed(clarities)
   const hasEbook    = completed(ebooks)
-  const hasSales    = completed(salesPages)
+  const hasOffer    = completed(offers)
   const hasEmail    = completed(emailSeqs)
   const hasMagnet   = completed(leadMagnets)
   const hasPosts    = completed(contentPosts)
@@ -91,7 +91,7 @@ export default async function AdminPage() {
     completions:      [
       hasClarity(s.id),
       hasEbook(s.id),
-      hasSales(s.id),
+      hasOffer(s.id),
       hasEmail(s.id),
       hasMagnet(s.id),
       hasPosts(s.id),

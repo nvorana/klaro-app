@@ -32,20 +32,20 @@ export default async function DashboardPage() {
   const [
     { data: clarity },
     { data: ebook },
-    { data: salesPage },
+    { data: offer },
     { data: emailSeq },
     { data: leadMagnet },
     { data: contentPost },
   ] = await Promise.all([
     supabase.from('clarity_sentences').select('id').eq('user_id', user.id).maybeSingle(),
     supabase.from('ebooks').select('id').eq('user_id', user.id).eq('status', 'complete').maybeSingle(),
-    supabase.from('sales_pages').select('id').eq('user_id', user.id).maybeSingle(),
+    supabase.from('offers').select('id').eq('user_id', user.id).maybeSingle(),
     supabase.from('email_sequences').select('id').eq('user_id', user.id).maybeSingle(),
     supabase.from('lead_magnets').select('id').eq('user_id', user.id).maybeSingle(),
     supabase.from('content_posts').select('id').eq('user_id', user.id).maybeSingle(),
   ])
 
-  const completed = [!!clarity, !!ebook, !!salesPage, !!emailSeq, !!leadMagnet, !!contentPost]
+  const completed = [!!clarity, !!ebook, !!offer, !!emailSeq, !!leadMagnet, !!contentPost]
   const completedCount = completed.filter(Boolean).length
   const progressPercent = Math.round((completedCount / 6) * 100)
 

@@ -72,9 +72,9 @@ export const MODULE_INFO = [
   },
   {
     number: 3,
-    title: 'The Offer & Sales Page Builder',
-    description: 'Build an irresistible offer and generate your full sales page.',
-    output: 'Your Sales Page Copy',
+    title: 'The Irresistible Offer Builder',
+    description: 'Build a compelling offer with the right bonuses, price, and guarantee.',
+    output: 'Your Irresistible Offer Statement',
   },
   {
     number: 4,

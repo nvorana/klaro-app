@@ -5,7 +5,16 @@ import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
 import GoldConfetti from '@/components/GoldConfetti'
 
-type Step = 'objections' | 'bonuses' | 'offer' | 'salespage' | 'complete'
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+type Step = 'foundation' | 'transformation' | 'objections' | 'bonuses' | 'price_anchor' | 'guarantee' | 'offer_statement' | 'complete'
+
+interface ClarityData {
+  target_market: string
+  core_problem: string
+  unique_mechanism: string
+  full_sentence: string
+}
 
 interface Objection {
   objection: string
@@ -21,51 +30,22 @@ interface Bonus {
   loading?: boolean
 }
 
-interface SalesPageSections {
-  headline: string
-  hook: string
-  analogy: string
-  pain: string
-  principle: string
-  offer_intro: string
-  objections: string
-  bonuses: string
-  price: string
-  cta: string
-}
+// ── Constants ─────────────────────────────────────────────────────────────────
 
-type SectionKey = keyof SalesPageSections
+const STEP_LABELS = ['Foundation', 'Transformation', 'Objections', 'Bonuses', 'Price', 'Guarantee', 'Offer']
+const STEP_KEYS: Step[] = ['foundation', 'transformation', 'objections', 'bonuses', 'price_anchor', 'guarantee', 'offer_statement']
 
-const COPY_SECTIONS: { key: SectionKey; label: string; desc: string }[] = [
-  { key: 'headline',   label: 'Headline',         desc: '4U Formula — the bold title at the top' },
-  { key: 'hook',       label: 'Hook',             desc: 'The scroll-stopper opener' },
-  { key: 'analogy',    label: 'Analogy',          desc: 'A relatable Filipino story' },
-  { key: 'pain',       label: 'Pain & Frustration', desc: 'Show them you understand' },
-  { key: 'principle',  label: 'Truth Reveal',     desc: 'The mindset shift' },
-  { key: 'offer_intro',label: 'The Offer',        desc: 'Introduce the ebook' },
-  { key: 'objections', label: 'Objections',       desc: 'Handle their doubts' },
-  { key: 'bonuses',    label: 'Bonuses',          desc: 'Present the value stack' },
-  { key: 'price',      label: 'Price',            desc: 'Make the price a no-brainer' },
-  { key: 'cta',        label: 'Call to Action',   desc: 'How to order' },
+const GUARANTEE_OPTIONS = [
+  '30-day money-back guarantee — no questions asked',
+  '7-day full refund guarantee',
+  '100% satisfaction guarantee or your money back',
+  'Try it for 14 days — if it doesn\'t help, get a full refund',
 ]
 
-interface ClarityData {
-  target_market: string
-  core_problem: string
-  unique_mechanism: string
-  full_sentence: string
-}
+const TEXT_FORMATS = ['PDF Checklist', 'Worksheet', 'Template', 'Cheat Sheet', 'Swipe File', 'Script', 'Mini-Guide', 'Action Guide']
 
-interface HeadlineOptions {
-  options: string[]
-  recommended: number
-  recommended_reason: string
-}
+// ── Icons ─────────────────────────────────────────────────────────────────────
 
-const STEP_LABELS = ['Objections', 'Bonuses', 'Offer', 'Sales Page']
-const STEP_KEYS: Step[] = ['objections', 'bonuses', 'offer', 'salespage']
-
-// ── SVG Icons ────────────────────────────────────────────────────
 const CheckIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
     <polyline points="20 6 9 17 4 12" />
@@ -78,13 +58,6 @@ const BackIcon = () => (
   </svg>
 )
 
-const CopyIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-  </svg>
-)
-
 const RefreshIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <polyline points="23 4 23 10 17 10" />
@@ -92,73 +65,63 @@ const RefreshIcon = () => (
   </svg>
 )
 
-const EditIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+const CopyIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
   </svg>
 )
 
-const StarIcon = () => (
-  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-  </svg>
-)
-
-const GUARANTEE_OPTIONS = [
-  '30-day money-back guarantee — no questions asked',
-  '7-day full refund guarantee',
-  '100% satisfaction guarantee or your money back',
-  "Try it for 14 days — if it doesn't help, get a full refund",
-]
+// ── Main Component ────────────────────────────────────────────────────────────
 
 export default function Module3Page() {
   const router = useRouter()
-  const [step, setStep] = useState<Step>('objections')
+  const [step, setStep] = useState<Step>('foundation')
   const [showConfetti, setShowConfetti] = useState(false)
-  const [clarity, setClarity] = useState<ClarityData | null>(null)
-  const [ebookTitle, setEbookTitle] = useState('')
-  const [clarityLoading, setClarityLoading] = useState(true)
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  // Objections step
-  const [objectionsLoading, setObjectionsLoading] = useState(false)
+  // Foundation
+  const [clarity, setClarity] = useState<ClarityData | null>(null)
+  const [ebookTitle, setEbookTitle] = useState('')
+
+  // Transformation
+  const [studentInput, setStudentInput] = useState('')
+  const [transformation, setTransformation] = useState('')
+  const [transformationLoading, setTransformationLoading] = useState(false)
+  const [editingTransformation, setEditingTransformation] = useState(false)
+
+  // Objections
   const [objections, setObjections] = useState<Objection[]>([])
+  const [objectionsLoading, setObjectionsLoading] = useState(false)
   const [selectedObjections, setSelectedObjections] = useState<number[]>([])
 
-  // Bonuses step
+  // Bonuses
   const [bonuses, setBonuses] = useState<Bonus[]>([])
   const [bonusesLoading, setBonusesLoading] = useState(false)
+
+  // Price Anchor
   const [ebookValuePeso, setEbookValuePeso] = useState('997')
-
-  // Complete screen
-  const [showSalesCopy, setShowSalesCopy] = useState(false)
-  const [saving, setSaving] = useState(false)
-
-  // Offer step
   const [sellingPrice, setSellingPrice] = useState('297')
+  const [priceJustification, setPriceJustification] = useState('')
+  const [priceJustLoading, setPriceJustLoading] = useState(false)
+
+  // Guarantee
   const [guarantee, setGuarantee] = useState(GUARANTEE_OPTIONS[0])
   const [customGuarantee, setCustomGuarantee] = useState(false)
 
-  // Sales page step — section-by-section
-  const [salesPage, setSalesPage] = useState<Partial<SalesPageSections>>({})
-  const [editedSections, setEditedSections] = useState<Partial<SalesPageSections>>({})
-  const [activeSectionIndex, setActiveSectionIndex] = useState(0)
-  const [sectionGenerating, setSectionGenerating] = useState(false)
-  const [editingSection, setEditingSection] = useState<SectionKey | null>(null)
-  const [salesPageUrl, setSalesPageUrl] = useState('')
-  const [copiedSection, setCopiedSection] = useState<string | null>(null)
-
-  // Headline options — for the 3-card selection UI
-  const [headlineOptions, setHeadlineOptions] = useState<HeadlineOptions | null>(null)
-  const [selectedHeadlineIndex, setSelectedHeadlineIndex] = useState<number | null>(null)
+  // Offer Statement
+  const [offerStatement, setOfferStatement] = useState('')
+  const [offerLoading, setOfferLoading] = useState(false)
+  const [copied, setCopied] = useState(false)
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
 
-  // ── Load data on mount ───────────────────────────────────────
+  // ── Load data ─────────────────────────────────────────────────────────────
+
   useEffect(() => {
     async function loadData() {
       const { data: { user } } = await supabase.auth.getUser()
@@ -177,75 +140,89 @@ export default function Module3Page() {
         .from('ebooks')
         .select('title')
         .eq('user_id', user.id)
-        .single()
+        .eq('status', 'complete')
+        .order('created_at', { ascending: false })
+        .limit(1)
 
-      if (!ebookData?.title) { router.push('/module/2'); return }
-      setEbookTitle(ebookData.title)
+      if (ebookData && ebookData.length > 0) {
+        setEbookTitle(ebookData[0].title || '')
+      }
 
-      // Restore existing offer + sales page if any
+      // Resume from saved offer if exists
       const { data: offerData } = await supabase
         .from('offers')
         .select('*')
         .eq('user_id', user.id)
-        .single()
+        .order('created_at', { ascending: false })
+        .limit(1)
 
-      if (offerData) {
-        setBonuses(offerData.bonuses || [])
-        setSellingPrice(String(offerData.selling_price || '297'))
-        setGuarantee(offerData.guarantee || GUARANTEE_OPTIONS[0])
-
-        const { data: spData } = await supabase
-          .from('sales_pages')
-          .select('*')
-          .eq('user_id', user.id)
-          .single()
-
-        if (spData?.full_copy) {
-          const loaded: Partial<SalesPageSections> = {}
-          for (const s of COPY_SECTIONS) {
-            const val = spData[s.key]
-            if (val) loaded[s.key] = val
-          }
-          setSalesPage(loaded)
-          // Resume at first incomplete section
-          const firstIncomplete = COPY_SECTIONS.findIndex(s => !loaded[s.key])
-          setActiveSectionIndex(firstIncomplete === -1 ? COPY_SECTIONS.length - 1 : firstIncomplete)
-          setSalesPageUrl(spData.published_url || '')
-          setStep('salespage')
-        } else {
-          setStep('offer')
+      if (offerData && offerData.length > 0) {
+        const o = offerData[0]
+        if (o.offer_statement) {
+          setTransformation(o.transformation || '')
+          setSellingPrice(String(o.selling_price || '297'))
+          setEbookValuePeso(String(o.ebook_value || '997'))
+          setGuarantee(o.guarantee || GUARANTEE_OPTIONS[0])
+          setOfferStatement(o.offer_statement || '')
+          if (o.bonuses) setBonuses(o.bonuses)
+          setStep('complete')
         }
       }
 
-      setClarityLoading(false)
+      setLoading(false)
     }
     loadData()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const currentStepIndex = STEP_KEYS.indexOf(
-    step === 'complete' ? 'salespage' : step
-  )
+  // ── Stepper ────────────────────────────────────────────────────────────────
 
-  // ── Helpers ──────────────────────────────────────────────────
+  const currentStepIndex = STEP_KEYS.indexOf(step === 'complete' ? 'offer_statement' : step)
 
   function goBack() {
-    const prev: Record<Step, Step | null> = {
-      objections: null,
+    const prev: Partial<Record<Step, Step>> = {
+      transformation: 'foundation',
+      objections: 'transformation',
       bonuses: 'objections',
-      offer: 'bonuses',
-      salespage: 'offer',
-      complete: 'salespage',
+      price_anchor: 'bonuses',
+      guarantee: 'price_anchor',
+      offer_statement: 'guarantee',
     }
     const prevStep = prev[step]
     if (prevStep) setStep(prevStep)
     else router.push('/dashboard')
   }
 
-  const totalValue =
-    (parseInt(ebookValuePeso) || 0) +
-    bonuses.reduce((sum, b) => sum + (b.value_peso || 0), 0)
+  // ── Transformation ─────────────────────────────────────────────────────────
 
-  // ── Objections ───────────────────────────────────────────────
+  async function handleRefineTransformation() {
+    if (!clarity || !studentInput.trim()) return
+    setError('')
+    setTransformationLoading(true)
+    try {
+      const res = await fetch('/api/generate/offer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'transformation',
+          target_market: clarity.target_market,
+          problem: clarity.core_problem,
+          mechanism: clarity.unique_mechanism,
+          ebook_title: ebookTitle,
+          student_input: studentInput,
+        }),
+      })
+      const { data, error: apiErr } = await res.json()
+      if (apiErr) throw new Error(apiErr)
+      setTransformation(data.statement || '')
+      setEditingTransformation(false)
+    } catch {
+      setError('Could not refine your statement. Please try again.')
+    } finally {
+      setTransformationLoading(false)
+    }
+  }
+
+  // ── Objections ─────────────────────────────────────────────────────────────
 
   async function handleGenerateObjections() {
     if (!clarity) return
@@ -280,7 +257,7 @@ export default function Module3Page() {
     })
   }
 
-  // ── Bonuses ──────────────────────────────────────────────────
+  // ── Bonuses ────────────────────────────────────────────────────────────────
 
   async function handleGenerateBonuses() {
     if (!clarity || selectedObjections.length === 0) return
@@ -311,452 +288,369 @@ export default function Module3Page() {
             objection: objections[objIndex].objection,
           }),
         })
-        const { data, error: apiErr } = await res.json()
-        if (apiErr) throw new Error(apiErr)
-        setBonuses(prev => {
-          const updated = [...prev]
-          updated[idx] = {
-            ...data,
-            value_peso: 0,
-            objection_addressed: objections[objIndex].objection,
-            loading: false,
-          }
-          return updated
-        })
+        const { data } = await res.json()
+        setBonuses(prev => prev.map((b, i) =>
+          i === idx ? { ...data, value_peso: 0, objection_addressed: objections[objIndex].objection, loading: false } : b
+        ))
       } catch {
-        setBonuses(prev => {
-          const updated = [...prev]
-          updated[idx] = {
-            ...updated[idx],
-            bonus_name: 'Bonus Document',
-            description: 'A helpful resource for your audience.',
-            format: 'guide',
-            loading: false,
-          }
-          return updated
-        })
+        setBonuses(prev => prev.map((b, i) =>
+          i === idx ? { ...b, bonus_name: 'Bonus', description: 'Could not generate. Please edit.', format: 'PDF Checklist', loading: false } : b
+        ))
       }
     }
     setBonusesLoading(false)
   }
 
-  function updateBonus(index: number, field: keyof Bonus, value: string | number) {
-    setBonuses(prev => {
-      const updated = [...prev]
-      updated[index] = { ...updated[index], [field]: value }
-      return updated
-    })
-  }
-
-  // ── Sales Page — section-by-section ─────────────────────────
-
-  async function handleGenerateSection(sectionKey: SectionKey) {
+  async function regenerateBonus(idx: number) {
     if (!clarity) return
-    setError('')
-    setSectionGenerating(true)
-    setEditingSection(null)
-
-    // Reset headline selection state when regenerating headline
-    if (sectionKey === 'headline') {
-      setHeadlineOptions(null)
-      setSelectedHeadlineIndex(null)
-      setSalesPage(prev => { const u = { ...prev }; delete u.headline; return u })
-    }
-
+    const objText = bonuses[idx].objection_addressed
+    setBonuses(prev => prev.map((b, i) => i === idx ? { ...b, loading: true } : b))
     try {
-      const res = await fetch('/api/generate/sales-page/section', {
+      const res = await fetch('/api/generate/bonus', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          section: sectionKey,
+          ebook_title: ebookTitle,
           target_market: clarity.target_market,
           problem: clarity.core_problem,
-          mechanism: clarity.unique_mechanism,
+          objection: objText,
+        }),
+      })
+      const { data } = await res.json()
+      setBonuses(prev => prev.map((b, i) =>
+        i === idx ? { ...data, value_peso: b.value_peso, objection_addressed: objText, loading: false } : b
+      ))
+    } catch {
+      setBonuses(prev => prev.map((b, i) => i === idx ? { ...b, loading: false } : b))
+    }
+  }
+
+  // ── Price Anchor ───────────────────────────────────────────────────────────
+
+  const totalValue = (parseInt(ebookValuePeso) || 0) + bonuses.reduce((sum, b) => sum + (b.value_peso || 0), 0)
+
+  async function handleGeneratePriceJustification() {
+    if (!clarity || !sellingPrice) return
+    setPriceJustLoading(true)
+    setError('')
+    try {
+      const res = await fetch('/api/generate/offer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'price_anchor',
+          target_market: clarity.target_market,
           ebook_title: ebookTitle,
-          bonuses: bonuses.map(b => ({
-            bonus_name: b.bonus_name,
-            description: b.description,
-            format: b.format,
-            value_peso: b.value_peso,
-            objection_addressed: b.objection_addressed,
-          })),
+          transformation,
+          selling_price: sellingPrice,
           total_value: totalValue,
-          selling_price: parseInt(sellingPrice) || 297,
+        }),
+      })
+      const { data, error: apiErr } = await res.json()
+      if (apiErr) throw new Error(apiErr)
+      setPriceJustification(data.justification || '')
+    } catch {
+      setError('Could not generate price justification. Please try again.')
+    } finally {
+      setPriceJustLoading(false)
+    }
+  }
+
+  // ── Offer Statement ────────────────────────────────────────────────────────
+
+  async function handleGenerateOfferStatement() {
+    if (!clarity) return
+    setOfferLoading(true)
+    setError('')
+    try {
+      const res = await fetch('/api/generate/offer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'offer_statement',
+          target_market: clarity.target_market,
+          problem: clarity.core_problem,
+          ebook_title: ebookTitle,
+          transformation,
+          bonuses,
+          selling_price: sellingPrice,
+          total_value: totalValue,
           guarantee,
         }),
       })
       const { data, error: apiErr } = await res.json()
       if (apiErr) throw new Error(apiErr)
-
-      if (sectionKey === 'headline') {
-        // Parse the JSON options response
-        try {
-          const parsed = JSON.parse(data) as HeadlineOptions
-          setHeadlineOptions(parsed)
-          // Don't set salesPage.headline yet — user must pick one
-        } catch {
-          // Fallback: treat as plain text if JSON parse fails
-          setSalesPage(prev => ({ ...prev, headline: data }))
-          setEditedSections(prev => { const u = { ...prev }; delete u.headline; return u })
-        }
-      } else {
-        setSalesPage(prev => ({ ...prev, [sectionKey]: data }))
-        setEditedSections(prev => { const u = { ...prev }; delete u[sectionKey]; return u })
-      }
+      setOfferStatement(data.offer_statement || '')
     } catch {
-      setError('Could not generate this section. Please try again.')
+      setError('Could not generate offer statement. Please try again.')
     } finally {
-      setSectionGenerating(false)
+      setOfferLoading(false)
     }
   }
 
-  function selectHeadlineOption(index: number) {
-    if (!headlineOptions) return
-    const chosen = headlineOptions.options[index]
-    setSelectedHeadlineIndex(index)
-    setSalesPage(prev => ({ ...prev, headline: chosen }))
-    setEditedSections(prev => { const u = { ...prev }; delete u.headline; return u })
+  async function handleSaveOffer() {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user || !clarity) return
+
+    await supabase.from('offers').upsert({
+      user_id: user.id,
+      target_market: clarity.target_market,
+      core_problem: clarity.core_problem,
+      unique_mechanism: clarity.unique_mechanism,
+      ebook_title: ebookTitle,
+      transformation,
+      bonuses,
+      selling_price: parseInt(sellingPrice) || 0,
+      ebook_value: parseInt(ebookValuePeso) || 0,
+      total_value: totalValue,
+      price_justification: priceJustification,
+      guarantee,
+      offer_statement: offerStatement,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'user_id' })
+
+    setShowConfetti(true)
+    setTimeout(() => setShowConfetti(false), 3500)
+    setStep('complete')
   }
 
-  function getSection(key: SectionKey): string {
-    return editedSections[key] ?? salesPage[key] ?? ''
-  }
+  // ── Shared UI ──────────────────────────────────────────────────────────────
 
-  function buildFullSalesPage(): string {
-    return COPY_SECTIONS
-      .map(s => getSection(s.key))
-      .filter(Boolean)
-      .join('\n\n')
-  }
+  const inputClass = "w-full bg-gray-950 text-white text-sm px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#F4B942]"
+  const labelClass = "block text-[10px] font-bold text-gray-500 uppercase tracking-wide mb-1.5"
 
-  const allSectionsComplete = COPY_SECTIONS.every(s => !!getSection(s.key))
-
-  function copyToClipboard(text: string, label: string) {
-    navigator.clipboard.writeText(text).catch(() => {})
-    setCopiedSection(label)
-    setTimeout(() => setCopiedSection(null), 2000)
-  }
-
-  // ── Mark Complete ────────────────────────────────────────────
-
-  async function handleMarkComplete() {
-    if (!clarity || !salesPage) return
-    setError('')
-    setSaving(true)
-
-    const step1 = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('Not logged in')
-      return user
-    }
-
-    const step2 = async (userId: string) => {
-      await supabase.from('offers').delete().eq('user_id', userId)
-      const { error } = await supabase.from('offers').insert({
-        user_id: userId,
-        objections: selectedObjections.map(i => objections[i]?.objection).filter(Boolean),
-        bonuses,
-        total_value: totalValue,
-        selling_price: parseInt(sellingPrice) || 297,
-        guarantee,
-      })
-      if (error) throw new Error(`offers insert: ${error.message} (code ${error.code})`)
-    }
-
-    const step3 = async (userId: string) => {
-      const sectionData: Record<string, string> = {}
-      for (const s of COPY_SECTIONS) { sectionData[s.key] = getSection(s.key) }
-      const fullCopy = buildFullSalesPage()
-      await supabase.from('sales_pages').delete().eq('user_id', userId)
-      const { error } = await supabase.from('sales_pages').insert({
-        user_id: userId,
-        ...sectionData,
-        full_copy: fullCopy,
-        published_url: salesPageUrl || null,
-      })
-      if (error) throw new Error(`sales_pages insert: ${error.message} (code ${error.code})`)
-    }
-
-    const step4 = async (userId: string) => {
-      const { error } = await supabase.from('module_progress').upsert(
-        { user_id: userId, module_number: 3, status: 'complete',
-          completed_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-        { onConflict: 'user_id, module_number' }
-      )
-      if (error) throw new Error(`module_progress upsert: ${error.message} (code ${error.code})`)
-    }
-
-    try {
-      const user = await step1()
-      await step2(user.id)
-      await step3(user.id)
-      await step4(user.id)
-      setShowConfetti(true)
-      setStep('complete')
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err)
-      setError(`Could not save. Please try again. (${msg})`)
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  // ── Progress Dots Component ──────────────────────────────────
-
-  function ProgressDots() {
-    return (
-      <div className="flex items-center justify-center mb-6 px-2">
-        {STEP_LABELS.map((label, i) => {
-          const isDone = i < currentStepIndex
-          const isActive = i === currentStepIndex
-          return (
-            <div key={label} className="flex items-center">
-              <div className="flex flex-col items-center">
-                <div
-                  className="w-7 h-7 rounded-full flex items-center justify-center"
-                  style={{ background: isDone ? '#10B981' : isActive ? '#F4B942' : '#374151' }}
-                >
-                  {isDone ? (
-                    <span className="text-white"><CheckIcon /></span>
-                  ) : (
-                    <span className="text-xs font-bold" style={{ color: isActive ? '#1A1F36' : '#9CA3AF' }}>
-                      {i + 1}
-                    </span>
-                  )}
-                </div>
-                <span
-                  className="text-[10px] mt-1 font-medium whitespace-nowrap"
-                  style={{ color: isDone ? '#10B981' : isActive ? '#F4B942' : '#9CA3AF' }}
-                >
-                  {label}
-                </span>
-              </div>
-              {i < STEP_LABELS.length - 1 && (
-                <div
-                  className="h-0.5 w-6 mb-4 mx-1"
-                  style={{ background: i < currentStepIndex ? '#10B981' : '#374151' }}
-                />
-              )}
-            </div>
-          )
-        })}
-      </div>
-    )
-  }
-
-  // ── Loading screen ───────────────────────────────────────────
-
-  if (clarityLoading) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-10 h-10 border-4 border-[#F4B942] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-sm text-gray-500">Loading your progress…</p>
-        </div>
+        <div className="w-8 h-8 border-4 border-[#F4B942] border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
 
-  // ── Complete Screen ──────────────────────────────────────────
+  // ── Complete Screen ────────────────────────────────────────────────────────
 
   if (step === 'complete') {
     return (
-      <div className="min-h-screen bg-gray-950">
-        <GoldConfetti trigger={showConfetti} onDone={() => setShowConfetti(false)} />
-        <div className="max-w-[430px] md:max-w-3xl mx-auto px-4 pt-6 pb-32">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: '#F4B942' }}>
-              <span className="font-bold text-white text-sm">3</span>
+      <div className="min-h-screen bg-gray-950 max-w-[430px] md:max-w-3xl mx-auto flex flex-col">
+        {showConfetti && <GoldConfetti />}
+        <div className="px-4 pt-6 pb-10 flex-1">
+          <div className="text-center mb-6">
+            <div className="w-16 h-16 rounded-full bg-[#F4B942] flex items-center justify-center mx-auto mb-4">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#1A1F36" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
             </div>
-            <div>
-              <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Module 3</p>
-              <h1 className="text-base font-bold text-white">Offer &amp; Sales Page</h1>
-            </div>
+            <h1 className="text-white text-xl font-bold mb-2">Your Offer is Built!</h1>
+            <p className="text-gray-400 text-sm">Your irresistible offer is saved and ready to power your sales page.</p>
           </div>
 
-          <div className="rounded-xl px-4 py-4 mb-5 flex items-start gap-3" style={{ background: '#064e3b', border: '1px solid #10B981' }}>
-            <div className="w-6 h-6 rounded-full flex items-center justify-center mt-0.5 flex-shrink-0" style={{ background: '#10B981' }}>
-              <span className="text-white"><CheckIcon /></span>
-            </div>
-            <div>
-              <p className="font-bold text-emerald-300">Module 3 Complete!</p>
-              <p className="text-sm text-emerald-300 mt-0.5">Your offer and sales page are saved.</p>
-            </div>
-          </div>
-
-          <div className="bg-gray-900 rounded-xl p-4 mb-4" style={{ border: '1px solid #374151' }}>
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Your Offer Stack</p>
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-sm text-gray-300 truncate pr-2">{ebookTitle}</span>
-              <span className="text-sm font-medium text-white flex-shrink-0">₱{parseInt(ebookValuePeso).toLocaleString()}</span>
-            </div>
-            {bonuses.map((b, i) => (
-              <div key={i} className="flex justify-between items-center mb-2">
-                <span className="text-sm text-gray-300 truncate pr-2">Bonus {i + 1}: {b.bonus_name}</span>
-                <span className="text-sm font-medium text-white flex-shrink-0">₱{b.value_peso.toLocaleString()}</span>
-              </div>
-            ))}
-            <div className="border-t border-gray-800 mt-3 pt-3 flex justify-between">
-              <span className="text-sm font-bold text-white">Total Value</span>
-              <span className="text-sm font-bold text-white">₱{totalValue.toLocaleString()}</span>
-            </div>
-            <div className="flex justify-between mt-1">
-              <span className="text-sm font-bold" style={{ color: '#F4B942' }}>Your Price</span>
-              <span className="text-sm font-bold" style={{ color: '#F4B942' }}>₱{parseInt(sellingPrice).toLocaleString()}</span>
-            </div>
-          </div>
-
-          {/* ── Sales Copy Preview ──────────────────────────── */}
-          {allSectionsComplete && (
-            <div className="mb-4">
-              <button
-                onClick={() => setShowSalesCopy(v => !v)}
-                className="w-full flex items-center justify-between px-4 py-3 rounded-xl font-semibold text-sm transition-all"
-                style={{
-                  background: showSalesCopy ? '#1c1500' : '#111827',
-                  border: `2px solid ${showSalesCopy ? '#F4B942' : '#374151'}`,
-                  color: showSalesCopy ? '#F4B942' : '#D1D5DB',
-                }}
-              >
-                <span className="flex items-center gap-2">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                    <polyline points="14 2 14 8 20 8"/>
-                    <line x1="16" y1="13" x2="8" y2="13"/>
-                    <line x1="16" y1="17" x2="8" y2="17"/>
-                    <polyline points="10 9 9 9 8 9"/>
-                  </svg>
-                  View Your Sales Copy
-                </span>
-                <svg
-                  width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-                  style={{ transform: showSalesCopy ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}
-                >
-                  <polyline points="6 9 12 15 18 9"/>
-                </svg>
-              </button>
-
-              {showSalesCopy && (
-                <div className="mt-2 space-y-3">
-                  {/* Copy All button */}
-                  <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(buildFullSalesPage()).catch(() => {})
-                      setCopiedSection('all')
-                      setTimeout(() => setCopiedSection(null), 2000)
-                    }}
-                    className="w-full py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all"
-                    style={{
-                      background: copiedSection === 'all' ? '#065F46' : '#1f2937',
-                      color: copiedSection === 'all' ? '#6EE7B7' : '#D1D5DB',
-                      border: `1px solid ${copiedSection === 'all' ? '#10B981' : '#374151'}`,
-                    }}
-                  >
-                    <CopyIcon />
-                    {copiedSection === 'all' ? 'Copied!' : 'Copy Full Sales Page'}
-                  </button>
-
-                  {/* Individual sections */}
-                  {COPY_SECTIONS.map(({ key, label }) => {
-                    const text = getSection(key)
-                    if (!text) return null
-                    return (
-                      <div key={key} className="bg-gray-900 rounded-xl p-4" style={{ border: '1px solid #374151' }}>
-                        <div className="flex items-center justify-between mb-2">
-                          <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#F4B942' }}>{label}</p>
-                          <button
-                            onClick={() => {
-                              navigator.clipboard.writeText(text).catch(() => {})
-                              setCopiedSection(key)
-                              setTimeout(() => setCopiedSection(null), 2000)
-                            }}
-                            className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg transition-all"
-                            style={{
-                              background: copiedSection === key ? '#064e3b' : '#1f2937',
-                              color: copiedSection === key ? '#6EE7B7' : '#9CA3AF',
-                              border: `1px solid ${copiedSection === key ? '#10B981' : '#374151'}`,
-                            }}
-                          >
-                            <CopyIcon />
-                            {copiedSection === key ? 'Copied!' : 'Copy'}
-                          </button>
-                        </div>
-                        <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap">{text}</p>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-
-          <div className="rounded-xl p-4 mb-4" style={{ background: '#1A1F36', border: '2px solid #F4B942' }}>
-            <p className="text-xs font-medium mb-1" style={{ color: '#F4B942' }}>Up Next</p>
-            <p className="text-white font-bold">Module 4 — 7-Day Email Sequence</p>
-            <p className="text-gray-300 text-sm mt-1">Write 7 emails that warm up your audience and sell your ebook.</p>
+          <div className="bg-gray-900 rounded-2xl p-4 mb-4" style={{ border: '1px solid #374151' }}>
+            <p className="text-[10px] font-bold text-[#F4B942] uppercase tracking-wide mb-3">Your Irresistible Offer Statement</p>
+            <p className="text-sm text-gray-200 leading-relaxed whitespace-pre-line">{offerStatement}</p>
             <button
-              onClick={() => router.push('/module/4')}
-              className="mt-3 w-full py-2.5 rounded-lg font-bold text-sm"
-              style={{ background: '#F4B942', color: '#1A1F36' }}
+              onClick={() => {
+                navigator.clipboard.writeText(offerStatement)
+                setCopied(true)
+                setTimeout(() => setCopied(false), 2000)
+              }}
+              className="flex items-center gap-2 mt-4 text-xs font-semibold text-[#F4B942]"
             >
-              Start Module 4
+              <CopyIcon />
+              {copied ? 'Copied!' : 'Copy Offer Statement'}
             </button>
+          </div>
+
+          <div className="bg-gray-900 rounded-2xl p-4 mb-6" style={{ border: '1px solid #374151' }}>
+            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wide mb-3">Offer Summary</p>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-400">Ebook</span>
+                <span className="text-white font-semibold">₱{parseInt(ebookValuePeso).toLocaleString()}</span>
+              </div>
+              {bonuses.map((b, i) => (
+                <div key={i} className="flex justify-between">
+                  <span className="text-gray-400 truncate pr-2">{b.bonus_name}</span>
+                  <span className="text-white font-semibold flex-shrink-0">₱{b.value_peso.toLocaleString()}</span>
+                </div>
+              ))}
+              <div className="border-t border-gray-800 pt-2 flex justify-between">
+                <span className="text-gray-400">Total Value</span>
+                <span className="text-gray-400">₱{totalValue.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-[#F4B942] font-bold">Your Price</span>
+                <span className="text-[#F4B942] font-bold text-base">₱{parseInt(sellingPrice).toLocaleString()}</span>
+              </div>
+            </div>
           </div>
 
           <button
             onClick={() => router.push('/dashboard')}
-            className="w-full text-center text-sm text-gray-400 underline py-2"
+            className="w-full py-4 rounded-xl font-bold text-sm mb-3"
+            style={{ background: '#F4B942', color: '#1A1F36' }}
           >
             Back to Dashboard
+          </button>
+          <button
+            onClick={() => { setStep('offer_statement'); setOfferStatement('') }}
+            className="w-full py-3 rounded-xl font-semibold text-sm text-gray-400"
+            style={{ background: '#111827', border: '1px solid #374151' }}
+          >
+            Rebuild My Offer
           </button>
         </div>
       </div>
     )
   }
 
-  // ── Main Wizard ──────────────────────────────────────────────
+  // ── Main Layout ────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-gray-950">
-      <div className="max-w-[430px] md:max-w-3xl mx-auto px-4 pt-6 pb-36">
+    <div className="min-h-screen bg-gray-950 max-w-[430px] md:max-w-3xl mx-auto flex flex-col">
 
-        {/* Header */}
-        <div className="flex items-center gap-3 mb-5">
-          <button
-            onClick={goBack}
-            className="w-8 h-8 flex items-center justify-center rounded-full flex-shrink-0"
-            style={{ background: '#F4B942' }}
-            aria-label="Go back"
-          >
-            <span style={{ color: '#1A1F36' }}><BackIcon /></span>
-          </button>
-          <div>
-            <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Module 3</p>
-            <h1 className="text-base font-bold text-white">Offer &amp; Sales Page Builder</h1>
-          </div>
+      {/* Header */}
+      <div className="px-4 pt-5 pb-3 flex items-center gap-3 border-b border-gray-800">
+        <button onClick={goBack} className="text-gray-400 hover:text-white transition-colors">
+          <BackIcon />
+        </button>
+        <div className="flex-1">
+          <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Module 3</p>
+          <h1 className="text-white font-bold text-base leading-tight">Irresistible Offer Builder</h1>
         </div>
+      </div>
 
-        <ProgressDots />
+      {/* Stepper */}
+      <div className="px-4 py-3 border-b border-gray-800">
+        <div className="flex items-center gap-1">
+          {STEP_LABELS.map((label, i) => {
+            const isActive = i === currentStepIndex
+            const isDone = i < currentStepIndex
+            return (
+              <div key={i} className="flex items-center gap-1 flex-1">
+                <div className="flex flex-col items-center flex-1">
+                  <div
+                    className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold flex-shrink-0"
+                    style={{
+                      background: isDone ? '#F4B942' : isActive ? '#1A1F36' : '#1f2937',
+                      border: isDone ? 'none' : isActive ? '2px solid #F4B942' : '2px solid #374151',
+                      color: isDone ? '#1A1F36' : isActive ? '#F4B942' : '#6b7280',
+                    }}
+                  >
+                    {isDone ? '✓' : i + 1}
+                  </div>
+                  <span className={`text-[8px] mt-0.5 font-semibold ${isActive ? 'text-[#F4B942]' : isDone ? 'text-gray-400' : 'text-gray-600'}`}>
+                    {label}
+                  </span>
+                </div>
+                {i < STEP_LABELS.length - 1 && (
+                  <div className="h-px flex-1 mb-3" style={{ background: isDone ? '#F4B942' : '#374151' }} />
+                )}
+              </div>
+            )
+          })}
+        </div>
+      </div>
 
-        {error && (
-          <div className="bg-red-900/40 border border-red-700 text-red-300 text-sm rounded-lg px-4 py-3 mb-4">
-            {error}
+      {/* Error */}
+      {error && (
+        <div className="mx-4 mt-3 text-red-400 text-xs rounded-xl px-4 py-3" style={{ background: '#1a0000', border: '1px solid #7f1d1d' }}>
+          {error}
+        </div>
+      )}
+
+      {/* Content */}
+      <div className="flex-1 px-4 pt-4 pb-36 overflow-y-auto">
+
+        {/* ── STEP 1: FOUNDATION ─────────────────────────────────────────── */}
+        {step === 'foundation' && (
+          <div className="space-y-4">
+            <div>
+              <p className="text-white font-bold text-lg mb-1">Let&apos;s build your offer.</p>
+              <p className="text-gray-400 text-sm">Here&apos;s what we know about you so far. Confirm these details before we start.</p>
+            </div>
+
+            <div className="bg-gray-900 rounded-2xl p-4" style={{ border: '1px solid #374151' }}>
+              <p className={labelClass}>Your Ebook</p>
+              <p className="text-white text-sm font-semibold">{ebookTitle || 'No completed ebook found'}</p>
+            </div>
+
+            <div className="bg-gray-900 rounded-2xl p-4" style={{ border: '1px solid #374151' }}>
+              <p className={labelClass}>Your Target Market</p>
+              <p className="text-white text-sm">{clarity?.target_market}</p>
+            </div>
+
+            <div className="bg-gray-900 rounded-2xl p-4" style={{ border: '1px solid #374151' }}>
+              <p className={labelClass}>Problem You Solve</p>
+              <p className="text-white text-sm">{clarity?.core_problem}</p>
+            </div>
+
+            <div className="bg-gray-900 rounded-2xl p-4" style={{ border: '1px solid #374151' }}>
+              <p className={labelClass}>Your Unique Approach</p>
+              <p className="text-white text-sm">{clarity?.unique_mechanism}</p>
+            </div>
+
+            <div className="rounded-xl px-4 py-3" style={{ background: '#1c1500', border: '1px solid #F4B942' }}>
+              <p className="text-[#F4B942] text-xs font-semibold">
+                If anything looks wrong, go back to Module 1 or 2 to update it first.
+              </p>
+            </div>
           </div>
         )}
 
-        {/* ── Objections Step ────────────────────────────────── */}
+        {/* ── STEP 2: TRANSFORMATION ──────────────────────────────────────── */}
+        {step === 'transformation' && (
+          <div className="space-y-4">
+            <div>
+              <p className="text-white font-bold text-lg mb-1">What result do they get?</p>
+              <p className="text-gray-400 text-sm">Describe the specific outcome your buyer gets after reading your ebook. Don&apos;t overthink it — just write it in your own words.</p>
+            </div>
+
+            {!transformation || editingTransformation ? (
+              <div>
+                <label className={labelClass}>In your own words…</label>
+                <textarea
+                  value={studentInput}
+                  onChange={e => setStudentInput(e.target.value)}
+                  placeholder={`e.g. "After reading this, they'll know exactly how to find their first paying client without needing experience or a big following"`}
+                  rows={4}
+                  className={`${inputClass} resize-none`}
+                  style={{ border: '1px solid #374151' }}
+                />
+                <p className="text-gray-500 text-[11px] mt-1.5">Write at least one sentence. AI will refine it into a sharp transformation statement.</p>
+              </div>
+            ) : (
+              <div className="bg-gray-900 rounded-2xl p-4" style={{ border: '1px solid #F4B942' }}>
+                <p className="text-[10px] font-bold text-[#F4B942] uppercase tracking-wide mb-2">Your Transformation Statement</p>
+                <p className="text-white text-sm leading-relaxed">{transformation}</p>
+                <button
+                  onClick={() => setEditingTransformation(true)}
+                  className="flex items-center gap-1.5 mt-3 text-xs text-gray-400 font-semibold"
+                >
+                  <RefreshIcon /> Edit this
+                </button>
+              </div>
+            )}
+
+            {transformationLoading && (
+              <div className="text-center py-6">
+                <div className="w-8 h-8 border-4 border-[#F4B942] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+                <p className="text-sm text-gray-400">Sharpening your transformation statement…</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── STEP 3: OBJECTIONS ──────────────────────────────────────────── */}
         {step === 'objections' && (
-          <div>
-            <div className="bg-gray-900 rounded-xl p-4 mb-4" style={{ border: '1px solid #374151' }}>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Your Ebook</p>
-              <p className="text-sm font-semibold text-white">{ebookTitle}</p>
-              {clarity && <p className="text-xs text-gray-400 mt-0.5">For: {clarity.target_market}</p>}
+          <div className="space-y-4">
+            <div>
+              <p className="text-white font-bold text-lg mb-1">What holds them back?</p>
+              <p className="text-gray-400 text-sm">Before someone buys, they have doubts. Pick 3 to 5 that you want your offer to answer directly.</p>
             </div>
 
             {!objectionsLoading && objections.length === 0 && (
-              <div className="text-center py-8">
-                <p className="text-sm text-gray-500 mb-1">Before someone buys your ebook, they have doubts.</p>
-                <p className="text-sm text-gray-500">We&apos;ll find those doubts — then build bonuses that answer them.</p>
+              <div className="text-center py-8 text-gray-500 text-sm">
+                Tap below to find the real objections your buyers have.
               </div>
             )}
 
@@ -764,7 +658,7 @@ export default function Module3Page() {
               <div className="text-center py-14">
                 <div className="w-10 h-10 border-4 border-[#F4B942] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
                 <p className="text-sm font-medium text-white">Finding what holds your buyers back…</p>
-                <p className="text-xs text-gray-400 mt-1">This takes about 10 seconds</p>
+                <p className="text-xs text-gray-400 mt-1">About 10 seconds</p>
               </div>
             )}
 
@@ -819,425 +713,281 @@ export default function Module3Page() {
           </div>
         )}
 
-        {/* ── Bonuses Step ───────────────────────────────────── */}
+        {/* ── STEP 4: BONUSES ─────────────────────────────────────────────── */}
         {step === 'bonuses' && (
           <div>
-            <p className="text-sm text-gray-500 mb-4">
-              Each bonus answers one of your buyer&apos;s doubts. Set a peso value for each — this builds your offer stack.
-            </p>
+            <p className="text-white font-bold text-lg mb-1">Build your bonus stack.</p>
+            <p className="text-gray-400 text-sm mb-4">Each bonus answers one of your buyer&apos;s doubts. All formats are text-based documents — no audio or video.</p>
 
-            {/* Ebook value input */}
-            <div className="bg-gray-900 rounded-xl p-4 mb-4" style={{ border: '1px solid #374151' }}>
-              <div className="flex items-center justify-between">
-                <div className="flex-1 min-w-0 pr-3">
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-0.5">Main Ebook</p>
-                  <p className="text-sm font-semibold text-white truncate">{ebookTitle}</p>
-                </div>
-                <div className="flex items-center gap-1 flex-shrink-0">
-                  <span className="text-sm text-gray-500">₱</span>
-                  <input
-                    type="number"
-                    value={ebookValuePeso}
-                    onChange={e => setEbookValuePeso(e.target.value)}
-                    className="w-20 text-right border rounded-lg px-2 py-1.5 text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
-                    style={{ borderColor: '#374151' }}
-                    placeholder="997"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Bonus cards */}
-            <div className="space-y-4 mb-4">
+            <div className="space-y-4">
               {bonuses.map((bonus, i) => (
-                <div key={i} className="bg-gray-900 rounded-xl p-4" style={{ border: '1px solid #374151' }}>
+                <div key={i} className="bg-gray-900 rounded-2xl p-4" style={{ border: '1px solid #374151' }}>
                   {bonus.loading ? (
                     <div className="flex items-center gap-3 py-2">
                       <div className="w-5 h-5 border-2 border-[#F4B942] border-t-transparent rounded-full animate-spin flex-shrink-0" />
-                      <p className="text-sm text-gray-400 truncate">
-                        Creating bonus for: &ldquo;{bonus.objection_addressed.substring(0, 45)}…&rdquo;
-                      </p>
+                      <p className="text-gray-400 text-xs">Creating bonus for: &ldquo;{bonus.objection_addressed.substring(0, 50)}…&rdquo;</p>
                     </div>
                   ) : (
-                    <>
-                      <div className="flex items-start justify-between gap-2 mb-2">
-                        <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#F4B942' }}>
-                          Bonus {i + 1} &middot; {bonus.format}
-                        </p>
-                        <div className="flex items-center gap-1 flex-shrink-0">
-                          <span className="text-sm text-gray-500">₱</span>
+                    <div>
+                      <div className="flex items-start justify-between gap-2 mb-3">
+                        <div className="flex-1">
+                          <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wide mb-0.5">Answers</p>
+                          <p className="text-[11px] text-gray-400 italic">&ldquo;{bonus.objection_addressed}&rdquo;</p>
+                        </div>
+                        <button
+                          onClick={() => regenerateBonus(i)}
+                          className="flex items-center gap-1 text-[10px] font-semibold text-gray-500 hover:text-[#F4B942] flex-shrink-0 mt-1"
+                        >
+                          <RefreshIcon /> Redo
+                        </button>
+                      </div>
+
+                      <div className="mb-3">
+                        <label className={labelClass}>Bonus Name</label>
+                        <input
+                          type="text"
+                          value={bonus.bonus_name}
+                          onChange={e => setBonuses(prev => prev.map((b, idx) => idx === i ? { ...b, bonus_name: e.target.value } : b))}
+                          className={inputClass}
+                          style={{ border: '1px solid #374151' }}
+                        />
+                      </div>
+
+                      <div className="mb-3">
+                        <label className={labelClass}>Description</label>
+                        <input
+                          type="text"
+                          value={bonus.description}
+                          onChange={e => setBonuses(prev => prev.map((b, idx) => idx === i ? { ...b, description: e.target.value } : b))}
+                          className={inputClass}
+                          style={{ border: '1px solid #374151' }}
+                        />
+                      </div>
+
+                      <div className="flex gap-3">
+                        <div className="flex-1">
+                          <label className={labelClass}>Format</label>
+                          <select
+                            value={bonus.format}
+                            onChange={e => setBonuses(prev => prev.map((b, idx) => idx === i ? { ...b, format: e.target.value } : b))}
+                            className={inputClass}
+                            style={{ border: '1px solid #374151' }}
+                          >
+                            {TEXT_FORMATS.map(f => <option key={f} value={f}>{f}</option>)}
+                          </select>
+                        </div>
+                        <div className="w-28">
+                          <label className={labelClass}>Value (₱)</label>
                           <input
                             type="number"
                             value={bonus.value_peso || ''}
-                            onChange={e => updateBonus(i, 'value_peso', parseInt(e.target.value) || 0)}
-                            className="w-20 text-right border rounded-lg px-2 py-1.5 text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
-                            style={{ borderColor: '#374151' }}
-                            placeholder="0"
+                            onChange={e => setBonuses(prev => prev.map((b, idx) => idx === i ? { ...b, value_peso: parseInt(e.target.value) || 0 } : b))}
+                            placeholder="497"
+                            className={inputClass}
+                            style={{ border: '1px solid #374151' }}
                           />
                         </div>
                       </div>
-                      <input
-                        type="text"
-                        value={bonus.bonus_name}
-                        onChange={e => updateBonus(i, 'bonus_name', e.target.value)}
-                        className="w-full text-sm font-semibold text-white border-b border-dashed pb-1 mb-2 focus:outline-none bg-transparent"
-                        style={{ borderColor: '#4B5563' }}
-                      />
-                      <p className="text-xs text-gray-500 mb-2">{bonus.description}</p>
-                      <p className="text-xs text-gray-300 italic truncate">
-                        Answers: &ldquo;{bonus.objection_addressed.substring(0, 55)}…&rdquo;
-                      </p>
-                    </>
+                    </div>
                   )}
                 </div>
               ))}
             </div>
+          </div>
+        )}
 
-            {/* Running total */}
-            {!bonusesLoading && (
-              <div className="rounded-xl p-4 text-center" style={{ background: '#1A1F36' }}>
-                <p className="text-xs text-gray-400 mb-1">Total Perceived Value</p>
-                <p className="text-2xl font-bold text-white">₱{totalValue.toLocaleString()}</p>
+        {/* ── STEP 5: PRICE ANCHOR ────────────────────────────────────────── */}
+        {step === 'price_anchor' && (
+          <div className="space-y-4">
+            <div>
+              <p className="text-white font-bold text-lg mb-1">Price your offer.</p>
+              <p className="text-gray-400 text-sm">Set the perceived value of everything included and your selling price. Then let AI write the justification.</p>
+            </div>
+
+            <div className="bg-gray-900 rounded-2xl p-4" style={{ border: '1px solid #374151' }}>
+              <p className={labelClass}>Value of Your Ebook (₱)</p>
+              <input
+                type="number"
+                value={ebookValuePeso}
+                onChange={e => setEbookValuePeso(e.target.value)}
+                className={inputClass}
+                style={{ border: '1px solid #374151' }}
+              />
+              <p className="text-gray-500 text-[11px] mt-1.5">What would this knowledge normally cost someone to learn on their own?</p>
+            </div>
+
+            <div className="bg-gray-900 rounded-2xl p-4" style={{ border: '1px solid #374151' }}>
+              <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wide mb-3">Bonus Values</p>
+              {bonuses.map((b, i) => (
+                <div key={i} className="flex justify-between items-center mb-2 last:mb-0">
+                  <span className="text-gray-400 text-sm truncate pr-2">{b.bonus_name}</span>
+                  <span className="text-white text-sm font-semibold flex-shrink-0">₱{b.value_peso.toLocaleString()}</span>
+                </div>
+              ))}
+              <div className="border-t border-gray-800 mt-3 pt-3 flex justify-between">
+                <span className="text-gray-400 text-sm font-semibold">Total Value</span>
+                <span className="text-[#F4B942] font-bold">₱{totalValue.toLocaleString()}</span>
+              </div>
+            </div>
+
+            <div className="bg-gray-900 rounded-2xl p-4" style={{ border: '1px solid #374151' }}>
+              <p className={labelClass}>Your Selling Price (₱)</p>
+              <input
+                type="number"
+                value={sellingPrice}
+                onChange={e => setSellingPrice(e.target.value)}
+                className={inputClass}
+                style={{ border: '1px solid #374151' }}
+              />
+            </div>
+
+            {!priceJustification && !priceJustLoading && (
+              <button
+                onClick={handleGeneratePriceJustification}
+                disabled={!sellingPrice || parseInt(sellingPrice) <= 0}
+                className="w-full py-3 rounded-xl font-semibold text-sm transition-all disabled:opacity-40"
+                style={{ background: '#1A1F36', color: '#F4B942', border: '1px solid #F4B942' }}
+              >
+                Generate Price Justification
+              </button>
+            )}
+
+            {priceJustLoading && (
+              <div className="text-center py-4">
+                <div className="w-6 h-6 border-2 border-[#F4B942] border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+                <p className="text-xs text-gray-400">Writing your price justification…</p>
+              </div>
+            )}
+
+            {priceJustification && (
+              <div className="bg-gray-900 rounded-2xl p-4" style={{ border: '1px solid #F4B942' }}>
+                <p className="text-[10px] font-bold text-[#F4B942] uppercase tracking-wide mb-2">Price Justification</p>
+                <p className="text-white text-sm leading-relaxed">{priceJustification}</p>
+                <button
+                  onClick={() => { setPriceJustification(''); handleGeneratePriceJustification() }}
+                  className="flex items-center gap-1.5 mt-3 text-xs text-gray-400 font-semibold"
+                >
+                  <RefreshIcon /> Regenerate
+                </button>
               </div>
             )}
           </div>
         )}
 
-        {/* ── Offer Stack Step ───────────────────────────────── */}
-        {step === 'offer' && (
-          <div>
-            <p className="text-sm text-gray-500 mb-4">
-              Set your selling price. The bigger the gap between total value and your price, the more irresistible your offer.
-            </p>
-
-            {/* Offer summary */}
-            <div className="bg-gray-900 rounded-xl p-4 mb-4" style={{ border: '1px solid #374151' }}>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Offer Summary</p>
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-sm text-gray-300 truncate pr-2">{ebookTitle}</span>
-                <span className="text-sm font-medium text-white flex-shrink-0">₱{parseInt(ebookValuePeso).toLocaleString()}</span>
-              </div>
-              {bonuses.map((b, i) => (
-                <div key={i} className="flex justify-between items-center mb-2">
-                  <span className="text-sm text-gray-300 truncate pr-2">Bonus {i + 1}: {b.bonus_name}</span>
-                  <span className="text-sm font-medium text-white flex-shrink-0">₱{b.value_peso.toLocaleString()}</span>
-                </div>
-              ))}
-              <div className="border-t border-gray-800 mt-3 pt-3 flex justify-between">
-                <span className="text-sm font-bold text-white">Total Value</span>
-                <span className="text-sm font-bold text-white">₱{totalValue.toLocaleString()}</span>
-              </div>
+        {/* ── STEP 6: GUARANTEE ───────────────────────────────────────────── */}
+        {step === 'guarantee' && (
+          <div className="space-y-4">
+            <div>
+              <p className="text-white font-bold text-lg mb-1">Remove their risk.</p>
+              <p className="text-gray-400 text-sm">A guarantee tells your buyer: &ldquo;I believe in this so much, I&apos;m taking the risk for you.&rdquo; Pick one or write your own.</p>
             </div>
 
-            {/* Selling price */}
-            <div className="bg-gray-900 rounded-xl p-4 mb-4" style={{ border: '1px solid #374151' }}>
-              <label className="block text-sm font-semibold text-white mb-2">Your Selling Price (₱)</label>
-              <div className="flex items-center gap-2">
-                <span className="text-lg text-gray-400 font-medium">₱</span>
-                <input
-                  type="number"
-                  value={sellingPrice}
-                  onChange={e => setSellingPrice(e.target.value)}
-                  className="flex-1 border rounded-xl px-4 py-3 text-xl font-bold text-white focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
-                  style={{ borderColor: '#374151' }}
-                  placeholder="297"
-                />
-              </div>
-              {parseInt(sellingPrice) > 0 && totalValue > 0 && (
-                <p className="text-xs mt-2 font-medium leading-relaxed" style={{ color: '#F4B942' }}>
-                  &ldquo;Total value: ₱{totalValue.toLocaleString()} — yours today for only ₱{parseInt(sellingPrice).toLocaleString()}&rdquo;
-                </p>
-              )}
-            </div>
-
-            {/* Guarantee */}
-            <div className="bg-gray-900 rounded-xl p-4 mb-4" style={{ border: '1px solid #374151' }}>
-              <label className="block text-sm font-semibold text-white mb-3">Your Guarantee</label>
-              <div className="space-y-2 mb-3">
-                {GUARANTEE_OPTIONS.map(opt => (
+            <div className="space-y-2">
+              {GUARANTEE_OPTIONS.map((g, i) => {
+                const isSelected = !customGuarantee && guarantee === g
+                return (
                   <button
-                    key={opt}
-                    onClick={() => { setGuarantee(opt); setCustomGuarantee(false) }}
-                    className="w-full text-left rounded-lg px-3 py-2.5 text-sm transition-all"
+                    key={i}
+                    onClick={() => { setGuarantee(g); setCustomGuarantee(false) }}
+                    className="w-full text-left rounded-xl p-3 transition-all"
                     style={{
-                      background: guarantee === opt && !customGuarantee ? '#FFFBEB' : 'white',
-                      border: `1.5px solid ${guarantee === opt && !customGuarantee ? '#F4B942' : '#E5E7EB'}`,
-                      color: '#374151',
+                      background: isSelected ? '#1c1500' : '#111827',
+                      border: `2px solid ${isSelected ? '#F4B942' : '#374151'}`,
                     }}
                   >
-                    {opt}
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0"
+                        style={{
+                          background: isSelected ? '#F4B942' : '#1f2937',
+                          border: `2px solid ${isSelected ? '#F4B942' : '#4b5563'}`,
+                        }}
+                      >
+                        {isSelected && <div className="w-2 h-2 rounded-full bg-[#1A1F36]" />}
+                      </div>
+                      <p className="text-sm text-white">{g}</p>
+                    </div>
                   </button>
-                ))}
-                <button
-                  onClick={() => { setCustomGuarantee(true); setGuarantee('') }}
-                  className="w-full text-left rounded-lg px-3 py-2.5 text-sm transition-all"
-                  style={{
-                    background: customGuarantee ? '#FFFBEB' : 'white',
-                    border: `1.5px solid ${customGuarantee ? '#F4B942' : '#E5E7EB'}`,
-                    color: '#374151',
-                  }}
-                >
-                  Write my own guarantee…
-                </button>
-              </div>
-              {customGuarantee && (
+                )
+              })}
+
+              <button
+                onClick={() => setCustomGuarantee(true)}
+                className="w-full text-left rounded-xl p-3 transition-all"
+                style={{
+                  background: customGuarantee ? '#1c1500' : '#111827',
+                  border: `2px solid ${customGuarantee ? '#F4B942' : '#374151'}`,
+                }}
+              >
+                <div className="flex items-center gap-3">
+                  <div
+                    className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0"
+                    style={{
+                      background: customGuarantee ? '#F4B942' : '#1f2937',
+                      border: `2px solid ${customGuarantee ? '#F4B942' : '#4b5563'}`,
+                    }}
+                  >
+                    {customGuarantee && <div className="w-2 h-2 rounded-full bg-[#1A1F36]" />}
+                  </div>
+                  <p className="text-sm text-white">Write my own guarantee</p>
+                </div>
+              </button>
+            </div>
+
+            {customGuarantee && (
+              <div>
+                <label className={labelClass}>Your Guarantee</label>
                 <textarea
                   value={guarantee}
                   onChange={e => setGuarantee(e.target.value)}
                   rows={3}
-                  className="w-full border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
-                  style={{ borderColor: '#F4B942' }}
-                  placeholder="Describe your guarantee here…"
+                  className={`${inputClass} resize-none`}
+                  style={{ border: '1px solid #374151' }}
+                  placeholder="e.g. If you don't get value from this in 30 days, email me and I'll give you a full refund."
                 />
-              )}
-            </div>
+              </div>
+            )}
           </div>
         )}
 
-        {/* ── Sales Page Step — section by section ──────────── */}
-        {step === 'salespage' && (
-          <div>
-            {/* Section progress checklist */}
-            <div className="bg-gray-900 rounded-xl p-4 mb-4" style={{ border: '1px solid #374151' }}>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">
-                Your Sales Copy — {COPY_SECTIONS.filter(s => !!getSection(s.key)).length} of {COPY_SECTIONS.length} sections done
-              </p>
-              <div className="space-y-1.5">
-                {COPY_SECTIONS.map((s, i) => {
-                  const isDone = !!getSection(s.key)
-                  const isActive = i === activeSectionIndex
-                  return (
-                    <button
-                      key={s.key}
-                      onClick={() => { setActiveSectionIndex(i); setEditingSection(null) }}
-                      className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all"
-                      style={{
-                        background: isActive ? '#1c1500' : 'transparent',
-                        border: `1px solid ${isActive ? '#F4B942' : 'transparent'}`,
-                      }}
-                    >
-                      <div
-                        className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0"
-                        style={{ background: isDone ? '#10B981' : isActive ? '#F4B942' : '#374151' }}
-                      >
-                        {isDone
-                          ? <span className="text-white"><CheckIcon /></span>
-                          : <span className="text-xs font-bold" style={{ color: isActive ? '#1A1F36' : '#9CA3AF' }}>{i + 1}</span>
-                        }
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium" style={{ color: isDone ? '#10B981' : isActive ? '#F4B942' : '#D1D5DB' }}>
-                          {s.label}
-                        </p>
-                        <p className="text-xs text-gray-500 truncate">{s.desc}</p>
-                      </div>
-                    </button>
-                  )
-                })}
-              </div>
+        {/* ── STEP 7: OFFER STATEMENT ──────────────────────────────────────── */}
+        {step === 'offer_statement' && (
+          <div className="space-y-4">
+            <div>
+              <p className="text-white font-bold text-lg mb-1">Your Irresistible Offer.</p>
+              <p className="text-gray-400 text-sm">We&apos;ll now put everything together into one clear, compelling offer statement you can be proud of.</p>
             </div>
 
-            {/* Active section workspace */}
-            {(() => {
-              const current = COPY_SECTIONS[activeSectionIndex]
-              const text = getSection(current.key)
-              return (
-                <div className="bg-gray-900 rounded-xl p-4 mb-4" style={{ border: `2px solid #F4B942` }}>
-                  <div className="flex items-center justify-between mb-3">
-                    <div>
-                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
-                        Section {activeSectionIndex + 1} of {COPY_SECTIONS.length}
-                      </p>
-                      <p className="text-base font-bold text-white">{current.label}</p>
-                      <p className="text-xs text-gray-500">{current.desc}</p>
-                    </div>
-                    {text && (
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => setEditingSection(editingSection === current.key ? null : current.key)}
-                          className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg"
-                          style={{ background: '#1f2937', color: '#9CA3AF', border: '1px solid #374151' }}
-                        >
-                          <EditIcon />
-                          {editingSection === current.key ? 'Done' : 'Edit'}
-                        </button>
-                        <button
-                          onClick={() => copyToClipboard(text, current.key)}
-                          className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg"
-                          style={{
-                            background: copiedSection === current.key ? '#064e3b' : '#1f2937',
-                            color: copiedSection === current.key ? '#6EE7B7' : '#9CA3AF',
-                            border: `1px solid ${copiedSection === current.key ? '#10B981' : '#374151'}`,
-                          }}
-                        >
-                          <CopyIcon />
-                          {copiedSection === current.key ? 'Copied!' : 'Copy'}
-                        </button>
-                      </div>
-                    )}
-                  </div>
+            {!offerStatement && !offerLoading && (
+              <div className="bg-gray-900 rounded-2xl p-4 space-y-2" style={{ border: '1px solid #374151' }}>
+                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wide mb-3">What&apos;s going in</p>
+                <p className="text-sm text-gray-300"><span className="text-gray-500">Ebook:</span> {ebookTitle}</p>
+                <p className="text-sm text-gray-300"><span className="text-gray-500">For:</span> {clarity?.target_market}</p>
+                <p className="text-sm text-gray-300"><span className="text-gray-500">Transformation:</span> {transformation}</p>
+                <p className="text-sm text-gray-300"><span className="text-gray-500">Bonuses:</span> {bonuses.length} included</p>
+                <p className="text-sm text-gray-300"><span className="text-gray-500">Price:</span> ₱{parseInt(sellingPrice).toLocaleString()} (worth ₱{totalValue.toLocaleString()})</p>
+                <p className="text-sm text-gray-300"><span className="text-gray-500">Guarantee:</span> {guarantee}</p>
+              </div>
+            )}
 
-                  {/* Content area */}
-                  {sectionGenerating ? (
-                    <div className="text-center py-10">
-                      <div className="w-10 h-10 border-4 border-[#F4B942] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-                      <p className="text-sm font-medium text-white">Writing {current.label}…</p>
-                      <p className="text-xs text-gray-400 mt-1">About 10–15 seconds</p>
-                    </div>
-                  ) : current.key === 'headline' && headlineOptions ? (
-                    /* ── Headline: 3-card selection UI ── */
-                    <div>
-                      <p className="text-xs text-gray-400 mb-3">Tap the headline you want to use.</p>
-                      <div className="space-y-3">
-                        {headlineOptions.options.map((option, idx) => {
-                          const isRecommended = idx === headlineOptions.recommended
-                          const isSelected = idx === selectedHeadlineIndex
-                          const [line1, line2] = option.split('\n')
-                          return (
-                            <button
-                              key={idx}
-                              onClick={() => selectHeadlineOption(idx)}
-                              className="w-full text-left rounded-xl p-4 transition-all"
-                              style={{
-                                background: isSelected ? '#1c1500' : isRecommended ? '#111827' : '#0f172a',
-                                border: `2px solid ${isSelected ? '#F4B942' : isRecommended ? '#4B5563' : '#1f2937'}`,
-                              }}
-                            >
-                              {/* Badges row */}
-                              <div className="flex items-center gap-2 mb-2">
-                                {isRecommended && (
-                                  <span
-                                    className="flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full"
-                                    style={{ background: '#F4B942', color: '#1A1F36' }}
-                                  >
-                                    <StarIcon /> Best Pick
-                                  </span>
-                                )}
-                                {isSelected && (
-                                  <span
-                                    className="flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full"
-                                    style={{ background: '#10B981', color: 'white' }}
-                                  >
-                                    <CheckIcon /> Selected
-                                  </span>
-                                )}
-                                {!isRecommended && !isSelected && (
-                                  <span className="text-xs text-gray-500">Option {idx + 1}</span>
-                                )}
-                              </div>
+            {offerLoading && (
+              <div className="text-center py-14">
+                <div className="w-10 h-10 border-4 border-[#F4B942] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                <p className="text-sm font-medium text-white">Building your irresistible offer…</p>
+                <p className="text-xs text-gray-400 mt-1">This takes about 10 seconds</p>
+              </div>
+            )}
 
-                              {/* Headline text */}
-                              <p className="text-sm font-bold leading-snug" style={{ color: isSelected ? '#F4B942' : '#F3F4F6' }}>
-                                {line1}
-                              </p>
-                              {line2 && (
-                                <p className="text-xs mt-1 leading-relaxed" style={{ color: isSelected ? '#FDE68A' : '#9CA3AF' }}>
-                                  {line2}
-                                </p>
-                              )}
-
-                              {/* Recommended reason — only on recommended card */}
-                              {isRecommended && (
-                                <p className="text-xs mt-2 italic" style={{ color: '#9CA3AF' }}>
-                                  {headlineOptions.recommended_reason}
-                                </p>
-                              )}
-                            </button>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  ) : text ? (
-                    editingSection === current.key ? (
-                      <textarea
-                        value={getSection(current.key)}
-                        onChange={e => setEditedSections(prev => ({ ...prev, [current.key]: e.target.value }))}
-                        rows={8}
-                        className="w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400/40 bg-gray-950 text-white"
-                        style={{ borderColor: '#F4B942' }}
-                      />
-                    ) : (
-                      <p className="text-sm text-white leading-relaxed whitespace-pre-wrap">{text}</p>
-                    )
-                  ) : (
-                    <div className="text-center py-8">
-                      <p className="text-sm text-gray-500 mb-1">Ready to write the {current.label}.</p>
-                      <p className="text-xs text-gray-600">{current.desc}</p>
-                    </div>
-                  )}
-
-                  {/* Action buttons */}
-                  {!sectionGenerating && (
-                    <div className="mt-4 flex gap-2">
-                      {/* Headline: options shown but none selected yet */}
-                      {current.key === 'headline' && headlineOptions && !text ? (
-                        <button
-                          onClick={() => handleGenerateSection(current.key)}
-                          className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold"
-                          style={{ background: '#1f2937', color: '#9CA3AF', border: '1px solid #374151' }}
-                        >
-                          <RefreshIcon /> Try New Options
-                        </button>
-                      ) : !text ? (
-                        <button
-                          onClick={() => handleGenerateSection(current.key)}
-                          className="flex-1 py-3 rounded-xl font-bold text-sm"
-                          style={{ background: '#F4B942', color: '#1A1F36' }}
-                        >
-                          Generate {current.label}
-                        </button>
-                      ) : (
-                        <>
-                          <button
-                            onClick={() => handleGenerateSection(current.key)}
-                            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold"
-                            style={{ background: '#1f2937', color: '#9CA3AF', border: '1px solid #374151' }}
-                          >
-                            <RefreshIcon /> Redo
-                          </button>
-                          {activeSectionIndex < COPY_SECTIONS.length - 1 ? (
-                            <button
-                              onClick={() => { setActiveSectionIndex(i => i + 1); setEditingSection(null) }}
-                              className="flex-1 py-2.5 rounded-xl font-bold text-sm"
-                              style={{ background: '#F4B942', color: '#1A1F36' }}
-                            >
-                              Next: {COPY_SECTIONS[activeSectionIndex + 1].label} →
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => setActiveSectionIndex(0)}
-                              className="flex-1 py-2.5 rounded-xl font-bold text-sm"
-                              style={{ background: '#10B981', color: 'white' }}
-                            >
-                              All done! Review from top
-                            </button>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )
-            })()}
-
-            {/* Systeme.io URL — only shown when all sections complete */}
-            {allSectionsComplete && (
-              <div className="bg-gray-900 rounded-xl p-4 mb-4" style={{ border: '1px solid #374151' }}>
-                <label className="block text-sm font-semibold text-white mb-1">
-                  Your Systeme.io Sales Page URL
-                  <span className="text-gray-400 font-normal ml-1">(optional)</span>
-                </label>
-                <p className="text-xs text-gray-400 mb-2">
-                  Paste this after publishing. We&apos;ll use it in your email sequence.
-                </p>
-                <input
-                  type="url"
-                  value={salesPageUrl}
-                  onChange={e => setSalesPageUrl(e.target.value)}
-                  className="w-full border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400/40 bg-gray-950 text-white"
-                  style={{ borderColor: '#374151' }}
-                  placeholder="https://yourpage.systeme.io/ebook"
-                />
+            {offerStatement && !offerLoading && (
+              <div className="bg-gray-900 rounded-2xl p-4" style={{ border: '1px solid #F4B942' }}>
+                <p className="text-[10px] font-bold text-[#F4B942] uppercase tracking-wide mb-3">Your Irresistible Offer Statement</p>
+                <p className="text-sm text-gray-200 leading-relaxed whitespace-pre-line">{offerStatement}</p>
+                <button
+                  onClick={() => { setOfferStatement(''); handleGenerateOfferStatement() }}
+                  className="flex items-center gap-1.5 mt-4 text-xs text-gray-400 font-semibold"
+                >
+                  <RefreshIcon /> Regenerate
+                </button>
               </div>
             )}
           </div>
@@ -1245,103 +995,145 @@ export default function Module3Page() {
 
       </div>
 
-      {/* ── Fixed Bottom Action Bar ──────────────────────────── */}
-      {step !== 'complete' && (
-        <div
-          className="fixed bottom-0 bg-gray-900 px-4 py-4"
-          style={{
-            borderTop: '1px solid #E5E7EB',
-            width: '100%',
-            maxWidth: '430px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-          }}
-        >
-          {/* Objections — before generating */}
-          {step === 'objections' && objections.length === 0 && (
-            <button
-              onClick={handleGenerateObjections}
-              disabled={objectionsLoading}
-              className="w-full py-4 rounded-xl font-bold text-base disabled:opacity-60 transition-all"
-              style={{ background: '#1A1F36', color: '#F4B942' }}
-            >
-              {objectionsLoading ? 'Finding Objections…' : "Find My Buyers' Objections"}
-            </button>
-          )}
+      {/* ── Bottom CTA ────────────────────────────────────────────────────── */}
+      <div
+        className="fixed bottom-0 w-full px-4 py-4 bg-gray-950 border-t border-gray-800"
+        style={{ maxWidth: '430px', left: '50%', transform: 'translateX(-50%)' }}
+      >
+        {/* Foundation */}
+        {step === 'foundation' && (
+          <button
+            onClick={() => setStep('transformation')}
+            className="w-full py-4 rounded-xl font-bold text-base"
+            style={{ background: '#F4B942', color: '#1A1F36' }}
+          >
+            Yes, this looks right →
+          </button>
+        )}
 
-          {/* Objections — after generating */}
-          {step === 'objections' && objections.length > 0 && (
-            <button
-              onClick={handleGenerateBonuses}
-              disabled={selectedObjections.length < 3}
-              className="w-full py-4 rounded-xl font-bold text-base disabled:opacity-40 transition-all"
-              style={{
-                background: selectedObjections.length >= 3 ? '#F4B942' : '#E5E7EB',
-                color: '#1A1F36',
-              }}
-            >
-              {selectedObjections.length < 3
-                ? `Select ${3 - selectedObjections.length} more to continue`
-                : 'Build My Bonuses Around These'}
-            </button>
-          )}
+        {/* Transformation — before refining */}
+        {step === 'transformation' && !transformation && (
+          <button
+            onClick={handleRefineTransformation}
+            disabled={!studentInput.trim() || transformationLoading}
+            className="w-full py-4 rounded-xl font-bold text-base disabled:opacity-40 transition-all"
+            style={{ background: '#F4B942', color: '#1A1F36' }}
+          >
+            {transformationLoading ? 'Refining…' : 'Refine My Statement →'}
+          </button>
+        )}
 
-          {/* Bonuses */}
-          {step === 'bonuses' && (
-            <button
-              onClick={() => {
-                const allValued = bonuses.every(b => !b.loading && b.value_peso > 0)
-                if (!allValued) { setError('Please set a value (₱) for each bonus.'); return }
-                setError('')
-                setStep('offer')
-              }}
-              disabled={bonusesLoading || bonuses.some(b => b.loading)}
-              className="w-full py-4 rounded-xl font-bold text-base disabled:opacity-60 transition-all"
-              style={{ background: '#F4B942', color: '#1A1F36' }}
-            >
-              {bonuses.some(b => b.loading) ? 'Creating Your Bonuses…' : 'Build My Offer Stack'}
-            </button>
-          )}
+        {/* Transformation — after refining */}
+        {step === 'transformation' && transformation && !editingTransformation && (
+          <button
+            onClick={() => setStep('objections')}
+            className="w-full py-4 rounded-xl font-bold text-base"
+            style={{ background: '#F4B942', color: '#1A1F36' }}
+          >
+            This is it — Next →
+          </button>
+        )}
 
-          {/* Offer */}
-          {step === 'offer' && (
-            <button
-              onClick={() => { setStep('salespage'); setActiveSectionIndex(0) }}
-              disabled={!sellingPrice || parseInt(sellingPrice) <= 0}
-              className="w-full py-4 rounded-xl font-bold text-base disabled:opacity-40 transition-all"
-              style={{ background: '#F4B942', color: '#1A1F36' }}
-            >
-              Write My Sales Copy →
-            </button>
-          )}
+        {/* Objections — before generating */}
+        {step === 'objections' && objections.length === 0 && (
+          <button
+            onClick={handleGenerateObjections}
+            disabled={objectionsLoading}
+            className="w-full py-4 rounded-xl font-bold text-base disabled:opacity-60"
+            style={{ background: '#1A1F36', color: '#F4B942', border: '1px solid #F4B942' }}
+          >
+            {objectionsLoading ? 'Finding Objections…' : "Find My Buyers' Objections"}
+          </button>
+        )}
 
-          {/* Sales page — save button only when all sections done */}
-          {step === 'salespage' && allSectionsComplete && (
-            <button
-              onClick={handleMarkComplete}
-              disabled={saving}
-              className="w-full py-4 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2 disabled:opacity-70"
-              style={{ background: '#F4B942', color: '#1A1F36' }}
-            >
-              {saving ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-[#1A1F36] border-t-transparent rounded-full animate-spin" />
-                  Saving…
-                </>
-              ) : 'Save & Complete Module 3'}
-            </button>
-          )}
+        {/* Objections — after generating */}
+        {step === 'objections' && objections.length > 0 && (
+          <button
+            onClick={handleGenerateBonuses}
+            disabled={selectedObjections.length < 3}
+            className="w-full py-4 rounded-xl font-bold text-base disabled:opacity-40 transition-all"
+            style={{
+              background: selectedObjections.length >= 3 ? '#F4B942' : '#E5E7EB',
+              color: '#1A1F36',
+            }}
+          >
+            {selectedObjections.length < 3
+              ? `Select ${3 - selectedObjections.length} more to continue`
+              : 'Build My Bonuses →'}
+          </button>
+        )}
 
-          {/* Sales page — progress indicator while writing */}
-          {step === 'salespage' && !allSectionsComplete && (
-            <div className="w-full py-3 rounded-xl text-center text-sm font-medium text-gray-400"
-              style={{ background: '#111827', border: '1px solid #374151' }}
-            >
-              {COPY_SECTIONS.filter(s => !!getSection(s.key)).length} of {COPY_SECTIONS.length} sections written
-            </div>
-          )}
-        </div>
-      )}
+        {/* Bonuses */}
+        {step === 'bonuses' && (
+          <button
+            onClick={() => {
+              const allValued = bonuses.every(b => !b.loading && b.value_peso > 0)
+              if (!allValued) { setError('Please set a peso value for each bonus before continuing.'); return }
+              setError('')
+              setStep('price_anchor')
+            }}
+            disabled={bonusesLoading || bonuses.some(b => b.loading)}
+            className="w-full py-4 rounded-xl font-bold text-base disabled:opacity-60 transition-all"
+            style={{ background: '#F4B942', color: '#1A1F36' }}
+          >
+            {bonuses.some(b => b.loading) ? 'Creating Bonuses…' : 'Set My Pricing →'}
+          </button>
+        )}
+
+        {/* Price Anchor */}
+        {step === 'price_anchor' && (
+          <button
+            onClick={() => {
+              if (!sellingPrice || parseInt(sellingPrice) <= 0) { setError('Please enter a selling price.'); return }
+              setError('')
+              setStep('guarantee')
+            }}
+            disabled={!sellingPrice || parseInt(sellingPrice) <= 0}
+            className="w-full py-4 rounded-xl font-bold text-base disabled:opacity-40 transition-all"
+            style={{ background: '#F4B942', color: '#1A1F36' }}
+          >
+            Set My Guarantee →
+          </button>
+        )}
+
+        {/* Guarantee */}
+        {step === 'guarantee' && (
+          <button
+            onClick={() => {
+              if (!guarantee.trim()) { setError('Please select or write a guarantee.'); return }
+              setError('')
+              setStep('offer_statement')
+              setTimeout(handleGenerateOfferStatement, 100)
+            }}
+            disabled={!guarantee.trim()}
+            className="w-full py-4 rounded-xl font-bold text-base disabled:opacity-40 transition-all"
+            style={{ background: '#F4B942', color: '#1A1F36' }}
+          >
+            Build My Offer Statement →
+          </button>
+        )}
+
+        {/* Offer Statement */}
+        {step === 'offer_statement' && offerStatement && (
+          <button
+            onClick={handleSaveOffer}
+            className="w-full py-4 rounded-xl font-bold text-base"
+            style={{ background: '#F4B942', color: '#1A1F36' }}
+          >
+            Save My Offer ✓
+          </button>
+        )}
+
+        {step === 'offer_statement' && !offerStatement && !offerLoading && (
+          <button
+            onClick={handleGenerateOfferStatement}
+            className="w-full py-4 rounded-xl font-bold text-base"
+            style={{ background: '#1A1F36', color: '#F4B942', border: '1px solid #F4B942' }}
+          >
+            Generate My Offer Statement
+          </button>
+        )}
+      </div>
     </div>
   )
 }
