@@ -12,6 +12,7 @@ interface ProfileData {
   email: string
   access_level: string
   enrolled_at: string | null
+  created_at: string | null
 }
 
 const CheckIcon = () => (
@@ -46,7 +47,7 @@ export default function ProfilePage() {
 
       const { data } = await supabase
         .from('profiles')
-        .select('first_name, last_name, phone, access_level, enrolled_at, full_name')
+        .select('first_name, last_name, phone, access_level, enrolled_at, full_name, created_at')
         .eq('id', user.id)
         .single()
 
@@ -57,6 +58,7 @@ export default function ProfilePage() {
         email: user.email || '',
         access_level: data?.access_level || 'pending',
         enrolled_at: data?.enrolled_at || null,
+        created_at: data?.created_at || null,
       }
 
       setProfile(profileData)
@@ -131,24 +133,51 @@ export default function ProfilePage() {
         </div>
 
         {/* Access badge */}
-        <div
-          className="rounded-xl px-4 py-3 mb-6 flex items-center gap-3"
-          style={{ background: '#1c1500', border: '1px solid #F4B942' }}
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F4B942" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-          </svg>
-          <div>
-            <p className="text-[#F4B942] text-xs font-bold uppercase tracking-wide">
-              {profile?.access_level === 'full_access' ? 'Full Access' : profile?.access_level === 'enrolled' ? 'Enrolled' : 'Pending Access'}
-            </p>
-            {profile?.enrolled_at && (
-              <p className="text-gray-400 text-[11px] mt-0.5">
-                Enrolled {new Date(profile.enrolled_at).toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' })}
-              </p>
-            )}
-          </div>
-        </div>
+        {(() => {
+          const startDate = profile?.created_at ?? profile?.enrolled_at
+          const expiryMs = startDate ? new Date(startDate).getTime() + 90 * 24 * 60 * 60 * 1000 : null
+          const daysLeft = expiryMs ? Math.ceil((expiryMs - Date.now()) / 86400000) : null
+          const expiresOn = expiryMs ? new Date(expiryMs).toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' }) : null
+          const expired = daysLeft !== null && daysLeft <= 0
+          const urgentColor = expired ? '#f87171' : daysLeft !== null && daysLeft <= 14 ? '#fb923c' : '#F4B942'
+
+          return (
+            <div
+              className="rounded-xl px-4 py-3 mb-6"
+              style={{ background: '#1c1500', border: `1px solid ${urgentColor}` }}
+            >
+              <div className="flex items-center gap-3 mb-2">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={urgentColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                </svg>
+                <p style={{ color: urgentColor }} className="text-xs font-bold uppercase tracking-wide">
+                  {profile?.access_level === 'full_access' ? 'Full Access' : profile?.access_level === 'enrolled' ? 'Enrolled' : 'Pending Access'}
+                </p>
+              </div>
+
+              {/* Countdown bar */}
+              {daysLeft !== null && expiresOn && (
+                <>
+                  <div className="flex justify-between items-center mb-1.5">
+                    <span className="text-[11px] text-gray-400">
+                      {expired ? 'Access expired' : `${daysLeft} day${daysLeft === 1 ? '' : 's'} remaining`}
+                    </span>
+                    <span className="text-[11px] text-gray-500">ends {expiresOn}</span>
+                  </div>
+                  <div className="h-1.5 rounded-full overflow-hidden" style={{ background: '#2d2000' }}>
+                    <div
+                      className="h-full rounded-full transition-all"
+                      style={{
+                        width: `${Math.max(0, Math.min(100, (daysLeft / 90) * 100))}%`,
+                        background: urgentColor,
+                      }}
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+          )
+        })()}
 
         {/* Personal Info */}
         <div className="bg-gray-900 rounded-2xl p-4 mb-4" style={{ border: '1px solid #374151' }}>

@@ -17,6 +17,7 @@ interface Student {
   unlockedModules: number[]
   enrolledAt: string | null
   lastActiveAt: string | null
+  createdAt: string | null
   completions: boolean[]
 }
 
@@ -48,6 +49,15 @@ function daysSince(dateStr: string | null): number {
   return Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000)
 }
 
+function accessExpiry(s: Student): { daysLeft: number; expiresOn: string; expired: boolean } {
+  const startDate = s.createdAt ?? s.enrolledAt
+  if (!startDate) return { daysLeft: 90, expiresOn: '—', expired: false }
+  const expiryMs = new Date(startDate).getTime() + 90 * 24 * 60 * 60 * 1000
+  const daysLeft = Math.ceil((expiryMs - Date.now()) / 86400000)
+  const expiresOn = new Date(expiryMs).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })
+  return { daysLeft, expiresOn, expired: daysLeft <= 0 }
+}
+
 function activityBadge(s: Student) {
   const days = daysSince(s.lastActiveAt ?? s.enrolledAt)
   if (days <= 2)  return { label: `Active ${days}d ago`, cls: 'text-green-400' }
@@ -61,6 +71,7 @@ function activityBadge(s: Student) {
 function StudentRow({ student, onToggleSuspend }: { student: Student; onToggleSuspend: (id: string, suspend: boolean) => void }) {
   const payment = paymentBadge(student)
   const activity = activityBadge(student)
+  const expiry = accessExpiry(student)
   const maxUnlocked = student.unlockedModules.length > 0 ? Math.max(...student.unlockedModules) : 0
 
   return (
@@ -76,7 +87,7 @@ function StudentRow({ student, onToggleSuspend }: { student: Student; onToggleSu
           <p className="text-gray-500 text-xs truncate mb-1.5">{student.email}</p>
 
           {/* Module dots */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 mb-1.5">
             {MODULE_LABELS.map((label, i) => {
               const unlocked = student.unlockedModules.includes(i + 1)
               const done = student.completions[i]
@@ -97,6 +108,20 @@ function StudentRow({ student, onToggleSuspend }: { student: Student; onToggleSu
               )
             })}
             <span className={`text-[10px] ml-1 ${activity.cls}`}>{activity.label}</span>
+          </div>
+
+          {/* Access expiry */}
+          <div className="flex items-center gap-1.5">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={expiry.expired ? '#f87171' : expiry.daysLeft <= 14 ? '#fb923c' : '#6b7280'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+            </svg>
+            {expiry.expired ? (
+              <span className="text-[10px] text-red-400 font-semibold">Access expired {expiry.expiresOn}</span>
+            ) : (
+              <span className={`text-[10px] font-semibold ${expiry.daysLeft <= 14 ? 'text-orange-400' : 'text-gray-500'}`}>
+                {expiry.daysLeft}d left · expires {expiry.expiresOn}
+              </span>
+            )}
           </div>
         </div>
 

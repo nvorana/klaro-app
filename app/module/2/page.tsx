@@ -113,6 +113,9 @@ export default function Module2Page() {
   const [expandedChapter, setExpandedChapter] = useState<number | null>(null)
   const [showStartOverWarning, setShowStartOverWarning] = useState(false)
 
+  // Author
+  const [authorName, setAuthorName] = useState('')
+
   // ─── Auth & init ──────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -122,11 +125,13 @@ export default function Module2Page() {
 
       const { data: profile } = await supabase
         .from('profiles')
-        .select('access_level, enrolled_at, unlocked_modules')
+        .select('access_level, enrolled_at, unlocked_modules, full_name')
         .eq('id', session.user.id)
         .single()
 
       if (!profile || profile.access_level === 'pending') { router.push('/signup'); return }
+
+      if (profile.full_name) setAuthorName(profile.full_name)
 
       if (!isModuleUnlockedForStudent(profile.unlocked_modules, profile.access_level, profile.enrolled_at, 2)) {
         router.push('/dashboard'); return
@@ -361,6 +366,7 @@ export default function Module2Page() {
       const ebookPayload = {
         title: selectedTitle?.title || 'My E-Book',
         subtitle: selectedTitle?.subtitle || '',
+        authorName,
         introduction,
         conclusion,
         chapters: chapterDrafts,
