@@ -1,14 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
 
-type Screen = 'signup' | 'pending'
+type Screen = 'signup' | 'pending' | 'checking'
 
 export default function SignupPage() {
   const router = useRouter()
-  const [screen, setScreen] = useState<Screen>('signup')
+  const [screen, setScreen] = useState<Screen>('checking')
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
@@ -22,6 +22,37 @@ export default function SignupPage() {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
+
+  // On mount: check if already logged in, apply any pending access, redirect if valid
+  useEffect(() => {
+    async function checkExistingSession() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        setScreen('signup')
+        return
+      }
+      // Already logged in — try to apply any pending webhook access
+      await fetch('/api/apply-pending-access', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: user.email, userId: user.id }),
+      })
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('access_level')
+        .eq('id', user.id)
+        .single()
+      const accessLevel = profile?.access_level ?? 'pending'
+      if (['full_access', 'enrolled', 'tier1', 'tier2', 'tier3'].includes(accessLevel)) {
+        router.push('/dashboard')
+        router.refresh()
+      } else {
+        setScreen('pending')
+      }
+    }
+    checkExistingSession()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   async function handleSignup(e: React.FormEvent) {
     e.preventDefault()
@@ -67,6 +98,7 @@ export default function SignupPage() {
     if (data.user) {
       await supabase.from('profiles').upsert({
         id: data.user.id,
+        email: email.trim().toLowerCase(),
         full_name: fullName,
         first_name: firstName.trim(),
         last_name: lastName.trim(),
@@ -106,6 +138,14 @@ export default function SignupPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { setLoading(false); return }
 
+    // Re-apply any pending webhook access (handles the case where
+    // Systeme.io fired the tag before or after the student signed up)
+    await fetch('/api/apply-pending-access', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: user.email, userId: user.id }),
+    })
+
     const { data: profile } = await supabase
       .from('profiles')
       .select('access_level')
@@ -124,6 +164,15 @@ export default function SignupPage() {
 
   const inputClass = "w-full px-4 py-3 rounded-xl border border-gray-200 text-sm text-[#1A1F36] placeholder-gray-300 focus:outline-none focus:border-[#1A1F36] focus:ring-1 focus:ring-[#1A1F36] transition-colors bg-[#F8F9FA]"
   const labelClass = "block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5"
+
+  // ── Checking session (brief loading state) ───────────────
+  if (screen === 'checking') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#F8F9FA]">
+        <div className="w-8 h-8 border-4 border-[#1A1F36] border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
+  }
 
   // ── Access Pending Screen ─────────────────────────────────
   if (screen === 'pending') {

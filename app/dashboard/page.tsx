@@ -16,7 +16,7 @@ export default async function DashboardPage() {
   // ── Profile ───────────────────────────────────────────────
   const { data: profile } = await supabase
     .from('profiles')
-    .select('full_name, access_level, enrolled_at, unlocked_modules, access_suspended')
+    .select('full_name, access_level, enrolled_at, unlocked_modules, access_suspended, created_at')
     .eq('id', user.id)
     .maybeSingle()
 
@@ -187,7 +187,7 @@ export default async function DashboardPage() {
             <line x1="12" y1="16" x2="12.01" y2="16"/>
           </svg>
           <p className="text-amber-700 text-xs leading-relaxed">
-            <span className="font-bold">Complete your payment</span> to unlock all 6 modules and secure full access to KLARO.
+            <span className="font-bold">Complete your payment</span> to unlock all 7 modules and secure full access to KLARO.
           </p>
         </div>
       )}

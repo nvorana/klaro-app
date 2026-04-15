@@ -35,6 +35,10 @@ export function isModuleUnlockedForStudent(
   enrolledAt: string | null,
   moduleNumber: number
 ): boolean {
+  // Module 1 is always available to any non-pending student
+  if (moduleNumber === 1 && accessLevel && accessLevel !== 'pending') {
+    return true
+  }
   // Array-based (new system — TOPIS, Accel, manually unlocked)
   if (unlockedModules && unlockedModules.length > 0) {
     return unlockedModules.includes(moduleNumber)

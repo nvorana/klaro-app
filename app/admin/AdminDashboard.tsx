@@ -69,6 +69,7 @@ function activityBadge(s: Student) {
 // ─── Student Row ──────────────────────────────────────────────────────────────
 
 function StudentRow({ student, onToggleSuspend }: { student: Student; onToggleSuspend: (id: string, suspend: boolean) => void }) {
+  const router = useRouter()
   const payment = paymentBadge(student)
   const activity = activityBadge(student)
   const expiry = accessExpiry(student)
@@ -78,10 +79,13 @@ function StudentRow({ student, onToggleSuspend }: { student: Student; onToggleSu
     <div className={`px-4 py-3 border-b border-gray-800 last:border-0 ${student.suspended ? 'opacity-60' : ''}`}>
       <div className="flex items-start justify-between gap-3">
 
-        {/* Left: name + email + badges */}
-        <div className="flex-1 min-w-0">
+        {/* Left: name + email + badges — clickable to view student work */}
+        <div
+          className="flex-1 min-w-0 cursor-pointer hover:opacity-80 transition-opacity"
+          onClick={() => router.push(`/admin/student/${student.id}`)}
+        >
           <div className="flex items-center gap-2 flex-wrap mb-0.5">
-            <span className="text-white text-sm font-semibold truncate">{student.name}</span>
+            <span className="text-white text-sm font-semibold truncate hover:underline">{student.name}</span>
             <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${payment.cls}`}>{payment.label}</span>
           </div>
           <p className="text-gray-500 text-xs truncate mb-1.5">{student.email}</p>
@@ -232,7 +236,7 @@ function BatchSection({ batchNumber, students, onToggleSuspend }: {
                 Module access — {active.length} active students
               </p>
               <div className="flex gap-2 flex-wrap">
-                {[1, 2, 3, 4, 5, 6].map(n => {
+                {[1, 2, 3, 4, 5, 6, 7].map(n => {
                   const isUnlocked  = n <= maxUnlocked   // already unlocked
                   const isCurrentMax = n === maxUnlocked  // the topmost unlocked
                   const isBelow     = n < maxUnlocked     // below current max → disabled

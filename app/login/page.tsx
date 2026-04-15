@@ -21,12 +21,21 @@ export default function LoginPage() {
     setError('')
     setLoading(true)
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
 
     if (error) {
       setError('Incorrect email or password. Please try again.')
       setLoading(false)
       return
+    }
+
+    // Apply any pending webhook access (handles tag-before-signup and tag-after-signup)
+    if (data.user) {
+      await fetch('/api/apply-pending-access', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: data.user.email, userId: data.user.id }),
+      })
     }
 
     router.push('/dashboard')

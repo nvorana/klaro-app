@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
 
     const { batchNumber, upToModule } = await request.json()
 
-    if (!batchNumber || !upToModule || upToModule < 1 || upToModule > 6) {
+    if (!batchNumber || !upToModule || upToModule < 1 || upToModule > 7) {
       return NextResponse.json({ error: 'Invalid batchNumber or upToModule' }, { status: 400 })
     }
 

@@ -51,6 +51,27 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/change-password', request.url))
   }
 
+  // ── 90-day access expiry check (students only) ──────────────
+  const isOnExpiredPage = request.nextUrl.pathname.startsWith('/access-expired')
+
+  if (user && isProtectedPage && !isOnExpiredPage) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role, created_at, enrolled_at')
+      .eq('id', user.id)
+      .maybeSingle()
+
+    if (profile?.role === 'student') {
+      const startDate = profile.created_at ?? profile.enrolled_at
+      if (startDate) {
+        const expiryMs = new Date(startDate).getTime() + 90 * 24 * 60 * 60 * 1000
+        if (Date.now() > expiryMs) {
+          return NextResponse.redirect(new URL('/access-expired', request.url))
+        }
+      }
+    }
+  }
+
   return supabaseResponse
 }
 
