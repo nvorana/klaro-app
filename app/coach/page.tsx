@@ -93,12 +93,12 @@ export default async function CoachDashboard() {
   const { data: students } = await (isAdmin
     ? adminClient
         .from('profiles')
-        .select('id, first_name, full_name, email, enrolled_at, last_active_at, coach_notes, dfy_flagged, access_level, unlocked_modules')
+        .select('id, first_name, full_name, email, enrolled_at, last_active_at, coach_notes, dfy_flagged, access_level, unlocked_modules, program_type')
         .eq('role', 'student')
         .order('enrolled_at', { ascending: false })
     : adminClient
         .from('profiles')
-        .select('id, first_name, full_name, email, enrolled_at, last_active_at, coach_notes, dfy_flagged, access_level, unlocked_modules')
+        .select('id, first_name, full_name, email, enrolled_at, last_active_at, coach_notes, dfy_flagged, access_level, unlocked_modules, program_type')
         .eq('role', 'student')
         .eq('coach_id', user.id)
         .order('enrolled_at', { ascending: false })
@@ -122,6 +122,7 @@ export default async function CoachDashboard() {
   const [
     { data: clarities },
     { data: ebooks },
+    { data: offers },
     { data: salesPages },
     { data: emailSeqs },
     { data: leadMagnets },
@@ -129,6 +130,7 @@ export default async function CoachDashboard() {
   ] = await Promise.all([
     adminClient.from('clarity_sentences').select('user_id, created_at').in('user_id', studentIds),
     adminClient.from('ebooks').select('user_id, title, created_at').in('user_id', studentIds).eq('status', 'complete'),
+    adminClient.from('offers').select('user_id, created_at').in('user_id', studentIds),
     adminClient.from('sales_pages').select('user_id, headline, created_at').in('user_id', studentIds),
     adminClient.from('email_sequences').select('user_id, created_at').in('user_id', studentIds),
     adminClient.from('lead_magnets').select('user_id, title, created_at').in('user_id', studentIds),
@@ -147,6 +149,7 @@ export default async function CoachDashboard() {
 
   const clarityMap  = byUser(clarities)
   const ebookMap    = byUser(ebooks)
+  const offerMap    = byUser(offers)
   const salesMap    = byUser(salesPages)
   const emailMap    = byUser(emailSeqs)
   const magnetMap   = byUser(leadMagnets)
@@ -179,53 +182,8 @@ export default async function CoachDashboard() {
         </div>
       </div>
 
-      {/* ── Summary Cards ────────────────────────────────── */}
-      <div className="px-4 pt-5 pb-2 grid grid-cols-4 gap-2">
-        <div className="bg-gray-900 rounded-xl p-3 border border-[#374151]">
-          <div className="flex items-center gap-1.5 mb-2">
-            <Users size={12} className="text-gray-400" />
-            <p className="text-gray-400 text-xs">Total</p>
-          </div>
-          <p className="text-2xl font-black text-white">{students.length}</p>
-        </div>
-        <div className="bg-gray-900 rounded-xl p-3 border border-green-900/60">
-          <div className="flex items-center gap-1.5 mb-2">
-            <TrendingUp size={12} className="text-green-400" />
-            <p className="text-gray-400 text-xs">On Track</p>
-          </div>
-          <p className="text-2xl font-black text-green-400">{counts.green}</p>
-        </div>
-        <div className="bg-gray-900 rounded-xl p-3 border border-red-900/60">
-          <div className="flex items-center gap-1.5 mb-2">
-            <AlertTriangle size={12} className="text-red-400" />
-            <p className="text-gray-400 text-xs">At Risk</p>
-          </div>
-          <p className="text-2xl font-black text-red-400">{counts.red + counts.yellow}</p>
-        </div>
-        <div className="bg-gray-900 rounded-xl p-3 border border-gray-700">
-          <div className="flex items-center gap-1.5 mb-2">
-            <AlertTriangle size={12} className="text-gray-500" />
-            <p className="text-gray-400 text-xs">Ghost</p>
-          </div>
-          <p className="text-2xl font-black text-gray-400">{counts.ghost}</p>
-        </div>
-      </div>
-
-      {/* ── DFY Flagged Banner ───────────────────────────── */}
-      {students.filter(s => s.dfy_flagged).length > 0 && (
-        <div className="mx-4 mt-3 bg-[#1c1500] border border-[#F4B942]/40 rounded-xl px-4 py-3 flex items-center gap-3">
-          <Star size={18} className="text-[#F4B942] shrink-0" />
-          <div>
-            <p className="text-[#F4B942] text-sm font-bold">
-              {students.filter(s => s.dfy_flagged).length} student{students.filter(s => s.dfy_flagged).length > 1 ? 's' : ''} flagged for DFY
-            </p>
-            <p className="text-gray-400 text-xs">Review these students for Done-For-You upsell</p>
-          </div>
-        </div>
-      )}
-
-      {/* ── Student List ─────────────────────────────────── */}
-      <div className="flex-1 px-4 pt-4 pb-28">
+      {/* ── Student List (tabs + summary cards are inside the client component) ── */}
+      <div className="flex-1 px-4 pt-5 pb-28">
         <CoachStudentList
           students={students.map(student => ({
             id: student.id,
@@ -240,12 +198,14 @@ export default async function CoachDashboard() {
             completions: [
               !!clarityMap[student.id]?.length,
               !!ebookMap[student.id]?.length,
+              !!offerMap[student.id]?.length,
               !!salesMap[student.id]?.length,
               !!emailMap[student.id]?.length,
               !!magnetMap[student.id]?.length,
               !!postsMap[student.id]?.length,
             ],
             ebookTitle: ebookMap[student.id]?.[0]?.title,
+            program_type: student.program_type,
           }))}
         />
       </div>

@@ -4,8 +4,9 @@ import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import {
-  ArrowLeft, Target, BookOpen, DollarSign, Mail, Gift, Megaphone,
-  CheckCircle2, Circle, Star, MessageSquare, ClipboardList, Clock, Copy, Check, Phone
+  ArrowLeft, Target, BookOpen, DollarSign, FileText, Mail, Gift, Megaphone,
+  CheckCircle2, Circle, Star, MessageSquare, ClipboardList, Clock, Copy, Check, Phone,
+  ThumbsUp, AlertCircle, Unlock,
 } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
@@ -13,13 +14,14 @@ export const dynamic = 'force-dynamic'
 const MODULE_NAMES = [
   'Clarity Builder',
   'Ebook Factory',
+  'Irresistible Offer',
   'Sales Page Builder',
-  'Email Sequence',
-  'Lead Magnet',
-  'Facebook Content',
+  '7-Day Email Sequence',
+  'Lead Magnet Builder',
+  'Facebook Content Engine',
 ]
 
-const MODULE_ICON_COMPONENTS = [Target, BookOpen, DollarSign, Mail, Gift, Megaphone]
+const MODULE_ICON_COMPONENTS = [Target, BookOpen, DollarSign, FileText, Mail, Gift, Megaphone]
 
 const MESSAGE_TEMPLATES = [
   { label: '🟢 On Track', message: 'Nice progress. Continue and finish this week.' },
@@ -48,6 +50,7 @@ export default function StudentDetail() {
 
   const [student, setStudent] = useState<any>(null)
   const [outputs, setOutputs] = useState<any>({})
+  const [reviews, setReviews] = useState<any[]>([])
   const [notes, setNotes] = useState('')
   const [dfyFlagged, setDfyFlagged] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -56,6 +59,9 @@ export default function StudentDetail() {
   const [loading, setLoading] = useState(true)
   const [resetting, setResetting] = useState(false)
   const [showResetConfirm, setShowResetConfirm] = useState(false)
+  const [reviewingModule, setReviewingModule] = useState<number | null>(null)
+  const [revisionNote, setRevisionNote] = useState('')
+  const [reviewLoading, setReviewLoading] = useState(false)
 
   useEffect(() => {
     loadStudent()
@@ -86,7 +92,30 @@ export default function StudentDetail() {
     setNotes(data.profile.coach_notes ?? '')
     setDfyFlagged(data.profile.dfy_flagged ?? false)
     setOutputs(data.outputs)
+    setReviews(data.reviews ?? [])
     setLoading(false)
+  }
+
+  function getReview(moduleNumber: number) {
+    return reviews.find((r: any) => r.module_number === moduleNumber) ?? null
+  }
+
+  async function submitReview(moduleNumber: number, status: 'approved' | 'needs_revision') {
+    setReviewLoading(true)
+    await fetch('/api/coach/review', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        studentId,
+        moduleNumber,
+        status,
+        note: status === 'needs_revision' ? revisionNote : null,
+      }),
+    })
+    setReviewLoading(false)
+    setReviewingModule(null)
+    setRevisionNote('')
+    loadStudent() // Refresh to show updated review + unlocked module
   }
 
   async function saveNotes() {
@@ -118,17 +147,19 @@ export default function StudentDetail() {
   if (!student) return null
 
   const completions = [
-    !!outputs.clarity, !!outputs.ebook, !!outputs.salesPage,
+    !!outputs.clarity, !!outputs.ebook, !!outputs.offer, !!outputs.salesPage,
     !!outputs.emailSeq, !!outputs.leadMagnet, !!outputs.posts,
   ]
   const doneCount = completions.filter(Boolean).length
   const days = daysSince(student.last_active_at ?? student.enrolled_at)
   const status = getStatus(days)
   const name = student.full_name || student.first_name || 'Student'
+  const isAP = student.program_type === 'accelerator'
 
   const outputDetails = [
     { done: !!outputs.clarity, label: outputs.clarity?.full_sentence ? `"${outputs.clarity.full_sentence}"` : null },
     { done: !!outputs.ebook, label: outputs.ebook?.title ?? null },
+    { done: !!outputs.offer, label: outputs.offer?.offer_statement ? 'Offer built' : null },
     { done: !!outputs.salesPage, label: outputs.salesPage?.headline ?? null },
     { done: !!outputs.emailSeq, label: outputs.emailSeq ? '7 emails written' : null },
     { done: !!outputs.leadMagnet, label: outputs.leadMagnet?.title ?? null },
@@ -174,7 +205,7 @@ export default function StudentDetail() {
         <div className="bg-gray-900 border border-[#374151] rounded-2xl p-4">
           <div className="grid grid-cols-3 gap-3 text-center">
             <div>
-              <p className="text-2xl font-black text-white">{doneCount}/6</p>
+              <p className="text-2xl font-black text-white">{doneCount}/7</p>
               <p className="text-gray-500 text-xs">Modules Done</p>
             </div>
             <div>
@@ -185,7 +216,7 @@ export default function StudentDetail() {
             </div>
             <div>
               <p className="text-2xl font-black text-[#F4B942]">
-                {Math.round((doneCount / 6) * 100)}%
+                {Math.round((doneCount / 7) * 100)}%
               </p>
               <p className="text-gray-500 text-xs">Complete</p>
             </div>
@@ -194,7 +225,7 @@ export default function StudentDetail() {
           <div className="mt-4 h-2 bg-gray-800 rounded-full overflow-hidden">
             <div
               className="h-full rounded-full transition-all"
-              style={{ width: `${(doneCount / 6) * 100}%`, background: doneCount === 6 ? '#10B981' : '#F4B942' }}
+              style={{ width: `${(doneCount / 7) * 100}%`, background: doneCount === 7 ? '#10B981' : '#F4B942' }}
             />
           </div>
         </div>
@@ -202,27 +233,109 @@ export default function StudentDetail() {
         {/* ── Module Breakdown ─────────────────────────────── */}
         <div className="bg-gray-900 border border-[#374151] rounded-2xl p-4">
           <h2 className="text-white font-bold text-sm mb-3">Module Progress</h2>
-          <div className="space-y-2.5">
+          <div className="space-y-3">
             {MODULE_NAMES.map((modName, i) => {
               const IconComp = MODULE_ICON_COMPONENTS[i]
+              const moduleNum = i + 1
+              const review = getReview(moduleNum)
+              const isCompleted = completions[i]
+
               return (
-              <div key={i} className="flex items-start gap-3">
-                <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${completions[i] ? 'bg-green-900/50 text-green-400' : 'bg-gray-800 text-gray-500'}`}>
-                  {completions[i] ? <CheckCircle2 size={14} /> : <IconComp size={14} />}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className={`text-sm font-medium ${completions[i] ? 'text-white' : 'text-gray-500'}`}>{name}</p>
-                  {outputDetails[i].label && (
-                    <p className={`text-gray-500 text-xs mt-0.5 ${i === 0 ? 'leading-relaxed' : 'truncate'}`}>
-                      {outputDetails[i].label}
+              <div key={i} className="bg-gray-800/50 rounded-xl p-3">
+                <div className="flex items-start gap-3">
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${isCompleted ? 'bg-green-900/50 text-green-400' : 'bg-gray-800 text-gray-500'}`}>
+                    {isCompleted ? <CheckCircle2 size={14} /> : <IconComp size={14} />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-sm font-medium ${isCompleted ? 'text-white' : 'text-gray-500'}`}>
+                      Module {moduleNum}: {modName}
                     </p>
-                  )}
-                  {!completions[i] && (
-                    <p className="text-gray-600 text-xs mt-0.5">Not started</p>
-                  )}
+                    {outputDetails[i].label && (
+                      <p className={`text-gray-500 text-xs mt-0.5 ${i === 0 ? 'leading-relaxed' : 'truncate'}`}>
+                        {outputDetails[i].label}
+                      </p>
+                    )}
+                    {!isCompleted && (
+                      <p className="text-gray-600 text-xs mt-0.5">Not started</p>
+                    )}
+                  </div>
+                  <div className="shrink-0 flex items-center gap-1.5">
+                    {isCompleted && !review && (
+                      <span className="text-gray-500 text-xs font-semibold">Pending Review</span>
+                    )}
+                    {review?.status === 'approved' && (
+                      <span className="text-green-400 text-xs font-bold flex items-center gap-1">
+                        <ThumbsUp size={11} /> Approved
+                      </span>
+                    )}
+                    {review?.status === 'needs_revision' && (
+                      <span className="text-amber-400 text-xs font-bold flex items-center gap-1">
+                        <AlertCircle size={11} /> Revise
+                      </span>
+                    )}
+                    {!isCompleted && !review && (
+                      <span className="text-gray-600 text-xs">—</span>
+                    )}
+                  </div>
                 </div>
-                {completions[i] && (
-                  <span className="text-green-400 text-xs font-bold shrink-0">Done</span>
+
+                {/* Review note display */}
+                {review?.status === 'needs_revision' && review.note && (
+                  <div className="mt-2 ml-10 bg-amber-900/20 border border-amber-800/40 rounded-lg px-3 py-2">
+                    <p className="text-amber-300 text-xs leading-relaxed">{review.note}</p>
+                  </div>
+                )}
+
+                {/* Review controls (AP students only, completed modules only) */}
+                {isAP && isCompleted && (
+                  <div className="mt-2 ml-10">
+                    {reviewingModule === moduleNum ? (
+                      /* Expanded review form */
+                      <div className="space-y-2">
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => submitReview(moduleNum, 'approved')}
+                            disabled={reviewLoading}
+                            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold bg-green-800 text-green-300 hover:bg-green-700 transition-colors disabled:opacity-50"
+                          >
+                            <ThumbsUp size={12} /> Approve
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (revisionNote.trim()) {
+                                submitReview(moduleNum, 'needs_revision')
+                              }
+                            }}
+                            disabled={reviewLoading || !revisionNote.trim()}
+                            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold bg-amber-800 text-amber-300 hover:bg-amber-700 transition-colors disabled:opacity-50"
+                          >
+                            <AlertCircle size={12} /> Needs Revision
+                          </button>
+                        </div>
+                        <textarea
+                          value={revisionNote}
+                          onChange={e => setRevisionNote(e.target.value)}
+                          placeholder="Add a note for revision (required for 'Needs Revision')..."
+                          rows={2}
+                          className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-xs text-gray-300 placeholder-gray-600 focus:outline-none focus:border-[#F4B942] resize-none"
+                        />
+                        <button
+                          onClick={() => { setReviewingModule(null); setRevisionNote('') }}
+                          className="text-gray-500 text-xs hover:text-gray-300"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      /* Review button */
+                      <button
+                        onClick={() => setReviewingModule(moduleNum)}
+                        className="text-xs text-[#F4B942] font-semibold hover:underline"
+                      >
+                        {review ? 'Re-review' : 'Review this module'}
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
               )

@@ -1,6 +1,7 @@
 'use client'
 
 import GoldConfetti from '@/components/GoldConfetti'
+import ModuleReviewStatus from '@/app/components/ModuleReviewStatus'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
@@ -400,6 +401,9 @@ export default function Module4Page() {
               <p className="text-sm text-emerald-300 mt-0.5">Your 7-day email sequence is saved.</p>
             </div>
           </div>
+
+          {/* Coach review status (AP students) */}
+          <ModuleReviewStatus moduleNumber={5} />
 
           <div className="bg-gray-900 rounded-xl p-4 mb-4" style={{ border: '1px solid #374151' }}>
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Your Sequence</p>

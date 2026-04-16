@@ -1,6 +1,7 @@
 'use client'
 
 import GoldConfetti from '@/components/GoldConfetti'
+import ModuleReviewStatus from '@/app/components/ModuleReviewStatus'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
@@ -389,6 +390,9 @@ export default function Module6Page() {
               <p className="text-sm text-emerald-300 mt-0.5">Your Facebook posts are saved and ready to publish.</p>
             </div>
           </div>
+
+          {/* Coach review status (AP students) */}
+          <ModuleReviewStatus moduleNumber={7} />
 
           {/* Post count summary */}
           <div className="bg-gray-900 rounded-xl p-4 mb-4" style={{ border: '1px solid #374151' }}>

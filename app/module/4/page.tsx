@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
+import ModuleReviewStatus from '@/app/components/ModuleReviewStatus'
 import GoldConfetti from '@/components/GoldConfetti'
 import { isModuleUnlockedForStudent, getDaysUntilUnlock } from '@/lib/modules'
 
@@ -501,6 +502,9 @@ export default function Module4Page() {
                 <p className="text-sm text-emerald-300 mt-0.5">All 10 sections written. Copy them into Systeme.io or your page builder.</p>
               </div>
             </div>
+
+            {/* Coach review status (AP students) */}
+            <ModuleReviewStatus moduleNumber={4} />
 
             {/* Copy all */}
             <button

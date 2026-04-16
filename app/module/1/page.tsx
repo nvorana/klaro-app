@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
+import ModuleReviewStatus from '@/app/components/ModuleReviewStatus'
 import GoldConfetti from '@/components/GoldConfetti'
 
 type Step = 'warning' | 'market' | 'problem' | 'solution' | 'validate' | 'complete'
@@ -531,6 +532,9 @@ export default function Module1Page() {
               <p className="text-white/80 text-sm">Your Clarity Sentence is saved.</p>
             </div>
           </div>
+
+          {/* Coach review status (AP students) */}
+          <ModuleReviewStatus moduleNumber={1} />
 
           {/* Clarity sentence card */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mb-5">

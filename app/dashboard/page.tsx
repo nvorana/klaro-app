@@ -16,7 +16,7 @@ export default async function DashboardPage() {
   // ── Profile ───────────────────────────────────────────────
   const { data: profile } = await supabase
     .from('profiles')
-    .select('full_name, access_level, enrolled_at, unlocked_modules, access_suspended, created_at')
+    .select('full_name, access_level, enrolled_at, unlocked_modules, access_suspended, created_at, program_type')
     .eq('id', user.id)
     .maybeSingle()
 
@@ -50,6 +50,19 @@ export default async function DashboardPage() {
   const completed = [!!clarity, !!ebook, !!offer, !!salesPage, !!emailSeq, !!leadMagnet, !!contentPost]
   const completedCount = completed.filter(Boolean).length
   const progressPercent = Math.round((completedCount / 7) * 100)
+
+  // ── Reviews (AP students only) ────────────────────────────
+  const isAP = profile.program_type === 'accelerator'
+  let reviewMap: Record<number, { status: string; note: string | null }> = {}
+  if (isAP) {
+    const { data: reviews } = await supabase
+      .from('module_reviews')
+      .select('module_number, status, note')
+      .eq('student_id', user.id)
+    for (const r of reviews ?? []) {
+      reviewMap[r.module_number] = { status: r.status, note: r.note }
+    }
+  }
 
   // ── Week calculation ──────────────────────────────────────
   const enrolledAt = profile.enrolled_at as string | null
@@ -252,7 +265,26 @@ export default async function DashboardPage() {
                 </div>
 
                 {/* Action */}
-                <div className="flex-shrink-0">
+                <div className="flex-shrink-0 flex flex-col items-end gap-1">
+                  {/* Review status badge (AP students only) */}
+                  {isAP && isCompleted && reviewMap[moduleNum] && (
+                    <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
+                      reviewMap[moduleNum].status === 'approved'
+                        ? 'bg-emerald-50 text-emerald-600'
+                        : reviewMap[moduleNum].status === 'needs_revision'
+                        ? 'bg-amber-50 text-amber-600'
+                        : 'bg-blue-50 text-blue-600'
+                    }`}>
+                      {reviewMap[moduleNum].status === 'approved' ? 'Approved' :
+                       reviewMap[moduleNum].status === 'needs_revision' ? 'Revise' :
+                       'In Review'}
+                    </span>
+                  )}
+                  {isAP && isCompleted && !reviewMap[moduleNum] && (
+                    <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
+                      Pending Review
+                    </span>
+                  )}
                   {isCompleted && (
                     <Link href={`/module/${moduleNum}`}>
                       <span className="flex items-center gap-1 bg-green-50 text-[#10B981] text-xs font-bold px-3 py-2 rounded-xl">

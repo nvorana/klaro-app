@@ -17,48 +17,70 @@ export async function POST(request: NextRequest) {
 
     const supabase = createAdminClient()
 
-    // Look for most recent pending tier grant for this email
+    // Look for pending tier grant OR accelerator enrollment for this email
     const { data: logs } = await supabase
       .from('webhook_logs')
       .select('action')
       .eq('contact_email', email)
-      .like('action', 'tier_access_pending_signup_%')
+      .or('action.like.tier_access_pending_signup_%,action.eq.accelerator_enrolled_pending_signup,action.eq.topis_enrolled_pending_signup')
       .order('created_at', { ascending: false })
-      .limit(1)
+      .limit(5)
 
     if (!logs || logs.length === 0) {
       return NextResponse.json({ applied: false })
     }
 
-    // Extract tier level from action string e.g. "tier_access_pending_signup_tier1"
-    const action = logs[0].action as string
-    const tierLevel = action.replace('tier_access_pending_signup_', '')
+    const updates: Record<string, unknown> = {
+      enrolled_at:      new Date().toISOString(),
+      access_suspended: false,
+      updated_at:       new Date().toISOString(),
+    }
+    let appliedAction = ''
 
-    const validTiers = ['tier1', 'tier2', 'tier3', 'enrolled', 'full_access']
-    if (!validTiers.includes(tierLevel)) {
+    for (const log of logs) {
+      const action = log.action as string
+
+      // Tier access (e.g. tier_access_pending_signup_tier1)
+      if (action.startsWith('tier_access_pending_signup_')) {
+        const tierLevel = action.replace('tier_access_pending_signup_', '')
+        if (['tier1', 'tier2', 'tier3', 'enrolled', 'full_access'].includes(tierLevel)) {
+          updates.access_level = tierLevel
+          appliedAction = `pending_access_applied_${tierLevel}`
+        }
+      }
+
+      // Accelerator enrollment
+      if (action === 'accelerator_enrolled_pending_signup') {
+        updates.program_type = 'accelerator'
+        updates.coach_id = 'e5d6cc0d-ae70-4e58-967b-f61a957eb442' // Edgar
+        appliedAction = appliedAction || 'pending_access_applied_accelerator'
+      }
+
+      // TOPIS enrollment
+      if (action === 'topis_enrolled_pending_signup') {
+        updates.program_type = 'topis'
+        if (!updates.access_level) updates.access_level = 'enrolled'
+        appliedAction = appliedAction || 'pending_access_applied_topis'
+      }
+    }
+
+    if (!appliedAction) {
       return NextResponse.json({ applied: false })
     }
 
-    // Apply the tier to the newly created profile
     await supabase
       .from('profiles')
-      .update({
-        access_level:     tierLevel,
-        enrolled_at:      new Date().toISOString(),
-        access_suspended: false,
-        updated_at:       new Date().toISOString(),
-      })
+      .update(updates)
       .eq('id', userId)
 
-    // Log that the pending access was applied
     await supabase.from('webhook_logs').insert({
       contact_email: email,
-      action:        `pending_access_applied_${tierLevel}`,
+      action:        appliedAction,
       tag_name:      null,
-      payload:       { userId, tierLevel, source: 'signup_check' },
+      payload:       { userId, updates, source: 'signup_check' },
     })
 
-    return NextResponse.json({ applied: true, tierLevel })
+    return NextResponse.json({ applied: true, action: appliedAction })
 
   } catch (error) {
     console.error('Apply pending access error:', error)

@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { Star, CheckCircle2, Circle, Lock, Unlock } from 'lucide-react'
 
-const MODULE_NAMES = ['Clarity', 'Ebook', 'Sales Page', 'Emails', 'Lead Magnet', 'FB Content']
+const MODULE_NAMES = ['Clarity', 'Ebook', 'Offer', 'Sales Page', 'Emails', 'Lead Magnet', 'FB Content']
 
 const STATUS_CONFIG = {
   green:  { label: 'On Track',    badge: 'bg-green-900/40 text-green-400' },
@@ -37,6 +37,7 @@ interface Student {
   unlocked_modules: number[] | null
   completions: boolean[]
   ebookTitle?: string
+  program_type?: string | null
 }
 
 interface Props {
@@ -44,11 +45,17 @@ interface Props {
 }
 
 export default function CoachStudentList({ students }: Props) {
+  const [activeTab, setActiveTab] = useState<'topis' | 'accelerator'>('accelerator')
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [moduleTarget, setModuleTarget] = useState<number>(3)
   const [action, setAction] = useState<'unlock' | 'lock'>('unlock')
   const [loading, setLoading] = useState(false)
   const [done, setDone] = useState(false)
+
+  // Split students by program type
+  const apStudents = students.filter(s => s.program_type === 'accelerator')
+  const topisStudents = students.filter(s => s.program_type !== 'accelerator')
+  const displayedStudents = activeTab === 'accelerator' ? apStudents : topisStudents
 
   const toggleSelect = (id: string) => {
     setSelected(prev => {
@@ -58,7 +65,7 @@ export default function CoachStudentList({ students }: Props) {
     })
   }
 
-  const selectAll = () => setSelected(new Set(students.map(s => s.id)))
+  const selectAll = () => setSelected(new Set(displayedStudents.map(s => s.id)))
   const clearAll = () => setSelected(new Set())
 
   const handleAction = async () => {
@@ -76,32 +83,93 @@ export default function CoachStudentList({ students }: Props) {
     setTimeout(() => { setDone(false); window.location.reload() }, 1500)
   }
 
+  // Summary counts for the active tab
+  const counts = { green: 0, yellow: 0, red: 0, ghost: 0 }
+  displayedStudents.forEach(s => {
+    const days = daysSince(s.last_active_at ?? s.enrolled_at)
+    counts[getStatus(days)]++
+  })
+
   return (
     <div className="relative">
 
-      {/* ── Select All / Clear toolbar ─────────────────────── */}
-      <div className="flex items-center justify-between mb-3 px-1">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={selected.size === students.length ? clearAll : selectAll}
-            className="text-xs text-[#F4B942] font-semibold hover:underline"
-          >
-            {selected.size === students.length ? 'Deselect All' : 'Select All'}
-          </button>
-          {selected.size > 0 && (
-            <span className="text-xs text-gray-400">{selected.size} selected</span>
-          )}
+      {/* ── Program Tabs ─────────────────────────────────── */}
+      <div className="flex rounded-lg overflow-hidden border border-gray-700 mb-4">
+        <button
+          onClick={() => { setActiveTab('accelerator'); clearAll() }}
+          className={`flex-1 px-4 py-2.5 text-sm font-bold transition-all ${
+            activeTab === 'accelerator'
+              ? 'bg-[#F4B942] text-[#1A1F36]'
+              : 'bg-gray-800 text-gray-400 hover:text-white'
+          }`}
+        >
+          Accelerator ({apStudents.length})
+        </button>
+        <button
+          onClick={() => { setActiveTab('topis'); clearAll() }}
+          className={`flex-1 px-4 py-2.5 text-sm font-bold transition-all ${
+            activeTab === 'topis'
+              ? 'bg-[#F4B942] text-[#1A1F36]'
+              : 'bg-gray-800 text-gray-400 hover:text-white'
+          }`}
+        >
+          TOPIS ({topisStudents.length})
+        </button>
+      </div>
+
+      {/* ── Summary Cards ────────────────────────────────── */}
+      <div className="grid grid-cols-4 gap-2 mb-4">
+        <div className="bg-gray-900 rounded-xl p-2.5 border border-[#374151] text-center">
+          <p className="text-xl font-black text-white">{displayedStudents.length}</p>
+          <p className="text-gray-500 text-[10px]">Total</p>
+        </div>
+        <div className="bg-gray-900 rounded-xl p-2.5 border border-green-900/60 text-center">
+          <p className="text-xl font-black text-green-400">{counts.green}</p>
+          <p className="text-gray-500 text-[10px]">On Track</p>
+        </div>
+        <div className="bg-gray-900 rounded-xl p-2.5 border border-red-900/60 text-center">
+          <p className="text-xl font-black text-red-400">{counts.red + counts.yellow}</p>
+          <p className="text-gray-500 text-[10px]">At Risk</p>
+        </div>
+        <div className="bg-gray-900 rounded-xl p-2.5 border border-gray-700 text-center">
+          <p className="text-xl font-black text-gray-400">{counts.ghost}</p>
+          <p className="text-gray-500 text-[10px]">Ghost</p>
         </div>
       </div>
 
+      {/* ── Empty state ──────────────────────────────────── */}
+      {displayedStudents.length === 0 && (
+        <div className="text-center py-12">
+          <p className="text-gray-500 text-sm">No {activeTab === 'accelerator' ? 'Accelerator' : 'TOPIS'} students yet.</p>
+        </div>
+      )}
+
+      {/* ── Select All / Clear toolbar ─────────────────────── */}
+      {displayedStudents.length > 0 && (
+        <div className="flex items-center justify-between mb-3 px-1">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={selected.size === displayedStudents.length ? clearAll : selectAll}
+              className="text-xs text-[#F4B942] font-semibold hover:underline"
+            >
+              {selected.size === displayedStudents.length ? 'Deselect All' : 'Select All'}
+            </button>
+            {selected.size > 0 && (
+              <span className="text-xs text-gray-400">{selected.size} selected</span>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ── Student Cards ──────────────────────────────────── */}
       <div className="flex flex-col gap-3">
-        {students.map(student => {
+        {displayedStudents.map(student => {
           const name = student.first_name || student.full_name || 'Student'
           const days = daysSince(student.last_active_at ?? student.enrolled_at)
           const status = getStatus(days)
           const config = STATUS_CONFIG[status]
           const doneCount = student.completions.filter(Boolean).length
+          const totalModules = 7
           const isChecked = selected.has(student.id)
 
           return (
@@ -141,11 +209,6 @@ export default function CoachStudentList({ students }: Props) {
                       </div>
                     </div>
                     <div className="flex items-center gap-1.5 flex-wrap justify-end">
-                      {student.access_level && !['pending'].includes(student.access_level) && (
-                        <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-gray-800 text-gray-400 border border-gray-700">
-                          {student.access_level === 'enrolled' ? 'Enrolled' : student.access_level.toUpperCase()}
-                        </span>
-                      )}
                       {student.dfy_flagged && (
                         <span className="inline-flex items-center gap-1 text-xs bg-[#1c1500] text-[#F4B942] border border-[#F4B942]/40 px-2 py-0.5 rounded-full font-bold">
                           <Star size={10} />DFY
@@ -159,7 +222,7 @@ export default function CoachStudentList({ students }: Props) {
 
                   {/* Module dots */}
                   <div className="flex gap-1 mt-2">
-                    {[1,2,3,4,5,6].map(num => {
+                    {[1,2,3,4,5,6,7].map(num => {
                       const isCompleted = student.completions[num - 1]
                       const isUnlocked = student.unlocked_modules?.includes(num)
                       return (
@@ -176,7 +239,7 @@ export default function CoachStudentList({ students }: Props) {
                     })}
                   </div>
                   <div className="flex justify-between mt-1">
-                    <p className="text-gray-500 text-xs">{doneCount}/6 modules done</p>
+                    <p className="text-gray-500 text-xs">{doneCount}/{totalModules} modules done</p>
                     <p className="text-gray-600 text-xs">
                       {student.unlocked_modules?.length ?? 0} unlocked
                     </p>
@@ -224,7 +287,7 @@ export default function CoachStudentList({ students }: Props) {
               className="bg-gray-800 text-white text-sm rounded-lg px-2 py-1.5 border border-gray-600 focus:outline-none focus:border-[#F4B942] flex-shrink-0"
             >
               {[1,2,3,4,5,6,7].map(n => (
-                <option key={n} value={n}>Module {n} — {MODULE_NAMES[n-1] ?? 'Module 7'}</option>
+                <option key={n} value={n}>Module {n} — {MODULE_NAMES[n-1]}</option>
               ))}
             </select>
 
@@ -244,7 +307,7 @@ export default function CoachStudentList({ students }: Props) {
             >
               {loading
                 ? (action === 'lock' ? 'Locking…' : 'Unlocking…')
-                : done ? '✓ Done'
+                : done ? 'Done'
                 : (action === 'lock' ? 'Lock' : 'Unlock')}
             </button>
 

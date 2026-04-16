@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
     async function getProfile() {
       const { data } = await supabase
         .from('profiles')
-        .select('id, enrolled_at')
+        .select('id, enrolled_at, access_level')
         .eq('email', email)
         .maybeSingle()
       return data
@@ -93,6 +93,32 @@ export async function POST(request: NextRequest) {
         await logAction('topis_enrolled')
       } else {
         await logAction('topis_enrolled_pending_signup')
+      }
+      return NextResponse.json({ success: true })
+    }
+
+    // ── Accel-Enrolled ─────────────────────────────────────────────────────
+    // Enroll student in the Accelerator Program, auto-assign to coach Edgar
+    const EDGAR_COACH_ID = 'e5d6cc0d-ae70-4e58-967b-f61a957eb442'
+
+    if (/^Accel-Enrolled$/i.test(tagName) && isAdded) {
+      const profile = await getProfile()
+      if (profile) {
+        const updates: Record<string, unknown> = {
+          program_type:     'accelerator',
+          coach_id:         EDGAR_COACH_ID,
+          enrolled_at:      profile.enrolled_at || new Date().toISOString(),
+          access_suspended: false,
+          updated_at:       new Date().toISOString(),
+        }
+        // Don't downgrade access_level if they already have tier access
+        if (!profile.access_level || profile.access_level === 'pending') {
+          updates.access_level = 'enrolled'
+        }
+        await supabase.from('profiles').update(updates).eq('id', profile.id)
+        await logAction('accelerator_enrolled')
+      } else {
+        await logAction('accelerator_enrolled_pending_signup')
       }
       return NextResponse.json({ success: true })
     }

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
+import ModuleReviewStatus from '@/app/components/ModuleReviewStatus'
 import GoldConfetti from '@/components/GoldConfetti'
 import { isModuleUnlockedForStudent, getDaysUntilUnlock } from '@/lib/modules'
 
@@ -480,6 +481,9 @@ export default function Module3Page() {
             <h1 className="text-white text-xl font-bold mb-2">Your Offer is Built!</h1>
             <p className="text-gray-400 text-sm">Your irresistible offer is saved and ready to power your sales page.</p>
           </div>
+
+          {/* Coach review status (AP students) */}
+          <ModuleReviewStatus moduleNumber={3} />
 
           <div className="bg-gray-900 rounded-2xl p-4 mb-4" style={{ border: '1px solid #374151' }}>
             <p className="text-[10px] font-bold text-[#F4B942] uppercase tracking-wide mb-3">Your Irresistible Offer Statement</p>

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
+import ModuleReviewStatus from '@/app/components/ModuleReviewStatus'
 import GoldConfetti from '@/components/GoldConfetti'
 import { isModuleUnlockedForStudent } from '@/lib/modules'
 
@@ -995,9 +996,12 @@ export default function Module2Page() {
           <div className="text-6xl mb-6">🎉</div>
           <h2 className="text-2xl font-bold text-white mb-3">Your E-Book is Ready!</h2>
           <p className="text-yellow-300 font-semibold text-sm mb-1 max-w-xs">{selectedTitle?.title}</p>
-          <p className="text-gray-500 text-xs mb-8 max-w-xs">
+          <p className="text-gray-500 text-xs mb-4 max-w-xs">
             {chapterDrafts.length} chapters written and saved. You&apos;ve just created your first digital product.
           </p>
+          <div className="w-full max-w-sm mb-4">
+            <ModuleReviewStatus moduleNumber={2} />
+          </div>
           <div className="w-full max-w-sm space-y-3 mb-4">
             <button
               onClick={downloadEbook}
