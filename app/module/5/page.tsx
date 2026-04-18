@@ -555,14 +555,53 @@ export default function Module4Page() {
         {/* ── Emails Step ───────────────────────────────────── */}
         {step === 'emails' && (
           <div>
-            {/* Generating */}
+            {/* Generating — progress checklist */}
             {generatingEmails && (
-              <div className="text-center py-16">
-                <div className="w-12 h-12 border-4 border-[#F4B942] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-                <p className="text-sm font-medium text-[#1A1F36]">
-                  {emails.length === 0 ? 'Writing Days 1–4…' : 'Writing Days 5–7…'}
-                </p>
-                <p className="text-xs text-gray-500 mt-1">Making each email feel personal and real</p>
+              <div className="py-10 px-2">
+                <div className="text-center mb-6">
+                  <div className="w-12 h-12 border-4 border-[#F4B942] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+                  <p className="text-sm font-medium text-[#1A1F36]">
+                    {emails.length === 0 ? 'Writing your value emails…' : 'Writing your selling emails…'}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">Making each email feel personal and real</p>
+                </div>
+
+                <div className="bg-white rounded-xl p-4 space-y-3" style={{ border: '1px solid #e5e7eb' }}>
+                  {[1, 2, 3, 4, 5, 6, 7].map(day => {
+                    const isDone = emails.some(e => e.day === day)
+                    const isWriting = !isDone && (
+                      (emails.length === 0 && day <= 4) ||
+                      (emails.length >= 4 && day > 4)
+                    )
+                    const isWaiting = !isDone && !isWriting
+                    return (
+                      <div key={day} className="flex items-center gap-3">
+                        {isDone ? (
+                          <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: '#10B981' }}>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="20 6 9 17 4 12" />
+                            </svg>
+                          </div>
+                        ) : isWriting ? (
+                          <div className="w-6 h-6 rounded-full border-2 border-[#F4B942] border-t-transparent animate-spin flex-shrink-0" />
+                        ) : (
+                          <div className="w-6 h-6 rounded-full flex-shrink-0" style={{ background: '#F3F4F6', border: '1px solid #e5e7eb' }} />
+                        )}
+                        <div className="flex-1">
+                          <p className={`text-sm font-medium ${isDone ? 'text-[#1A1F36]' : isWriting ? 'text-[#F4B942]' : 'text-gray-400'}`}>
+                            Day {day} — {day <= 4 ? 'Value Email' : day === 5 ? 'Soft Sell' : day === 6 ? 'Medium Sell' : 'Final Close'}
+                          </p>
+                          {isDone && (
+                            <p className="text-xs text-gray-500 truncate">{emails.find(e => e.day === day)?.subject_a}</p>
+                          )}
+                          {isWriting && (
+                            <p className="text-xs text-[#F4B942]">Writing…</p>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
               </div>
             )}
 
@@ -748,7 +787,7 @@ export default function Module4Page() {
               style={{ background: '#F3F4F6', color: '#9CA3AF', border: '1px solid #e5e7eb' }}
             >
               <div className="w-4 h-4 border-2 border-gray-500 border-t-transparent rounded-full animate-spin" />
-              Writing your sequence…
+              {emails.length === 0 ? 'Writing Days 1–4…' : `${emails.length} of 7 done — writing the rest…`}
             </div>
           )}
 
