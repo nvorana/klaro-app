@@ -552,7 +552,9 @@ export default function Module4Page() {
             {generatingEmails && (
               <div className="text-center py-16">
                 <div className="w-12 h-12 border-4 border-[#F4B942] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-                <p className="text-sm font-medium text-[#1A1F36]">Writing your 7-day sequence…</p>
+                <p className="text-sm font-medium text-[#1A1F36]">
+                  {emails.length === 0 ? 'Writing Days 1–4…' : 'Writing Days 5–7…'}
+                </p>
                 <p className="text-xs text-gray-500 mt-1">Making each email feel personal and real</p>
               </div>
             )}
@@ -572,6 +574,19 @@ export default function Module4Page() {
                 >
                   <CopyIcon />
                   {copiedLabel === 'all' ? 'Copied All 7 Emails!' : 'Copy All 7 Emails'}
+                </button>
+
+                {/* Rewrite all */}
+                <button
+                  onClick={handleGenerateEmails}
+                  className="w-full py-3 rounded-xl font-semibold text-sm mb-4 flex items-center justify-center gap-2 transition-all"
+                  style={{ background: '#F3F4F6', color: '#6B7280', border: '1px solid #e5e7eb' }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="23 4 23 10 17 10" />
+                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+                  </svg>
+                  Rewrite All Emails
                 </button>
 
                 {/* Accordion */}
