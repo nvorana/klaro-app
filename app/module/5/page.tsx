@@ -182,7 +182,7 @@ export default function Module4Page() {
     loadData()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Generate all 7 emails ────────────────────────────────────
+  // ── Generate all 7 emails (2 batch calls) ────────────────────
   async function handleGenerateEmails() {
     if (!clarity) return
     setError('')
@@ -190,26 +190,40 @@ export default function Module4Page() {
     setStep('emails')
     setEmails([])
 
+    const payload = {
+      target_market: clarity.target_market,
+      problem: clarity.core_problem,
+      mechanism: clarity.unique_mechanism,
+      ebook_title: ebookTitle,
+      sales_page_url: salesPageUrl || 'https://your-sales-page-url.com',
+    }
+
     try {
-      const res = await fetch('/api/generate/email-sequence', {
+      // Batch 1: Days 1-4 (value emails)
+      const res1 = await fetch('/api/generate/email-sequence', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          target_market: clarity.target_market,
-          problem: clarity.core_problem,
-          mechanism: clarity.unique_mechanism,
-          ebook_title: ebookTitle,
-          sales_page_url: salesPageUrl || 'https://your-sales-page-url.com',
-        }),
+        body: JSON.stringify({ ...payload, batch: 1 }),
       })
-      const { data, error: apiErr } = await res.json()
-      if (apiErr) throw new Error(apiErr)
-      setEmails(data.emails || [])
-      setReusablePrompt(data.reusable_prompt || '')
+      const { data: data1, error: err1 } = await res1.json()
+      if (err1) throw new Error(err1)
+      const batch1Emails = data1.emails || []
+      setEmails(batch1Emails)
       setExpandedDay(1)
+
+      // Batch 2: Days 5-7 (selling emails)
+      const res2 = await fetch('/api/generate/email-sequence', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...payload, batch: 2 }),
+      })
+      const { data: data2, error: err2 } = await res2.json()
+      if (err2) throw new Error(err2)
+      const batch2Emails = data2.emails || []
+      setEmails([...batch1Emails, ...batch2Emails])
     } catch {
       setError('Could not generate your email sequence. Please try again.')
-      setStep('url')
+      if ((emails || []).length === 0) setStep('url')
     } finally {
       setGeneratingEmails(false)
     }
@@ -221,6 +235,7 @@ export default function Module4Page() {
     setRegeneratingDay(day)
     setError('')
     try {
+      const batch = day <= 4 ? 1 : 2
       const res = await fetch('/api/generate/email-sequence', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -230,6 +245,7 @@ export default function Module4Page() {
           mechanism: clarity.unique_mechanism,
           ebook_title: ebookTitle,
           sales_page_url: salesPageUrl || 'https://your-sales-page-url.com',
+          batch,
         }),
       })
       const { data, error: apiErr } = await res.json()

@@ -4,14 +4,11 @@ import { openai, AI_MODEL } from '@/lib/openai'
 export const maxDuration = 120
 
 // POST /api/generate/email-sequence
-// Body: { target_market, problem, mechanism, ebook_title, sales_page_url }
-// Returns 7 emails: Days 1-4 pure value, Days 5-7 soft selling
+// Body: { target_market, problem, mechanism, ebook_title, sales_page_url, batch }
+// batch=1 → Days 1-4 (value emails), batch=2 → Days 5-7 (selling emails)
+// If batch is omitted, defaults to batch 1 for backward compatibility
 
-export async function POST(request: NextRequest) {
-  try {
-    const { target_market, problem, mechanism, ebook_title, sales_page_url } = await request.json()
-
-    const prompt = `You are a Filipino email copywriter writing a 7-day launch email sequence on behalf of an expert selling their ebook. You write in their voice — not yours. The emails go to a specific Filipino audience.
+const SHARED_RULES = (target_market: string, problem: string, mechanism: string, ebook_title: string) => `You are a Filipino email copywriter writing emails on behalf of an expert selling their ebook. You write in their voice — not yours. The emails go to a specific Filipino audience.
 
 ---
 
@@ -20,13 +17,6 @@ CONTEXT:
 - What they struggle with: ${problem}
 - What solves it: ${mechanism}
 - The ebook being sold: "${ebook_title}"
-- Sales page URL: ${sales_page_url}
-
----
-
-EMAIL ARC:
-- Days 1–4: Pure value. Zero selling. The reader should feel deeply seen and understood. Build trust.
-- Days 5–7: Gradually introduce the ebook. Soft sell → medium sell → direct close.
 
 ---
 
@@ -56,9 +46,22 @@ Specificity rule:
 LENGTH RULE (critical):
 - Each email body MUST be 200–300 words. Target 250 words per email.
 - Do NOT write short emails. The reader needs enough substance to feel the email was worth opening.
-- Count your words. If an email is under 200 words, expand the Stir and Shift sections.
+- Count your words. If an email is under 200 words, you MUST expand it before returning.
 
-Structure for value emails (Days 1–4):
+Subject line rules:
+- Max 19 characters — count every letter, space, and punctuation mark. Hard limit.
+- Name the reader's world, not the product. The best subject lines feel personal, not promotional.
+- No all-caps. One emoji max (and only sometimes).
+- Each email gets TWO subject line options for A/B testing.`
+
+function buildBatch1Prompt(target_market: string, problem: string, mechanism: string, ebook_title: string) {
+  return `${SHARED_RULES(target_market, problem, mechanism, ebook_title)}
+
+---
+
+YOUR TASK: Write Days 1–4 of a 7-day email sequence. These are PURE VALUE emails. Zero selling. The reader should feel deeply seen and understood. Build trust.
+
+Structure for each email:
 1. Hook — bold statement, uncomfortable truth, or relatable moment (1–3 lines)
 2. Stir — describe the problem they're living with. Make them feel seen. (4–6 short paragraphs)
 3. Shift — reveal the insight or reframe. "Here's what nobody tells you..." (3–4 paragraphs)
@@ -66,22 +69,13 @@ Structure for value emails (Days 1–4):
 5. Reframe — 1–2 sharp lines that change how the reader sees their situation. Use contrast: "Hindi pala yung [X] ang [problem]. Yung [Y] pala ang [truth]."
 6. Sign-off: "To your [relevant aspiration]," then a new line with just: [Your Name]
 
-Structure for selling emails (Days 5–7):
-- Day 5: Soft introduce the ebook. "I put everything I know into this." Benefits, not features. One CTA link.
-- Day 6: Address the biggest objection. "Kahit [common excuse]..." then bridge to the solution. One CTA link.
-- Day 7: Final push. Direct. Honest urgency. Recap what they get. Hard CTA.
-- Sign-off same as value emails.
+Each email MUST cover a DIFFERENT angle of the problem. Do not repeat the same points across days:
+- Day 1: The surface-level frustration they feel every day
+- Day 2: The deeper root cause they haven't considered
+- Day 3: A common mistake or myth that's making things worse
+- Day 4: The mindset shift or "aha moment" that changes everything
 
-Subject line rules:
-- Max 19 characters — count every letter, space, and punctuation mark. Hard limit.
-- Name the reader's world, not the product. The best subject lines feel personal, not promotional.
-- No all-caps. One emoji max (and only sometimes).
-- Each email gets TWO subject line options for A/B testing.
-
-CTA rules (Days 5–7 only):
-- Natural, not pushy — a simple invitation, not a command
-- The CTA field contains only the URL: ${sales_page_url}
-- Days 1–4 have null CTAs
+CTA: All 4 emails have null CTAs. No selling.
 
 ---
 
@@ -120,7 +114,32 @@ Return ONLY a valid JSON object. No explanation before or after. No markdown. Ju
       "subject_b": "...",
       "body": "...",
       "cta": null
-    },
+    }
+  ]
+}`
+}
+
+function buildBatch2Prompt(target_market: string, problem: string, mechanism: string, ebook_title: string, sales_page_url: string) {
+  return `${SHARED_RULES(target_market, problem, mechanism, ebook_title)}
+
+---
+
+YOUR TASK: Write Days 5–7 of a 7-day email sequence. These are SELLING emails. The reader has received 4 value emails already and trusts the sender. Now gradually introduce the ebook.
+
+- Day 5 (soft sell): Soft introduce the ebook. "I put everything I know into this." Focus on benefits, not features. Share a personal story about why you created it. One CTA link.
+- Day 6 (medium sell): Address the biggest objection head-on. "Kahit [common excuse]..." then bridge to the solution. Include social proof or a specific result. One CTA link.
+- Day 7 (hard close): Final push. Direct. Honest urgency — no fake scarcity. Recap what they get (ebook + bonuses). Paint the "6 months from now" picture. Hard CTA.
+
+Sign-off: "To your [relevant aspiration]," then a new line with just: [Your Name]
+
+CTA: All 3 emails include the sales page URL: ${sales_page_url}
+
+---
+
+Return ONLY a valid JSON object. No explanation before or after. No markdown. Just the JSON:
+
+{
+  "emails": [
     {
       "day": 5,
       "type": "selling",
@@ -147,13 +166,23 @@ Return ONLY a valid JSON object. No explanation before or after. No markdown. Ju
     }
   ]
 }`
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const { target_market, problem, mechanism, ebook_title, sales_page_url, batch } = await request.json()
+
+    const batchNum = batch || 1
+    const prompt = batchNum === 2
+      ? buildBatch2Prompt(target_market, problem, mechanism, ebook_title, sales_page_url)
+      : buildBatch1Prompt(target_market, problem, mechanism, ebook_title)
 
     const completion = await openai.chat.completions.create({
       model: AI_MODEL,
       messages: [{ role: 'user', content: prompt }],
       response_format: { type: 'json_object' },
       temperature: 0.8,
-      max_tokens: 10000,
+      max_tokens: 6000,
     })
 
     const content = completion.choices[0].message.content
