@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { openai, AI_MODEL } from '@/lib/openai'
 
-export const maxDuration = 60
+export const maxDuration = 120
 
 // POST /api/generate/email-sequence
 // Body: { target_market, problem, mechanism, ebook_title, sales_page_url }
@@ -53,10 +53,15 @@ Specificity rule:
 - "7:43 PM" not "evening." "3 months" not "a short time." "₱4,200" not "a small amount."
 - The more specific, the more the reader's brain accepts it as true.
 
+LENGTH RULE (critical):
+- Each email body MUST be 200–300 words. Target 250 words per email.
+- Do NOT write short emails. The reader needs enough substance to feel the email was worth opening.
+- Count your words. If an email is under 200 words, expand the Stir and Shift sections.
+
 Structure for value emails (Days 1–4):
 1. Hook — bold statement, uncomfortable truth, or relatable moment (1–3 lines)
-2. Stir — describe the problem they're living with. Make them feel seen. (3–5 short paragraphs)
-3. Shift — reveal the insight or reframe. "Here's what nobody tells you..." (2–3 paragraphs)
+2. Stir — describe the problem they're living with. Make them feel seen. (4–6 short paragraphs)
+3. Shift — reveal the insight or reframe. "Here's what nobody tells you..." (3–4 paragraphs)
 4. Seed — plant the idea of the solution without hard-selling (1–2 lines)
 5. Reframe — 1–2 sharp lines that change how the reader sees their situation. Use contrast: "Hindi pala yung [X] ang [problem]. Yung [Y] pala ang [truth]."
 6. Sign-off: "To your [relevant aspiration]," then a new line with just: [Your Name]
@@ -148,7 +153,7 @@ Return ONLY a valid JSON object. No explanation before or after. No markdown. Ju
       messages: [{ role: 'user', content: prompt }],
       response_format: { type: 'json_object' },
       temperature: 0.8,
-      max_tokens: 5000,
+      max_tokens: 10000,
     })
 
     const content = completion.choices[0].message.content
