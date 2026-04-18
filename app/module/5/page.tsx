@@ -465,6 +465,13 @@ export default function Module4Page() {
           )}
 
           <button
+            onClick={() => setStep('emails')}
+            className="w-full text-center text-sm text-[#F4B942] font-semibold py-2 mb-1"
+          >
+            Rewrite My Emails
+          </button>
+
+          <button
             onClick={() => router.push('/dashboard')}
             className="w-full text-center text-sm text-gray-500 underline py-2"
           >
