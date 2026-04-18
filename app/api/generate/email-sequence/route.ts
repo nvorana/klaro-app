@@ -1,193 +1,197 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { openai, AI_MODEL } from '@/lib/openai'
 
-export const maxDuration = 120
+export const maxDuration = 60
 
 // POST /api/generate/email-sequence
-// Body: { target_market, problem, mechanism, ebook_title, sales_page_url, batch }
-// batch=1 → Days 1-4 (value emails), batch=2 → Days 5-7 (selling emails)
-// If batch is omitted, defaults to batch 1 for backward compatibility
+// Body: { target_market, problem, mechanism, ebook_title, sales_page_url, day }
+// Generates a SINGLE email for the specified day (1-7)
 
-const SHARED_RULES = (target_market: string, problem: string, mechanism: string, ebook_title: string) => `You are a Filipino email copywriter writing emails on behalf of an expert selling their ebook. You write in their voice — not yours. The emails go to a specific Filipino audience.
+const DAY_BRIEFS: Record<number, { type: string; angle: string; structure: string }> = {
+  1: {
+    type: 'value',
+    angle: 'The surface-level frustration they feel every day',
+    structure: `Structure:
+1. Hook — a specific relatable moment. Describe a scene they live through regularly. (2–3 lines)
+2. Stir — describe 3 different specific moments when this problem hits them. Each moment is its own mini-scene with sensory details. "Yung feeling na..." (6–8 short paragraphs)
+3. Shift — reveal a surprising insight. "Here's what nobody tells you..." Explain WHY the common approach doesn't work. (3–4 paragraphs)
+4. Seed — plant the idea that there's a better way, without naming the product (1–2 lines)
+5. Reframe — "Hindi pala yung [X] ang [problem]. Yung [Y] pala ang [truth]."
+6. PS — one more relatable thought or question
+7. Sign-off: "To your [relevant aspiration]," then: [Your Name]
+No CTA. No selling. Pure value.`,
+  },
+  2: {
+    type: 'value',
+    angle: 'The deeper root cause they haven\'t considered',
+    structure: `Structure:
+1. Hook — a bold uncomfortable truth that challenges what they believe. (2–3 lines)
+2. Stir — walk them through the symptoms they experience because of this root cause. Be specific — times, amounts, feelings. (6–8 short paragraphs)
+3. Shift — reveal the real root cause. Use a metaphor or analogy to make it click. "Parang yung..." (3–4 paragraphs)
+4. Seed — hint that understanding this root cause is the first step to fixing everything (1–2 lines)
+5. Reframe — contrast the surface vs. the real issue
+6. PS — a thought-provoking question that lingers
+7. Sign-off: "To your [relevant aspiration]," then: [Your Name]
+No CTA. No selling. Pure value.`,
+  },
+  3: {
+    type: 'value',
+    angle: 'A common mistake or myth that\'s making things worse',
+    structure: `Structure:
+1. Hook — name the mistake directly. "Most people think [X]. They're wrong." (2–3 lines)
+2. Stir — describe what happens when people follow this bad advice. Paint the frustrating cycle. (6–8 short paragraphs)
+3. Shift — explain why this advice is wrong and what actually works instead. Use a specific example or mini-story. (3–4 paragraphs)
+4. Seed — connect the better approach to a system or method without hard-selling (1–2 lines)
+5. Reframe — "Ang totoo, hindi [myth] ang kailangan mo. [Truth] pala."
+6. PS — validate them: "Hindi mo kasalanan na na-try mo yung [wrong approach]."
+7. Sign-off: "To your [relevant aspiration]," then: [Your Name]
+No CTA. No selling. Pure value.`,
+  },
+  4: {
+    type: 'value',
+    angle: 'The mindset shift or "aha moment" that changes everything',
+    structure: `Structure:
+1. Hook — share a turning-point moment. "There was a day when everything changed..." (2–3 lines)
+2. Stir — describe the "before" state in vivid detail. What life looked like when they were stuck. (5–6 short paragraphs)
+3. Shift — the aha moment. What specifically changed in thinking. Make it concrete, not motivational fluff. A real insight with a real example. (4–5 paragraphs)
+4. Seed — "Once you see this, you can't unsee it. And the path forward becomes obvious." (1–2 lines)
+5. Reframe — contrast old thinking vs. new thinking in one sharp line
+6. PS — bridge to tomorrow: "Bukas, may ipapakita ako sa'yo..."
+7. Sign-off: "To your [relevant aspiration]," then: [Your Name]
+No CTA. No selling. Pure value.`,
+  },
+  5: {
+    type: 'selling',
+    angle: 'Soft introduction of the ebook — personal story',
+    structure: `Structure:
+1. Hook — "I need to tell you something personal..." or similar vulnerable opening (2–3 lines)
+2. Story — share the personal journey of creating this ebook. What drove you to make it. The struggles you went through. (5–6 paragraphs)
+3. Bridge — connect your story to the reader's situation. "Kaya ko ginawa ito — para sa mga tulad mo na..." (2–3 paragraphs)
+4. Introduce — name the ebook naturally. Share 3–4 specific benefits (not features). What will change for them. (3–4 paragraphs)
+5. Soft CTA — "If you want to see what's inside:" then the link. Low pressure. (1–2 lines)
+6. PS — reassurance: "No pressure. Pero kung ready ka na, nandyan lang yan."
+7. Sign-off: "To your [relevant aspiration]," then: [Your Name]`,
+  },
+  6: {
+    type: 'selling',
+    angle: 'Address the biggest objection head-on',
+    structure: `Structure:
+1. Hook — name the objection directly. "You're probably thinking: [objection]" (2–3 lines)
+2. Validate — "I get it. Ganyan din ako dati." Show you understand their hesitation. (3–4 paragraphs)
+3. Counter — address the objection with logic, a story, or social proof. Be specific with numbers or results. (4–5 paragraphs)
+4. Reframe the cost — compare the price to what they're already spending on the problem. "Mas mahal pa yung [thing they waste money on]." (2–3 paragraphs)
+5. CTA — "See everything you get inside:" then the link. (1–2 lines)
+6. PS — address a second smaller objection briefly
+7. Sign-off: "To your [relevant aspiration]," then: [Your Name]`,
+  },
+  7: {
+    type: 'selling',
+    angle: 'Final close — direct, honest, urgent',
+    structure: `Structure:
+1. Hook — "This is my last email about this." Direct and honest. (2–3 lines)
+2. Recap — everything they get: the ebook, each bonus, the total value vs. the price. Be specific with peso amounts. (4–5 paragraphs)
+3. Future paint — describe their life 3 months from now if they take action today vs. if they don't. Be vivid and specific. (3–4 paragraphs)
+4. Honest urgency — no fake scarcity. Just truth: "The longer you wait, the longer [problem] keeps [consequence]." (2–3 paragraphs)
+5. Final CTA — "Get your copy now:" then the link. Clear and direct. (1–2 lines)
+6. PS — "Kahit hindi mo bilhin, thank you for reading these emails. Pero kung ready ka na, this is for you."
+7. Sign-off: "To your [relevant aspiration]," then: [Your Name]`,
+  },
+}
+
+function buildSingleEmailPrompt(
+  day: number,
+  target_market: string,
+  problem: string,
+  mechanism: string,
+  ebook_title: string,
+  sales_page_url: string
+) {
+  const brief = DAY_BRIEFS[day]
+
+  return `You are a Filipino email copywriter writing ONE email on behalf of an expert selling their ebook. You write in their voice — not yours.
 
 ---
 
 CONTEXT:
-- Who reads these emails: ${target_market}
+- Who reads this email: ${target_market}
 - What they struggle with: ${problem}
 - What solves it: ${mechanism}
 - The ebook being sold: "${ebook_title}"
+${day >= 5 ? `- Sales page URL: ${sales_page_url}` : ''}
 
 ---
 
-WRITING RULES (non-negotiable):
+THIS IS DAY ${day} OF A 7-DAY SEQUENCE.
+- Days 1–4 are pure value (no selling). Days 5–7 introduce the ebook.
+- Today's angle: ${brief.angle}
+- Email type: ${brief.type}
+
+---
+
+WRITING RULES:
 
 Language:
 - Taglish: 75% English, 25% Tagalog at the word level
 - Tagalog is for emotional punch — hooks, gut-check moments, rhetorical questions, PS lines
 - Use casual everyday Tagalog only: pero, kasi, lang, talaga, diba, kahit, parang, na, e
 - NEVER use deep or formal Filipino (subalit, gayunpaman, nangangailangan, pinapanood)
-- Sentence structure in English, Tagalog drops in for emotion and rhythm
 
 Voice:
-- Write like the sender is a real person — someone who has lived through this problem and found the answer
-- NOT a marketer. NOT a motivational speaker. A trusted friend who is one step ahead.
-- Short sentences. 5–8 words average. Punch, don't lecture.
-- Single-sentence paragraphs are the default. Rarely 2+ sentences in one paragraph.
-- Heavy white space — one thought per line. This is read on mobile.
-- No corporate jargon. No "leverage," "unlock your potential," "game-changer," "actionable."
+- A trusted friend who is one step ahead. NOT a marketer. NOT a motivational speaker.
+- Short sentences. Punch, don't lecture.
+- Single-sentence paragraphs. Heavy white space — this is read on mobile.
+- No corporate jargon. No "leverage," "unlock your potential," "game-changer."
 - Never open with "I hope this email finds you well."
 
-Specificity rule:
-- Vague = fiction. Specific = real.
+Specificity:
 - "7:43 PM" not "evening." "3 months" not "a short time." "₱4,200" not "a small amount."
-- The more specific, the more the reader's brain accepts it as true.
 
-LENGTH RULE (THIS OVERRIDES EVERYTHING — non-negotiable):
-- Each email body MUST be at least 250 words. Minimum 250 words. No exceptions.
-- The body field must contain at least 25 lines of text (separated by \\n).
-- Short sentences are fine, but you need MANY of them — at least 30 sentences per email.
-- Add more emotional detail, more specific examples, more vivid scenarios.
-- Expand the Stir section with 2-3 specific relatable moments the reader has experienced.
-- Expand the Shift section with a concrete mini-story or example.
-- If you think the email is done, add a PS line with one more thought.
-- IMPORTANT: An email with fewer than 250 words is a FAILURE. Write more.
+---
+
+LENGTH (non-negotiable):
+- The email body MUST be 250–350 words. This is your ONLY email to write — use the full budget.
+- Include at least 25 separate lines (paragraphs separated by \\n).
+- You have unlimited space. Write a FULL, RICH email. Not a summary. Not bullet points.
+
+---
+
+${brief.structure}
+
+---
 
 Subject line rules:
-- Max 19 characters — count every letter, space, and punctuation mark. Hard limit.
-- Name the reader's world, not the product. The best subject lines feel personal, not promotional.
-- No all-caps. One emoji max (and only sometimes).
-- Each email gets TWO subject line options for A/B testing.`
-
-function buildBatch1Prompt(target_market: string, problem: string, mechanism: string, ebook_title: string) {
-  return `${SHARED_RULES(target_market, problem, mechanism, ebook_title)}
+- Max 19 characters. Hard limit.
+- Two options for A/B testing.
 
 ---
 
-YOUR TASK: Write Days 1–4 of a 7-day email sequence. These are PURE VALUE emails. Zero selling. The reader should feel deeply seen and understood. Build trust.
-
-Structure for each email:
-1. Hook — bold statement, uncomfortable truth, or relatable moment (1–3 lines)
-2. Stir — describe the problem they're living with. Make them feel seen. (4–6 short paragraphs)
-3. Shift — reveal the insight or reframe. "Here's what nobody tells you..." (3–4 paragraphs)
-4. Seed — plant the idea of the solution without hard-selling (1–2 lines)
-5. Reframe — 1–2 sharp lines that change how the reader sees their situation. Use contrast: "Hindi pala yung [X] ang [problem]. Yung [Y] pala ang [truth]."
-6. Sign-off: "To your [relevant aspiration]," then a new line with just: [Your Name]
-
-Each email MUST cover a DIFFERENT angle of the problem. Do not repeat the same points across days:
-- Day 1: The surface-level frustration they feel every day
-- Day 2: The deeper root cause they haven't considered
-- Day 3: A common mistake or myth that's making things worse
-- Day 4: The mindset shift or "aha moment" that changes everything
-
-CTA: All 4 emails have null CTAs. No selling.
-
----
-
-Return ONLY a valid JSON object. No explanation before or after. No markdown. Just the JSON:
+Return ONLY valid JSON. No markdown. No explanation:
 
 {
-  "emails": [
-    {
-      "day": 1,
-      "type": "value",
-      "subject_a": "...",
-      "subject_b": "...",
-      "body": "...",
-      "cta": null
-    },
-    {
-      "day": 2,
-      "type": "value",
-      "subject_a": "...",
-      "subject_b": "...",
-      "body": "...",
-      "cta": null
-    },
-    {
-      "day": 3,
-      "type": "value",
-      "subject_a": "...",
-      "subject_b": "...",
-      "body": "...",
-      "cta": null
-    },
-    {
-      "day": 4,
-      "type": "value",
-      "subject_a": "...",
-      "subject_b": "...",
-      "body": "...",
-      "cta": null
-    }
-  ]
-}`
-}
-
-function buildBatch2Prompt(target_market: string, problem: string, mechanism: string, ebook_title: string, sales_page_url: string) {
-  return `${SHARED_RULES(target_market, problem, mechanism, ebook_title)}
-
----
-
-YOUR TASK: Write Days 5–7 of a 7-day email sequence. These are SELLING emails. The reader has received 4 value emails already and trusts the sender. Now gradually introduce the ebook.
-
-- Day 5 (soft sell): Soft introduce the ebook. "I put everything I know into this." Focus on benefits, not features. Share a personal story about why you created it. One CTA link.
-- Day 6 (medium sell): Address the biggest objection head-on. "Kahit [common excuse]..." then bridge to the solution. Include social proof or a specific result. One CTA link.
-- Day 7 (hard close): Final push. Direct. Honest urgency — no fake scarcity. Recap what they get (ebook + bonuses). Paint the "6 months from now" picture. Hard CTA.
-
-Sign-off: "To your [relevant aspiration]," then a new line with just: [Your Name]
-
-CTA: All 3 emails include the sales page URL: ${sales_page_url}
-
----
-
-Return ONLY a valid JSON object. No explanation before or after. No markdown. Just the JSON:
-
-{
-  "emails": [
-    {
-      "day": 5,
-      "type": "selling",
-      "subject_a": "...",
-      "subject_b": "...",
-      "body": "...",
-      "cta": "${sales_page_url}"
-    },
-    {
-      "day": 6,
-      "type": "selling",
-      "subject_a": "...",
-      "subject_b": "...",
-      "body": "...",
-      "cta": "${sales_page_url}"
-    },
-    {
-      "day": 7,
-      "type": "selling",
-      "subject_a": "...",
-      "subject_b": "...",
-      "body": "...",
-      "cta": "${sales_page_url}"
-    }
-  ]
+  "email": {
+    "day": ${day},
+    "type": "${brief.type}",
+    "subject_a": "...",
+    "subject_b": "...",
+    "body": "...",
+    "cta": ${day >= 5 ? `"${sales_page_url}"` : 'null'}
+  }
 }`
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const { target_market, problem, mechanism, ebook_title, sales_page_url, batch } = await request.json()
+    const { target_market, problem, mechanism, ebook_title, sales_page_url, day } = await request.json()
 
-    const batchNum = batch || 1
-    const prompt = batchNum === 2
-      ? buildBatch2Prompt(target_market, problem, mechanism, ebook_title, sales_page_url)
-      : buildBatch1Prompt(target_market, problem, mechanism, ebook_title)
+    const emailDay = day || 1
+    const prompt = buildSingleEmailPrompt(emailDay, target_market, problem, mechanism, ebook_title, sales_page_url || '')
 
     const completion = await openai.chat.completions.create({
       model: AI_MODEL,
       messages: [{ role: 'user', content: prompt }],
       response_format: { type: 'json_object' },
       temperature: 0.8,
-      max_tokens: 6000,
+      max_tokens: 2000,
     })
 
     const content = completion.choices[0].message.content
@@ -195,7 +199,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ data: result })
   } catch (error) {
-    console.error('Email sequence generation error:', error)
+    console.error('Email generation error:', error)
     return NextResponse.json({ error: 'Generation failed' }, { status: 500 })
   }
 }

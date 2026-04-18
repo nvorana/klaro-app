@@ -90,6 +90,7 @@ export default function Module4Page() {
 
   // Emails step
   const [generatingEmails, setGeneratingEmails] = useState(false)
+  const [writingDay, setWritingDay] = useState<number | null>(null)
   const [emails, setEmails] = useState<Email[]>([])
   const [reusablePrompt, setReusablePrompt] = useState('')
   const [expandedDay, setExpandedDay] = useState<number | null>(1)
@@ -182,7 +183,27 @@ export default function Module4Page() {
     loadData()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Generate all 7 emails (2 batch calls) ────────────────────
+  // ── Generate a single email by day number ─────────────────────
+  async function generateSingleEmail(day: number): Promise<Email | null> {
+    if (!clarity) return null
+    const res = await fetch('/api/generate/email-sequence', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        target_market: clarity.target_market,
+        problem: clarity.core_problem,
+        mechanism: clarity.unique_mechanism,
+        ebook_title: ebookTitle,
+        sales_page_url: salesPageUrl || 'https://your-sales-page-url.com',
+        day,
+      }),
+    })
+    const { data, error: apiErr } = await res.json()
+    if (apiErr) throw new Error(apiErr)
+    return data.email || null
+  }
+
+  // ── Generate all 7 emails (one at a time) ────────────────────
   async function handleGenerateEmails() {
     if (!clarity) return
     setError('')
@@ -190,42 +211,24 @@ export default function Module4Page() {
     setStep('emails')
     setEmails([])
 
-    const payload = {
-      target_market: clarity.target_market,
-      problem: clarity.core_problem,
-      mechanism: clarity.unique_mechanism,
-      ebook_title: ebookTitle,
-      sales_page_url: salesPageUrl || 'https://your-sales-page-url.com',
-    }
+    const builtEmails: Email[] = []
 
     try {
-      // Batch 1: Days 1-4 (value emails)
-      const res1 = await fetch('/api/generate/email-sequence', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...payload, batch: 1 }),
-      })
-      const { data: data1, error: err1 } = await res1.json()
-      if (err1) throw new Error(err1)
-      const batch1Emails = data1.emails || []
-      setEmails(batch1Emails)
-      setExpandedDay(1)
-
-      // Batch 2: Days 5-7 (selling emails)
-      const res2 = await fetch('/api/generate/email-sequence', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...payload, batch: 2 }),
-      })
-      const { data: data2, error: err2 } = await res2.json()
-      if (err2) throw new Error(err2)
-      const batch2Emails = data2.emails || []
-      setEmails([...batch1Emails, ...batch2Emails])
+      for (let day = 1; day <= 7; day++) {
+        setWritingDay(day)
+        const email = await generateSingleEmail(day)
+        if (email) {
+          builtEmails.push(email)
+          setEmails([...builtEmails])
+          if (day === 1) setExpandedDay(1)
+        }
+      }
     } catch {
       setError('Could not generate your email sequence. Please try again.')
-      if ((emails || []).length === 0) setStep('url')
+      if (builtEmails.length === 0) setStep('url')
     } finally {
       setGeneratingEmails(false)
+      setWritingDay(null)
     }
   }
 
@@ -235,22 +238,7 @@ export default function Module4Page() {
     setRegeneratingDay(day)
     setError('')
     try {
-      const batch = day <= 4 ? 1 : 2
-      const res = await fetch('/api/generate/email-sequence', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          target_market: clarity.target_market,
-          problem: clarity.core_problem,
-          mechanism: clarity.unique_mechanism,
-          ebook_title: ebookTitle,
-          sales_page_url: salesPageUrl || 'https://your-sales-page-url.com',
-          batch,
-        }),
-      })
-      const { data, error: apiErr } = await res.json()
-      if (apiErr) throw new Error(apiErr)
-      const newEmail = (data.emails || []).find((e: Email) => e.day === day)
+      const newEmail = await generateSingleEmail(day)
       if (newEmail) {
         setEmails(prev => prev.map(e => e.day === day ? newEmail : e))
       }
@@ -559,21 +547,16 @@ export default function Module4Page() {
             {generatingEmails && (
               <div className="py-10 px-2">
                 <div className="text-center mb-6">
-                  <div className="w-12 h-12 border-4 border-[#F4B942] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
                   <p className="text-sm font-medium text-[#1A1F36]">
-                    {emails.length === 0 ? 'Writing your value emails…' : 'Writing your selling emails…'}
+                    Writing your 7-day sequence
                   </p>
-                  <p className="text-xs text-gray-500 mt-1">Making each email feel personal and real</p>
+                  <p className="text-xs text-gray-500 mt-1">{emails.length} of 7 emails done</p>
                 </div>
 
                 <div className="bg-white rounded-xl p-4 space-y-3" style={{ border: '1px solid #e5e7eb' }}>
                   {[1, 2, 3, 4, 5, 6, 7].map(day => {
                     const isDone = emails.some(e => e.day === day)
-                    const isWriting = !isDone && (
-                      (emails.length === 0 && day <= 4) ||
-                      (emails.length >= 4 && day > 4)
-                    )
-                    const isWaiting = !isDone && !isWriting
+                    const isWriting = writingDay === day
                     return (
                       <div key={day} className="flex items-center gap-3">
                         {isDone ? (
@@ -787,7 +770,7 @@ export default function Module4Page() {
               style={{ background: '#F3F4F6', color: '#9CA3AF', border: '1px solid #e5e7eb' }}
             >
               <div className="w-4 h-4 border-2 border-gray-500 border-t-transparent rounded-full animate-spin" />
-              {emails.length === 0 ? 'Writing Days 1–4…' : `${emails.length} of 7 done — writing the rest…`}
+              Writing Day {writingDay || 1} of 7…
             </div>
           )}
 
