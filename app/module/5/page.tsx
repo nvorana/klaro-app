@@ -543,44 +543,112 @@ export default function Module4Page() {
         {/* ── Emails Step ───────────────────────────────────── */}
         {step === 'emails' && (
           <div>
-            {/* Generating — progress checklist */}
+            {/* Generating — animated progress checklist */}
             {generatingEmails && (
               <div className="py-10 px-2">
+                {/* CSS animations */}
+                <style>{`
+                  @keyframes checkBounce {
+                    0% { transform: scale(0); opacity: 0; }
+                    50% { transform: scale(1.3); }
+                    70% { transform: scale(0.9); }
+                    100% { transform: scale(1); opacity: 1; }
+                  }
+                  @keyframes slideInRight {
+                    0% { transform: translateX(12px); opacity: 0; }
+                    100% { transform: translateX(0); opacity: 1; }
+                  }
+                  @keyframes typingDot {
+                    0%, 60%, 100% { opacity: 0.2; transform: translateY(0); }
+                    30% { opacity: 1; transform: translateY(-3px); }
+                  }
+                  @keyframes pulseGlow {
+                    0%, 100% { box-shadow: 0 0 0 0 rgba(244, 185, 66, 0.3); }
+                    50% { box-shadow: 0 0 0 6px rgba(244, 185, 66, 0); }
+                  }
+                  @keyframes progressFill {
+                    from { width: var(--from-width); }
+                    to { width: var(--to-width); }
+                  }
+                  .check-bounce { animation: checkBounce 0.4s ease-out forwards; }
+                  .slide-in { animation: slideInRight 0.3s ease-out forwards; }
+                  .typing-dot { animation: typingDot 1.4s ease-in-out infinite; }
+                  .pulse-glow { animation: pulseGlow 2s ease-in-out infinite; }
+                `}</style>
+
+                {/* Header with progress bar */}
                 <div className="text-center mb-6">
-                  <p className="text-sm font-medium text-[#1A1F36]">
-                    Writing your 7-day sequence
+                  <p className="text-base font-bold text-[#1A1F36] mb-1">
+                    Writing your emails
                   </p>
-                  <p className="text-xs text-gray-500 mt-1">{emails.length} of 7 emails done</p>
+                  <p className="text-xs text-gray-500 mb-4">{emails.length} of 7 complete</p>
+
+                  {/* Progress bar */}
+                  <div className="w-full h-2 rounded-full overflow-hidden mx-auto" style={{ background: '#F3F4F6', maxWidth: '280px' }}>
+                    <div
+                      className="h-full rounded-full transition-all duration-700 ease-out"
+                      style={{
+                        background: 'linear-gradient(90deg, #F4B942, #f59e0b)',
+                        width: `${(emails.length / 7) * 100}%`,
+                      }}
+                    />
+                  </div>
                 </div>
 
-                <div className="bg-white rounded-xl p-4 space-y-3" style={{ border: '1px solid #e5e7eb' }}>
+                {/* Email checklist */}
+                <div className="bg-white rounded-xl p-4 space-y-1" style={{ border: '1px solid #e5e7eb' }}>
                   {[1, 2, 3, 4, 5, 6, 7].map(day => {
                     const isDone = emails.some(e => e.day === day)
                     const isWriting = writingDay === day
+                    const dayLabel = day <= 4 ? 'Value Email' : day === 5 ? 'Soft Sell' : day === 6 ? 'Medium Sell' : 'Final Close'
+
                     return (
-                      <div key={day} className="flex items-center gap-3">
+                      <div
+                        key={day}
+                        className={`flex items-center gap-3 rounded-lg px-3 py-2.5 transition-all duration-300 ${
+                          isWriting ? 'bg-[#FFFBEB]' : isDone ? 'bg-[#f0fdf4]' : ''
+                        }`}
+                      >
+                        {/* Icon */}
                         {isDone ? (
-                          <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: '#10B981' }}>
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                          <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 check-bounce" style={{ background: '#10B981' }}>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                               <polyline points="20 6 9 17 4 12" />
                             </svg>
                           </div>
                         ) : isWriting ? (
-                          <div className="w-6 h-6 rounded-full border-2 border-[#F4B942] border-t-transparent animate-spin flex-shrink-0" />
+                          <div className="w-7 h-7 rounded-full border-2 border-[#F4B942] flex items-center justify-center flex-shrink-0 pulse-glow">
+                            <div className="flex items-center gap-[3px]">
+                              <span className="w-[4px] h-[4px] rounded-full bg-[#F4B942] typing-dot" style={{ animationDelay: '0s' }} />
+                              <span className="w-[4px] h-[4px] rounded-full bg-[#F4B942] typing-dot" style={{ animationDelay: '0.2s' }} />
+                              <span className="w-[4px] h-[4px] rounded-full bg-[#F4B942] typing-dot" style={{ animationDelay: '0.4s' }} />
+                            </div>
+                          </div>
                         ) : (
-                          <div className="w-6 h-6 rounded-full flex-shrink-0" style={{ background: '#F3F4F6', border: '1px solid #e5e7eb' }} />
+                          <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: '#F3F4F6', border: '1px solid #e5e7eb' }}>
+                            <span className="text-xs text-gray-400 font-medium">{day}</span>
+                          </div>
                         )}
-                        <div className="flex-1">
-                          <p className={`text-sm font-medium ${isDone ? 'text-[#1A1F36]' : isWriting ? 'text-[#F4B942]' : 'text-gray-400'}`}>
-                            Day {day} — {day <= 4 ? 'Value Email' : day === 5 ? 'Soft Sell' : day === 6 ? 'Medium Sell' : 'Final Close'}
+
+                        {/* Label */}
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-sm font-semibold ${isDone ? 'text-[#1A1F36]' : isWriting ? 'text-[#b45309]' : 'text-gray-400'}`}>
+                            Day {day} <span className="font-normal text-xs ml-1">{dayLabel}</span>
                           </p>
                           {isDone && (
-                            <p className="text-xs text-gray-500 truncate">{emails.find(e => e.day === day)?.subject_a}</p>
+                            <p className="text-xs text-gray-500 truncate slide-in">{emails.find(e => e.day === day)?.subject_a}</p>
                           )}
                           {isWriting && (
-                            <p className="text-xs text-[#F4B942]">Writing…</p>
+                            <p className="text-xs text-[#d97706] font-medium">Crafting your email</p>
                           )}
                         </div>
+
+                        {/* Done badge */}
+                        {isDone && (
+                          <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full flex-shrink-0 slide-in">
+                            Done
+                          </span>
+                        )}
                       </div>
                     )
                   })}
