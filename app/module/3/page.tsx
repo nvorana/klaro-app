@@ -469,8 +469,9 @@ export default function Module3Page() {
 
   if (step === 'complete') {
     return (
-      <div className="min-h-screen bg-[#F8F9FA] max-w-[430px] md:max-w-3xl mx-auto flex flex-col">
-        {showConfetti && <GoldConfetti />}
+      <div className="min-h-screen bg-[#F8F9FA]">
+      <div className="max-w-[430px] md:max-w-3xl mx-auto flex flex-col min-h-screen">
+        <GoldConfetti trigger={showConfetti} onDone={() => setShowConfetti(false)} />
         <div className="px-4 pt-6 pb-10 flex-1">
           <div className="text-center mb-6">
             <div className="w-16 h-16 rounded-full bg-[#F4B942] flex items-center justify-center mx-auto mb-4">
@@ -565,13 +566,15 @@ export default function Module3Page() {
           </button>
         </div>
       </div>
+      </div>
     )
   }
 
   // ── Main Layout ────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] max-w-[430px] md:max-w-3xl mx-auto flex flex-col">
+    <div className="min-h-screen bg-[#F8F9FA]">
+    <div className="max-w-[430px] md:max-w-3xl mx-auto flex flex-col min-h-screen">
 
       {/* Header */}
       <div className="px-4 pt-5 pb-3 flex items-center gap-3 bg-[#1A1F36]">
@@ -1211,6 +1214,7 @@ export default function Module3Page() {
           </button>
         )}
       </div>
+    </div>
     </div>
   )
 }
