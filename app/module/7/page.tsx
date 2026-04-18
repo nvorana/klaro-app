@@ -300,7 +300,7 @@ export default function Module6Page() {
               <div className="flex flex-col items-center">
                 <div
                   className="w-7 h-7 rounded-full flex items-center justify-center"
-                  style={{ background: isDone ? '#10B981' : isActive ? '#F4B942' : '#374151' }}
+                  style={{ background: isDone ? '#10B981' : isActive ? '#F4B942' : '#D1D5DB' }}
                 >
                   {isDone ? (
                     <span className="text-white"><CheckIcon /></span>
@@ -320,7 +320,7 @@ export default function Module6Page() {
               {i < STEP_LABELS.length - 1 && (
                 <div
                   className="h-0.5 w-16 mb-4 mx-1"
-                  style={{ background: i < currentStepIndex ? '#10B981' : '#374151' }}
+                  style={{ background: i < currentStepIndex ? '#10B981' : '#D1D5DB' }}
                 />
               )}
             </div>
@@ -333,10 +333,10 @@ export default function Module6Page() {
   // ── Loading ──────────────────────────────────────────────────
   if (clarityLoading) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+      <div className="min-h-screen bg-[#F8F9FA] flex items-center justify-center">
         <div className="text-center">
           <div className="w-10 h-10 border-4 border-[#F4B942] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-sm text-gray-400">Loading your progress…</p>
+          <p className="text-sm text-gray-500">Loading your progress…</p>
         </div>
       </div>
     )
@@ -345,15 +345,15 @@ export default function Module6Page() {
   // ── Locked Screen ────────────────────────────────────────────
   if (locked) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center px-4">
+      <div className="min-h-screen bg-[#F8F9FA] flex items-center justify-center px-4">
         <div className="max-w-[380px] w-full text-center">
-          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-5" style={{ background: '#111827', border: '1px solid #374151' }}>
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-5" style={{ background: '#F3F4F6', border: '1px solid #e5e7eb' }}>
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
             </svg>
           </div>
-          <h1 className="text-lg font-bold text-white mb-2">Module 7 — Not Yet Open</h1>
-          <p className="text-sm text-gray-400 mb-1">The Facebook Content Engine opens in</p>
+          <h1 className="text-lg font-bold text-[#1A1F36] mb-2">Module 7 — Not Yet Open</h1>
+          <p className="text-sm text-gray-500 mb-1">The Facebook Content Engine opens in</p>
           <p className="text-3xl font-black mb-1" style={{ color: '#F4B942' }}>{daysUntilUnlock} {daysUntilUnlock === 1 ? 'day' : 'days'}</p>
           <p className="text-xs text-gray-500 mb-8">Your lead magnet is saved and ready.</p>
           <button onClick={() => router.push('/dashboard')} className="w-full py-3 rounded-xl font-bold text-sm" style={{ background: '#F4B942', color: '#1A1F36' }}>
@@ -369,25 +369,25 @@ export default function Module6Page() {
     return (
       <>
         <GoldConfetti trigger={showConfetti} onDone={() => setShowConfetti(false)} />
-        <div className="min-h-screen bg-gray-950">
+        <div className="min-h-screen bg-[#F8F9FA]">
         <div className="max-w-[430px] md:max-w-3xl mx-auto px-4 pt-6 pb-32">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: '#F4B942' }}>
               <span className="font-bold text-[#1A1F36] text-sm">6</span>
             </div>
             <div>
-              <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Module 6</p>
-              <h1 className="text-base font-bold text-white">Facebook Content Engine</h1>
+              <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Module 6</p>
+              <h1 className="text-base font-bold text-[#1A1F36]">Facebook Content Engine</h1>
             </div>
           </div>
 
-          <div className="rounded-xl px-4 py-4 mb-5 flex items-start gap-3" style={{ background: '#064e3b', border: '1px solid #10B981' }}>
+          <div className="rounded-xl px-4 py-4 mb-5 flex items-start gap-3" style={{ background: '#ecfdf5', border: '1px solid #10B981' }}>
             <div className="w-6 h-6 rounded-full flex items-center justify-center mt-0.5 flex-shrink-0" style={{ background: '#10B981' }}>
               <span className="text-white"><CheckIcon /></span>
             </div>
             <div>
-              <p className="font-bold text-emerald-300">Module 6 Complete!</p>
-              <p className="text-sm text-emerald-300 mt-0.5">Your Facebook posts are saved and ready to publish.</p>
+              <p className="font-bold text-emerald-700">Module 6 Complete!</p>
+              <p className="text-sm text-emerald-700 mt-0.5">Your Facebook posts are saved and ready to publish.</p>
             </div>
           </div>
 
@@ -395,10 +395,10 @@ export default function Module6Page() {
           <ModuleReviewStatus moduleNumber={7} />
 
           {/* Post count summary */}
-          <div className="bg-gray-900 rounded-xl p-4 mb-4" style={{ border: '1px solid #374151' }}>
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Saved Posts</p>
-            <p className="text-2xl font-bold text-white">{posts.length}</p>
-            <p className="text-sm text-gray-400">Facebook posts ready to publish</p>
+          <div className="bg-white rounded-xl p-4 mb-4 border border-gray-100">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Saved Posts</p>
+            <p className="text-2xl font-bold text-[#1A1F36]">{posts.length}</p>
+            <p className="text-sm text-gray-500">Facebook posts ready to publish</p>
           </div>
 
           {/* All done card */}
@@ -428,7 +428,7 @@ export default function Module6Page() {
   return (
     <>
       <GoldConfetti trigger={showConfetti} onDone={() => setShowConfetti(false)} />
-      <div className="min-h-screen bg-gray-950">
+      <div className="min-h-screen bg-[#F8F9FA]">
       <div className="max-w-[430px] md:max-w-3xl mx-auto px-4 pt-6 pb-36">
 
         {/* Header */}
@@ -445,15 +445,15 @@ export default function Module6Page() {
             <span style={{ color: '#1A1F36' }}><BackIcon /></span>
           </button>
           <div>
-            <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Module 6</p>
-            <h1 className="text-base font-bold text-white">Facebook Content Engine</h1>
+            <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Module 6</p>
+            <h1 className="text-base font-bold text-[#1A1F36]">Facebook Content Engine</h1>
           </div>
         </div>
 
         <ProgressDots />
 
         {error && (
-          <div className="text-red-400 text-sm rounded-lg px-4 py-3 mb-4" style={{ background: '#1a0000', border: '1px solid #7f1d1d' }}>
+          <div className="text-red-600 text-sm rounded-lg px-4 py-3 mb-4" style={{ background: '#FEF2F2', border: '1px solid #FECACA' }}>
             {error}
           </div>
         )}
@@ -462,14 +462,14 @@ export default function Module6Page() {
         {step === 'settings' && (
           <div>
             {clarity && (
-              <div className="bg-gray-900 rounded-xl p-4 mb-5" style={{ borderTop: '1px solid #374151', borderRight: '1px solid #374151', borderBottom: '1px solid #374151', borderLeft: '4px solid #F4B942' }}>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Writing for</p>
-                <p className="text-sm font-semibold text-gray-200">{clarity.target_market}</p>
+              <div className="bg-white rounded-xl p-4 mb-5" style={{ borderTop: '1px solid #e5e7eb', borderRight: '1px solid #e5e7eb', borderBottom: '1px solid #e5e7eb', borderLeft: '4px solid #F4B942' }}>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Writing for</p>
+                <p className="text-sm font-semibold text-gray-700">{clarity.target_market}</p>
               </div>
             )}
 
             {/* Post type selection */}
-            <p className="text-sm font-bold text-white mb-2">What type of post?</p>
+            <p className="text-sm font-bold text-[#1A1F36] mb-2">What type of post?</p>
             <div className="space-y-2 mb-5">
               {POST_TYPES.map(type => {
                 const isSelected = selectedType === type.key
@@ -479,15 +479,15 @@ export default function Module6Page() {
                     onClick={() => setSelectedType(type.key)}
                     className="w-full text-left rounded-xl p-3 transition-all"
                     style={{
-                      background: isSelected ? '#1c1500' : '#111827',
-                      border: `2px solid ${isSelected ? '#F4B942' : '#374151'}`,
+                      background: isSelected ? '#FFFBEB' : 'white',
+                      border: `2px solid ${isSelected ? '#F4B942' : '#e5e7eb'}`,
                     }}
                   >
                     <div className="flex items-center gap-3">
                       <div
                         className="w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0"
                         style={{
-                          borderColor: isSelected ? '#F4B942' : '#374151',
+                          borderColor: isSelected ? '#F4B942' : '#D1D5DB',
                           background: isSelected ? '#F4B942' : 'transparent',
                         }}
                       >
@@ -496,8 +496,8 @@ export default function Module6Page() {
                         )}
                       </div>
                       <div>
-                        <p className="text-sm font-semibold text-white">{type.label}</p>
-                        <p className="text-xs text-gray-400 mt-0.5">{type.description}</p>
+                        <p className="text-sm font-semibold text-[#1A1F36]">{type.label}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">{type.description}</p>
                       </div>
                     </div>
                   </button>
@@ -506,7 +506,7 @@ export default function Module6Page() {
             </div>
 
             {/* Count selection */}
-            <p className="text-sm font-bold text-white mb-2">How many posts?</p>
+            <p className="text-sm font-bold text-[#1A1F36] mb-2">How many posts?</p>
             <div className="flex gap-3">
               {COUNT_OPTIONS.map(count => {
                 const isSelected = selectedCount === count
@@ -516,9 +516,9 @@ export default function Module6Page() {
                     onClick={() => setSelectedCount(count)}
                     className="flex-1 py-3 rounded-xl font-bold text-sm transition-all"
                     style={{
-                      background: isSelected ? '#F4B942' : '#111827',
-                      color: isSelected ? '#1A1F36' : '#9CA3AF',
-                      border: `2px solid ${isSelected ? '#F4B942' : '#374151'}`,
+                      background: isSelected ? '#F4B942' : 'white',
+                      color: isSelected ? '#1A1F36' : '#6B7280',
+                      border: `2px solid ${isSelected ? '#F4B942' : '#e5e7eb'}`,
                     }}
                   >
                     {count} posts
@@ -536,8 +536,8 @@ export default function Module6Page() {
             {generating && (
               <div className="text-center py-16">
                 <div className="w-12 h-12 border-4 border-[#F4B942] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-                <p className="text-sm font-medium text-white">Writing {selectedCount} {POST_TYPES.find(t => t.key === selectedType)?.label.toLowerCase()}s…</p>
-                <p className="text-xs text-gray-400 mt-1">Making sure each post sounds like a real person, not a marketer</p>
+                <p className="text-sm font-medium text-[#1A1F36]">Writing {selectedCount} {POST_TYPES.find(t => t.key === selectedType)?.label.toLowerCase()}s…</p>
+                <p className="text-xs text-gray-500 mt-1">Making sure each post sounds like a real person, not a marketer</p>
               </div>
             )}
 
@@ -546,7 +546,7 @@ export default function Module6Page() {
               <div>
                 {/* Header row */}
                 <div className="flex items-center justify-between mb-3">
-                  <p className="text-sm font-semibold text-white">{posts.length} posts ready</p>
+                  <p className="text-sm font-semibold text-[#1A1F36]">{posts.length} posts ready</p>
                   <button
                     onClick={() => copyToClipboard(buildCopyAllText(), 'all')}
                     className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all"
@@ -568,8 +568,8 @@ export default function Module6Page() {
                     return (
                       <div
                         key={i}
-                        className="bg-gray-900 rounded-xl overflow-hidden"
-                        style={{ border: `1.5px solid ${isExpanded ? '#F4B942' : '#374151'}` }}
+                        className="bg-white rounded-xl overflow-hidden"
+                        style={{ border: `1.5px solid ${isExpanded ? '#F4B942' : '#e5e7eb'}` }}
                       >
                         {/* Card header */}
                         <button
@@ -583,7 +583,7 @@ export default function Module6Page() {
                             {i + 1}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-gray-200 line-clamp-2 leading-snug">
+                            <p className="text-sm font-medium text-gray-700 line-clamp-2 leading-snug">
                               {post.hook}
                             </p>
                           </div>
@@ -608,7 +608,7 @@ export default function Module6Page() {
                             <div className="flex items-center justify-between pt-3 mb-3">
                               <span
                                 className="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide"
-                                style={{ background: '#1c1500', color: '#F4B942' }}
+                                style={{ background: '#FFFBEB', color: '#92400E' }}
                               >
                                 {POST_TYPES.find(t => t.key === selectedType)?.label}
                               </span>
@@ -616,14 +616,14 @@ export default function Module6Page() {
                                 <button
                                   onClick={() => handleRegeneratePost(i)}
                                   disabled={regeneratingIndex !== null}
-                                  className="flex items-center gap-1 text-xs text-gray-400 hover:text-[#F4B942] disabled:opacity-40"
+                                  className="flex items-center gap-1 text-xs text-gray-500 hover:text-[#F4B942] disabled:opacity-40"
                                 >
                                   <RefreshIcon />
                                   <span>{isRegenerating ? 'Rewriting…' : 'Rewrite'}</span>
                                 </button>
                                 <button
                                   onClick={() => copyToClipboard(post.full_post, `post-${i}`)}
-                                  className="flex items-center gap-1 text-xs text-gray-400 hover:text-white"
+                                  className="flex items-center gap-1 text-xs text-gray-500 hover:text-[#1A1F36]"
                                 >
                                   <CopyIcon />
                                   <span>{copiedLabel === `post-${i}` ? 'Copied!' : 'Copy'}</span>
@@ -634,10 +634,10 @@ export default function Module6Page() {
                             {isRegenerating ? (
                               <div className="flex items-center gap-2 py-4">
                                 <div className="w-4 h-4 border-2 border-[#F4B942] border-t-transparent rounded-full animate-spin" />
-                                <p className="text-sm text-gray-400">Rewriting post {i + 1}…</p>
+                                <p className="text-sm text-gray-500">Rewriting post {i + 1}…</p>
                               </div>
                             ) : (
-                              <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap">
+                              <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
                                 {post.full_post}
                               </p>
                             )}
@@ -652,7 +652,7 @@ export default function Module6Page() {
                 <button
                   onClick={() => setStep('settings')}
                   className="w-full py-3 rounded-xl font-semibold text-sm mb-4 flex items-center justify-center gap-2"
-                  style={{ background: '#111827', color: '#9CA3AF', border: '2px solid #374151' }}
+                  style={{ background: 'white', color: '#6B7280', border: '2px solid #e5e7eb' }}
                 >
                   <PlusIcon />
                   Generate More Posts
@@ -667,9 +667,9 @@ export default function Module6Page() {
       {/* ── Fixed Bottom Action Bar ──────────────────────────── */}
       {step !== 'complete' && (
         <div
-          className="fixed bottom-0 bg-gray-900 px-4 py-4"
+          className="fixed bottom-0 bg-white px-4 py-4"
           style={{
-            borderTop: '1px solid #374151',
+            borderTop: '1px solid #e5e7eb',
             width: '100%',
             maxWidth: '430px',
             left: '50%',
@@ -689,7 +689,7 @@ export default function Module6Page() {
           {step === 'posts' && generating && (
             <div
               className="w-full py-4 rounded-xl font-bold text-base flex items-center justify-center gap-2 opacity-60"
-              style={{ background: '#374151', color: '#9CA3AF' }}
+              style={{ background: '#F3F4F6', color: '#9CA3AF' }}
             >
               <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
               Writing your posts…

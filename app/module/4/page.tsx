@@ -390,14 +390,14 @@ export default function Module4Page() {
     return (
       <div className="mb-5">
         <div className="flex items-center justify-between mb-1.5">
-          <span className="text-xs font-medium text-gray-400">
+          <span className="text-xs font-medium text-gray-500">
             Section {currentSection + 1} of {SECTIONS.length}
           </span>
           <span className="text-xs font-medium" style={{ color: '#F4B942' }}>
             {SECTIONS[currentSection]?.label}
           </span>
         </div>
-        <div className="w-full h-1.5 rounded-full" style={{ background: '#1f2937' }}>
+        <div className="w-full h-1.5 rounded-full" style={{ background: '#e5e7eb' }}>
           <div
             className="h-1.5 rounded-full transition-all duration-500"
             style={{
@@ -417,7 +417,7 @@ export default function Module4Page() {
                   ? '#10B981'
                   : i === currentSection
                   ? '#F4B942'
-                  : '#374151',
+                  : '#d1d5db',
               }}
             />
           ))}
@@ -429,7 +429,7 @@ export default function Module4Page() {
   // ── Loading ──────────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+      <div className="min-h-screen bg-[#F8F9FA] flex items-center justify-center">
         <div className="text-center">
           <div className="w-10 h-10 border-4 border-[#F4B942] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
           <p className="text-sm text-gray-500">Loading your offer data…</p>
@@ -441,19 +441,19 @@ export default function Module4Page() {
   // ── Locked Screen ────────────────────────────────────────────────────────
   if (locked) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center px-4">
+      <div className="min-h-screen bg-[#F8F9FA] flex items-center justify-center px-4">
         <div className="max-w-[380px] w-full text-center">
           <div
             className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-5"
-            style={{ background: '#111827', border: '1px solid #374151' }}
+            style={{ background: '#f3f4f6', border: '1px solid #e5e7eb' }}
           >
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
               <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
             </svg>
           </div>
-          <h1 className="text-lg font-bold text-white mb-2">Module 4 — Not Yet Open</h1>
-          <p className="text-sm text-gray-400 mb-1">The Sales Page Builder opens in</p>
+          <h1 className="text-lg font-bold text-[#1A1F36] mb-2">Module 4 — Not Yet Open</h1>
+          <p className="text-sm text-gray-500 mb-1">The Sales Page Builder opens in</p>
           <p className="text-3xl font-black mb-1" style={{ color: '#F4B942' }}>
             {daysUntilUnlock} {daysUntilUnlock === 1 ? 'day' : 'days'}
           </p>
@@ -478,7 +478,7 @@ export default function Module4Page() {
     return (
       <>
         <GoldConfetti trigger={showConfetti} onDone={() => setShowConfetti(false)} />
-        <div className="min-h-screen bg-gray-950">
+        <div className="min-h-screen bg-[#F8F9FA]">
           <div className="max-w-[430px] md:max-w-3xl mx-auto px-4 pt-6 pb-32">
 
             {/* Header */}
@@ -488,18 +488,18 @@ export default function Module4Page() {
               </div>
               <div>
                 <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Module 4</p>
-                <h1 className="text-base font-bold text-white">The Sales Page Builder</h1>
+                <h1 className="text-base font-bold text-[#1A1F36]">The Sales Page Builder</h1>
               </div>
             </div>
 
             {/* Success banner */}
-            <div className="rounded-xl px-4 py-4 mb-5 flex items-start gap-3" style={{ background: '#064e3b', border: '1px solid #10B981' }}>
+            <div className="rounded-xl px-4 py-4 mb-5 flex items-start gap-3" style={{ background: '#ecfdf5', border: '1px solid #10B981' }}>
               <div className="w-6 h-6 rounded-full flex items-center justify-center mt-0.5 flex-shrink-0" style={{ background: '#10B981' }}>
                 <span className="text-white"><CheckIcon /></span>
               </div>
               <div>
-                <p className="font-bold text-emerald-300">Your Sales Page Copy Is Ready!</p>
-                <p className="text-sm text-emerald-300 mt-0.5">All 10 sections written. Copy them into Systeme.io or your page builder.</p>
+                <p className="font-bold text-emerald-700">Your Sales Page Copy Is Ready!</p>
+                <p className="text-sm text-emerald-700 mt-0.5">All 10 sections written. Copy them into Systeme.io or your page builder.</p>
               </div>
             </div>
 
@@ -515,9 +515,9 @@ export default function Module4Page() {
               }}
               className="w-full py-3 rounded-xl font-semibold text-sm mb-4 flex items-center justify-center gap-2"
               style={{
-                background: copyAllDone ? '#065F46' : '#1f2937',
-                color: copyAllDone ? '#6EE7B7' : '#F4B942',
-                border: `1px solid ${copyAllDone ? '#10B981' : '#374151'}`,
+                background: copyAllDone ? '#ecfdf5' : '#f9fafb',
+                color: copyAllDone ? '#065F46' : '#F4B942',
+                border: `1px solid ${copyAllDone ? '#10B981' : '#e5e7eb'}`,
               }}
             >
               <CopyIcon />
@@ -527,13 +527,13 @@ export default function Module4Page() {
             {/* Section list */}
             <div className="space-y-3 mb-5">
               {allSections.map(s => (
-                <div key={s.key} className="bg-gray-900 rounded-xl overflow-hidden" style={{ border: '1px solid #374151' }}>
-                  <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid #374151' }}>
+                <div key={s.key} className="bg-white rounded-xl overflow-hidden" style={{ border: '1px solid #e5e7eb' }}>
+                  <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid #e5e7eb' }}>
                     <div className="flex items-center gap-2">
                       <div className="w-5 h-5 rounded-full flex items-center justify-center" style={{ background: '#10B981' }}>
                         <span className="text-white"><CheckIcon /></span>
                       </div>
-                      <span className="text-sm font-semibold text-white">{s.label}</span>
+                      <span className="text-sm font-semibold text-[#1A1F36]">{s.label}</span>
                     </div>
                     <button
                       onClick={() => copyText(sectionContents[s.key], s.key)}
@@ -545,7 +545,7 @@ export default function Module4Page() {
                     </button>
                   </div>
                   <div className="px-4 py-3">
-                    <p className="text-xs text-gray-400 leading-relaxed whitespace-pre-wrap line-clamp-3">
+                    <p className="text-xs text-gray-500 leading-relaxed whitespace-pre-wrap line-clamp-3">
                       {sectionContents[s.key]}
                     </p>
                   </div>
@@ -554,11 +554,11 @@ export default function Module4Page() {
             </div>
 
             {/* Published URL */}
-            <div className="bg-gray-900 rounded-xl p-4 mb-4" style={{ border: '1px solid #374151' }}>
-              <label className="block text-sm font-semibold text-white mb-1">
+            <div className="bg-white rounded-xl p-4 mb-4" style={{ border: '1px solid #e5e7eb' }}>
+              <label className="block text-sm font-semibold text-[#1A1F36] mb-1">
                 Sales Page URL <span className="text-gray-500 font-normal">(optional)</span>
               </label>
-              <p className="text-xs text-gray-400 mb-3">
+              <p className="text-xs text-gray-500 mb-3">
                 Once you publish it in Systeme.io, paste the link here so Module 5 can use it.
               </p>
               <div className="flex gap-2">
@@ -567,8 +567,8 @@ export default function Module4Page() {
                   value={publishedUrl}
                   onChange={e => setPublishedUrl(e.target.value)}
                   placeholder="https://yourpage.systeme.io/ebook"
-                  className="flex-1 border rounded-xl px-3 py-2.5 text-sm bg-gray-950 text-white focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
-                  style={{ borderColor: '#374151' }}
+                  className="flex-1 border rounded-xl px-3 py-2.5 text-sm bg-[#F8F9FA] text-[#1A1F36] focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
+                  style={{ borderColor: '#e5e7eb' }}
                 />
                 <button
                   onClick={savePublishedUrl}
@@ -584,7 +584,7 @@ export default function Module4Page() {
             <div className="rounded-xl p-4 mb-4" style={{ background: '#1A1F36', border: '2px solid #F4B942' }}>
               <p className="text-xs font-medium mb-1" style={{ color: '#F4B942' }}>Up Next</p>
               <p className="text-white font-bold">Module 5 — 7-Day Email Sequence</p>
-              <p className="text-gray-300 text-sm mt-1">Write 7 emails that nurture readers and sell your ebook.</p>
+              <p className="text-gray-400 text-sm mt-1">Write 7 emails that nurture readers and sell your ebook.</p>
               <button
                 onClick={() => router.push('/module/5')}
                 className="mt-3 w-full py-3 rounded-lg font-bold text-sm"
@@ -609,7 +609,7 @@ export default function Module4Page() {
   // ── Intro Screen ─────────────────────────────────────────────────────────
   if (step === 'intro') {
     return (
-      <div className="min-h-screen bg-gray-950">
+      <div className="min-h-screen bg-[#F8F9FA]">
         <div className="max-w-[430px] md:max-w-3xl mx-auto px-4 pt-6 pb-36">
 
           {/* Header */}
@@ -624,32 +624,32 @@ export default function Module4Page() {
             </button>
             <div>
               <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Module 4</p>
-              <h1 className="text-base font-bold text-white">The Sales Page Builder</h1>
+              <h1 className="text-base font-bold text-[#1A1F36]">The Sales Page Builder</h1>
             </div>
           </div>
 
           {/* What this module does */}
-          <div className="rounded-xl p-4 mb-4" style={{ background: '#1c1500', borderLeft: '4px solid #F4B942', borderTop: '1px solid #374151', borderRight: '1px solid #374151', borderBottom: '1px solid #374151' }}>
-            <p className="text-sm font-semibold text-white mb-1">What you&apos;ll build</p>
-            <p className="text-sm text-gray-400 leading-relaxed">
+          <div className="rounded-xl p-4 mb-4" style={{ background: '#fffbeb', borderLeft: '4px solid #F4B942', borderTop: '1px solid #e5e7eb', borderRight: '1px solid #e5e7eb', borderBottom: '1px solid #e5e7eb' }}>
+            <p className="text-sm font-semibold text-[#1A1F36] mb-1">What you&apos;ll build</p>
+            <p className="text-sm text-gray-500 leading-relaxed">
               A complete 10-section sales page in your voice — written section by section using your offer from Module 3. No blank pages, no guessing. Just review, refine, and copy into Systeme.io.
             </p>
           </div>
 
           {/* Section roadmap */}
-          <div className="bg-gray-900 rounded-xl p-4 mb-4" style={{ border: '1px solid #374151' }}>
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">The 10 sections</p>
+          <div className="bg-white rounded-xl p-4 mb-4" style={{ border: '1px solid #e5e7eb' }}>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">The 10 sections</p>
             <div className="space-y-2">
               {SECTIONS.map((s, i) => (
                 <div key={s.key} className="flex items-start gap-3">
                   <div
                     className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
-                    style={{ background: '#1f2937' }}
+                    style={{ background: '#f3f4f6' }}
                   >
                     <span className="text-[10px] font-bold text-gray-500">{i + 1}</span>
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-white">{s.label}</p>
+                    <p className="text-sm font-medium text-[#1A1F36]">{s.label}</p>
                     <p className="text-xs text-gray-500">{s.description}</p>
                   </div>
                 </div>
@@ -659,28 +659,28 @@ export default function Module4Page() {
 
           {/* Offer summary from M3 */}
           {offer && (
-            <div className="bg-gray-900 rounded-xl p-4 mb-4" style={{ border: '1px solid #374151' }}>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Your offer (from Module 3)</p>
+            <div className="bg-white rounded-xl p-4 mb-4" style={{ border: '1px solid #e5e7eb' }}>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Your offer (from Module 3)</p>
               <div className="space-y-2">
                 <div>
                   <p className="text-[10px] text-gray-500 uppercase tracking-wide">Ebook</p>
-                  <p className="text-sm font-semibold text-white">{offer.ebook_title}</p>
+                  <p className="text-sm font-semibold text-[#1A1F36]">{offer.ebook_title}</p>
                 </div>
                 <div>
                   <p className="text-[10px] text-gray-500 uppercase tracking-wide">For</p>
-                  <p className="text-sm text-gray-300">{offer.target_market}</p>
+                  <p className="text-sm text-gray-600">{offer.target_market}</p>
                 </div>
                 <div>
                   <p className="text-[10px] text-gray-500 uppercase tracking-wide">Price</p>
-                  <p className="text-sm font-semibold text-white">₱{offer.selling_price.toLocaleString()}</p>
+                  <p className="text-sm font-semibold text-[#1A1F36]">₱{offer.selling_price.toLocaleString()}</p>
                 </div>
                 <div>
                   <p className="text-[10px] text-gray-500 uppercase tracking-wide">Guarantee</p>
-                  <p className="text-sm text-gray-300">{offer.guarantee}</p>
+                  <p className="text-sm text-gray-600">{offer.guarantee}</p>
                 </div>
                 <div>
                   <p className="text-[10px] text-gray-500 uppercase tracking-wide">Bonuses</p>
-                  <p className="text-sm text-gray-300">{offer.bonuses.length} bonus{offer.bonuses.length !== 1 ? 'es' : ''} — total value ₱{offer.total_value.toLocaleString()}</p>
+                  <p className="text-sm text-gray-600">{offer.bonuses.length} bonus{offer.bonuses.length !== 1 ? 'es' : ''} — total value ₱{offer.total_value.toLocaleString()}</p>
                 </div>
               </div>
             </div>
@@ -690,8 +690,8 @@ export default function Module4Page() {
 
         {/* Fixed bottom CTA */}
         <div
-          className="fixed bottom-0 bg-gray-900 px-4 py-4"
-          style={{ borderTop: '1px solid #374151', width: '100%', maxWidth: '430px', left: '50%', transform: 'translateX(-50%)' }}
+          className="fixed bottom-0 bg-white px-4 py-4"
+          style={{ borderTop: '1px solid #e5e7eb', width: '100%', maxWidth: '430px', left: '50%', transform: 'translateX(-50%)' }}
         >
           <button
             onClick={() => setStep('building')}
@@ -715,7 +715,7 @@ export default function Module4Page() {
   return (
     <>
       <GoldConfetti trigger={showConfetti} onDone={() => setShowConfetti(false)} />
-      <div className="min-h-screen bg-gray-950">
+      <div className="min-h-screen bg-[#F8F9FA]">
         <div className="max-w-[430px] md:max-w-3xl mx-auto px-4 pt-6 pb-36">
 
           {/* Header */}
@@ -737,14 +737,14 @@ export default function Module4Page() {
             </button>
             <div>
               <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Module 4</p>
-              <h1 className="text-base font-bold text-white">The Sales Page Builder</h1>
+              <h1 className="text-base font-bold text-[#1A1F36]">The Sales Page Builder</h1>
             </div>
           </div>
 
           <SectionProgress />
 
           {error && (
-            <div className="bg-red-900/40 border border-red-700 text-red-300 text-sm rounded-lg px-4 py-3 mb-4">
+            <div className="bg-red-50 border border-red-300 text-red-700 text-sm rounded-lg px-4 py-3 mb-4">
               {error}
               <button
                 onClick={() => { setError(''); generateSection(sec.key) }}
@@ -757,16 +757,16 @@ export default function Module4Page() {
 
           {/* Section header */}
           <div className="mb-4">
-            <h2 className="text-lg font-bold text-white">{sec?.label}</h2>
-            <p className="text-sm text-gray-400">{sec?.description}</p>
+            <h2 className="text-lg font-bold text-[#1A1F36]">{sec?.label}</h2>
+            <p className="text-sm text-gray-500">{sec?.description}</p>
           </div>
 
           {/* ── Generating spinner ── */}
           {generating && (
             <div className="text-center py-14">
               <div className="w-12 h-12 border-4 border-[#F4B942] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-              <p className="text-sm font-medium text-white">Writing your {sec?.label} section…</p>
-              <p className="text-xs text-gray-400 mt-1">Using your offer data for context</p>
+              <p className="text-sm font-medium text-[#1A1F36]">Writing your {sec?.label} section…</p>
+              <p className="text-xs text-gray-500 mt-1">Using your offer data for context</p>
             </div>
           )}
 
@@ -776,9 +776,9 @@ export default function Module4Page() {
               <p className="text-xs text-gray-500 mb-3">Pick the headline that feels most like you:</p>
 
               {/* Recommended note */}
-              <div className="rounded-lg px-3 py-2 mb-4 text-xs" style={{ background: '#1c1500', border: '1px solid #374151' }}>
+              <div className="rounded-lg px-3 py-2 mb-4 text-xs" style={{ background: '#fffbeb', border: '1px solid #e5e7eb' }}>
                 <span className="font-semibold" style={{ color: '#F4B942' }}>Recommended: </span>
-                <span className="text-gray-300">{headlineData.recommended_reason}</span>
+                <span className="text-gray-600">{headlineData.recommended_reason}</span>
               </div>
 
               <div className="space-y-3 mb-4">
@@ -792,8 +792,8 @@ export default function Module4Page() {
                       onClick={() => setSelectedHeadlineIndex(i)}
                       className="w-full text-left rounded-xl p-4 transition-all"
                       style={{
-                        background: isSelected ? '#1c1500' : '#111827',
-                        border: `2px solid ${isSelected ? '#F4B942' : '#374151'}`,
+                        background: isSelected ? '#fffbeb' : '#ffffff',
+                        border: `2px solid ${isSelected ? '#F4B942' : '#e5e7eb'}`,
                       }}
                     >
                       <div className="flex items-start justify-between gap-2 mb-2">
@@ -807,20 +807,20 @@ export default function Module4Page() {
                             )}
                           </div>
                           {isRecommended && (
-                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wide" style={{ background: '#1c1500', color: '#F4B942' }}>
+                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wide" style={{ background: '#fffbeb', color: '#F4B942' }}>
                               Recommended
                             </span>
                           )}
                         </div>
                         <button
                           onClick={e => { e.stopPropagation(); copyText(option, `h-${i}`) }}
-                          className="text-gray-500 hover:text-gray-300 flex-shrink-0"
+                          className="text-gray-400 hover:text-gray-600 flex-shrink-0"
                         >
                           <CopyIcon />
                         </button>
                       </div>
-                      <p className="text-sm font-bold text-white leading-snug">{lines[0]}</p>
-                      {lines[1] && <p className="text-sm text-gray-300 mt-1 leading-snug">{lines[1]}</p>}
+                      <p className="text-sm font-bold text-[#1A1F36] leading-snug">{lines[0]}</p>
+                      {lines[1] && <p className="text-sm text-gray-600 mt-1 leading-snug">{lines[1]}</p>}
                     </button>
                   )
                 })}
@@ -867,8 +867,8 @@ export default function Module4Page() {
               </div>
 
               {/* Content */}
-              <div className="bg-gray-900 rounded-xl p-4" style={{ border: '1px solid #374151' }}>
-                <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap">{currentContent}</p>
+              <div className="bg-white rounded-xl p-4" style={{ border: '1px solid #e5e7eb' }}>
+                <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{currentContent}</p>
               </div>
             </div>
           )}
@@ -879,8 +879,8 @@ export default function Module4Page() {
               <textarea
                 value={editText}
                 onChange={e => setEditText(e.target.value)}
-                className="w-full border rounded-xl px-3 py-3 text-sm bg-gray-950 text-white focus:outline-none focus:ring-2 focus:ring-yellow-400/40 leading-relaxed"
-                style={{ borderColor: '#374151', minHeight: '240px', resize: 'vertical' }}
+                className="w-full border rounded-xl px-3 py-3 text-sm bg-white text-[#1A1F36] focus:outline-none focus:ring-2 focus:ring-yellow-400/40 leading-relaxed"
+                style={{ borderColor: '#e5e7eb', minHeight: '240px', resize: 'vertical' }}
                 autoFocus
               />
               <div className="flex gap-3 mt-3">
@@ -894,7 +894,7 @@ export default function Module4Page() {
                 <button
                   onClick={() => setEditing(false)}
                   className="flex-1 py-2.5 rounded-xl font-semibold text-sm"
-                  style={{ background: '#1f2937', color: '#9CA3AF', border: '1px solid #374151' }}
+                  style={{ background: '#f9fafb', color: '#6B7280', border: '1px solid #e5e7eb' }}
                 >
                   Cancel
                 </button>
@@ -907,8 +907,8 @@ export default function Module4Page() {
         {/* ── Fixed Bottom Bar ── */}
         {!generating && hasContent && !editing && (
           <div
-            className="fixed bottom-0 bg-gray-900 px-4 py-4"
-            style={{ borderTop: '1px solid #374151', width: '100%', maxWidth: '430px', left: '50%', transform: 'translateX(-50%)' }}
+            className="fixed bottom-0 bg-white px-4 py-4"
+            style={{ borderTop: '1px solid #e5e7eb', width: '100%', maxWidth: '430px', left: '50%', transform: 'translateX(-50%)' }}
           >
             {isHeadline ? (
               <button
@@ -939,12 +939,12 @@ export default function Module4Page() {
         {/* Generating bottom placeholder */}
         {generating && (
           <div
-            className="fixed bottom-0 bg-gray-900 px-4 py-4"
-            style={{ borderTop: '1px solid #374151', width: '100%', maxWidth: '430px', left: '50%', transform: 'translateX(-50%)' }}
+            className="fixed bottom-0 bg-white px-4 py-4"
+            style={{ borderTop: '1px solid #e5e7eb', width: '100%', maxWidth: '430px', left: '50%', transform: 'translateX(-50%)' }}
           >
             <div
               className="w-full py-4 rounded-xl font-bold text-base flex items-center justify-center gap-2 opacity-40"
-              style={{ background: '#111827', color: '#9CA3AF', border: '1px solid #374151' }}
+              style={{ background: '#f3f4f6', color: '#9CA3AF', border: '1px solid #e5e7eb' }}
             >
               <div className="w-4 h-4 border-2 border-gray-500 border-t-transparent rounded-full animate-spin" />
               Writing section…

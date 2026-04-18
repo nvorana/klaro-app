@@ -68,9 +68,9 @@ const SECTION_LABELS: { key: keyof LeadMagnet; label: string }[] = [
 ]
 
 const TRIGGER_LABELS: Record<string, { label: string; color: string; bg: string }> = {
-  frustration: { label: 'Frustration', color: '#F97316', bg: '#1c0a00' },
-  fear:        { label: 'Urgency',     color: '#EF4444', bg: '#1a0000' },
-  desire:      { label: 'Desire',      color: '#10B981', bg: '#022c22' },
+  frustration: { label: 'Frustration', color: '#EA580C', bg: '#FFF7ED' },
+  fear:        { label: 'Urgency',     color: '#DC2626', bg: '#FEF2F2' },
+  desire:      { label: 'Desire',      color: '#059669', bg: '#ECFDF5' },
 }
 
 // ── Icons ────────────────────────────────────────────────────────────────────
@@ -381,12 +381,12 @@ export default function Module6Page() {
           return (
             <div key={label} className="flex items-center">
               <div className="flex flex-col items-center">
-                <div className="w-7 h-7 rounded-full flex items-center justify-center" style={{ background: isDone ? '#10B981' : isActive ? '#F4B942' : '#374151' }}>
+                <div className="w-7 h-7 rounded-full flex items-center justify-center" style={{ background: isDone ? '#10B981' : isActive ? '#F4B942' : '#D1D5DB' }}>
                   {isDone ? <span className="text-white"><CheckIcon /></span> : <span className="text-xs font-bold" style={{ color: isActive ? '#1A1F36' : '#9CA3AF' }}>{i + 1}</span>}
                 </div>
                 <span className="text-[10px] mt-1 font-medium whitespace-nowrap" style={{ color: isDone ? '#10B981' : isActive ? '#F4B942' : '#9CA3AF' }}>{label}</span>
               </div>
-              {i < STEP_LABELS.length - 1 && <div className="h-0.5 w-12 mb-4 mx-1" style={{ background: i < currentStepIndex ? '#10B981' : '#374151' }} />}
+              {i < STEP_LABELS.length - 1 && <div className="h-0.5 w-12 mb-4 mx-1" style={{ background: i < currentStepIndex ? '#10B981' : '#D1D5DB' }} />}
             </div>
           )
         })}
@@ -397,10 +397,10 @@ export default function Module6Page() {
   // ── Loading ───────────────────────────────────────────────────
   if (clarityLoading) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+      <div className="min-h-screen bg-[#F8F9FA] flex items-center justify-center">
         <div className="text-center">
           <div className="w-10 h-10 border-4 border-[#F4B942] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-sm text-gray-400">Loading your progress…</p>
+          <p className="text-sm text-gray-500">Loading your progress…</p>
         </div>
       </div>
     )
@@ -409,15 +409,15 @@ export default function Module6Page() {
   // ── Locked ────────────────────────────────────────────────────
   if (locked) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center px-4">
+      <div className="min-h-screen bg-[#F8F9FA] flex items-center justify-center px-4">
         <div className="max-w-[380px] w-full text-center">
-          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-5" style={{ background: '#111827', border: '1px solid #374151' }}>
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-5" style={{ background: '#F3F4F6', border: '1px solid #e5e7eb' }}>
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
             </svg>
           </div>
-          <h1 className="text-lg font-bold text-white mb-2">Module 6 — Not Yet Open</h1>
-          <p className="text-sm text-gray-400 mb-1">The Lead Magnet Builder opens in</p>
+          <h1 className="text-lg font-bold text-[#1A1F36] mb-2">Module 6 — Not Yet Open</h1>
+          <p className="text-sm text-gray-500 mb-1">The Lead Magnet Builder opens in</p>
           <p className="text-3xl font-black mb-1" style={{ color: '#F4B942' }}>{daysUntilUnlock} {daysUntilUnlock === 1 ? 'day' : 'days'}</p>
           <p className="text-xs text-gray-500 mb-8">Keep going — your email sequence is saved.</p>
           <button onClick={() => router.push('/dashboard')} className="w-full py-3 rounded-xl font-bold text-sm" style={{ background: '#F4B942', color: '#1A1F36' }}>
@@ -433,7 +433,7 @@ export default function Module6Page() {
     return (
       <>
         <GoldConfetti trigger={showConfetti} onDone={() => setShowConfetti(false)} />
-        <div className="min-h-screen bg-gray-950">
+        <div className="min-h-screen bg-[#F8F9FA]">
           <div className="max-w-[430px] md:max-w-3xl mx-auto px-4 pt-6 pb-32">
 
             <div className="flex items-center gap-3 mb-6">
@@ -441,18 +441,18 @@ export default function Module6Page() {
                 <span className="font-bold text-[#1A1F36] text-sm">6</span>
               </div>
               <div>
-                <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Module 6</p>
-                <h1 className="text-base font-bold text-white">Lead Magnet Builder</h1>
+                <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Module 6</p>
+                <h1 className="text-base font-bold text-[#1A1F36]">Lead Magnet Builder</h1>
               </div>
             </div>
 
-            <div className="rounded-xl px-4 py-4 mb-5 flex items-start gap-3" style={{ background: '#064e3b', border: '1px solid #10B981' }}>
+            <div className="rounded-xl px-4 py-4 mb-5 flex items-start gap-3" style={{ background: '#ecfdf5', border: '1px solid #10B981' }}>
               <div className="w-6 h-6 rounded-full flex items-center justify-center mt-0.5 flex-shrink-0" style={{ background: '#10B981' }}>
                 <span className="text-white"><CheckIcon /></span>
               </div>
               <div>
-                <p className="font-bold text-emerald-300">Module 6 Complete!</p>
-                <p className="text-sm text-emerald-300 mt-0.5">Your lead magnet is saved and ready to share.</p>
+                <p className="font-bold text-emerald-700">Module 6 Complete!</p>
+                <p className="text-sm text-emerald-700 mt-0.5">Your lead magnet is saved and ready to share.</p>
               </div>
             </div>
 
@@ -460,16 +460,16 @@ export default function Module6Page() {
             <ModuleReviewStatus moduleNumber={6} />
 
             {leadMagnet && (
-              <div className="bg-gray-900 rounded-xl p-4 mb-4" style={{ border: '1px solid #374151' }}>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Your Lead Magnet</p>
-                <p className="text-sm font-bold text-white mb-1">{getSection('title')}</p>
-                <p className="text-xs text-gray-400 capitalize">{selectedFormat?.replace('_', ' ')} format</p>
+              <div className="bg-white rounded-xl p-4 mb-4 border border-gray-100">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Your Lead Magnet</p>
+                <p className="text-sm font-bold text-[#1A1F36] mb-1">{getSection('title')}</p>
+                <p className="text-xs text-gray-500 capitalize">{selectedFormat?.replace('_', ' ')} format</p>
               </div>
             )}
 
             {nextModuleLocked ? (
-              <div className="rounded-xl p-4 mb-4 flex flex-col items-center gap-1" style={{ background: '#111827', border: '1px solid #374151' }}>
-                <div className="flex items-center gap-2 text-gray-400 font-semibold text-sm">
+              <div className="rounded-xl p-4 mb-4 flex flex-col items-center gap-1" style={{ background: '#F3F4F6', border: '1px solid #e5e7eb' }}>
+                <div className="flex items-center gap-2 text-gray-500 font-semibold text-sm">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                   </svg>
@@ -481,7 +481,7 @@ export default function Module6Page() {
               <div className="rounded-xl p-4 mb-4" style={{ background: '#1A1F36', border: '2px solid #F4B942' }}>
                 <p className="text-xs font-medium mb-1" style={{ color: '#F4B942' }}>Up Next</p>
                 <p className="text-white font-bold">Module 7 — Facebook Content Engine</p>
-                <p className="text-gray-300 text-sm mt-1">Generate Facebook posts that attract your ideal buyers.</p>
+                <p className="text-gray-400 text-sm mt-1">Generate Facebook posts that attract your ideal buyers.</p>
                 <button onClick={() => router.push('/module/7')} className="mt-3 w-full py-2.5 rounded-lg font-bold text-sm" style={{ background: '#F4B942', color: '#1A1F36' }}>
                   Start Module 7
                 </button>
@@ -501,7 +501,7 @@ export default function Module6Page() {
   return (
     <>
       <GoldConfetti trigger={showConfetti} onDone={() => setShowConfetti(false)} />
-      <div className="min-h-screen bg-gray-950">
+      <div className="min-h-screen bg-[#F8F9FA]">
         <div className="max-w-[430px] md:max-w-3xl mx-auto px-4 pt-6 pb-36">
 
           {/* Header */}
@@ -520,15 +520,15 @@ export default function Module6Page() {
               <span style={{ color: '#1A1F36' }}><BackIcon /></span>
             </button>
             <div>
-              <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Module 6</p>
-              <h1 className="text-base font-bold text-white">Lead Magnet Builder</h1>
+              <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Module 6</p>
+              <h1 className="text-base font-bold text-[#1A1F36]">Lead Magnet Builder</h1>
             </div>
           </div>
 
           <ProgressDots />
 
           {error && (
-            <div className="text-red-400 text-sm rounded-lg px-4 py-3 mb-4" style={{ background: '#1a0000', border: '1px solid #7f1d1d' }}>
+            <div className="text-red-600 text-sm rounded-lg px-4 py-3 mb-4" style={{ background: '#FEF2F2', border: '1px solid #FECACA' }}>
               {error}
               {step === 'ideas' && (
                 <button onClick={handleRegenerateIdeas} className="ml-2 underline text-xs">Try again</button>
@@ -540,8 +540,8 @@ export default function Module6Page() {
           {step === 'ideas' && (
             <div>
               <div className="mb-4">
-                <h2 className="text-base font-bold text-white mb-1">What will your lead magnet be about?</h2>
-                <p className="text-sm text-gray-400">
+                <h2 className="text-base font-bold text-[#1A1F36] mb-1">What will your lead magnet be about?</h2>
+                <p className="text-sm text-gray-500">
                   Based on your niche, here are 3 angles — each hits a different emotion your audience feels right now. Pick the one that resonates most.
                 </p>
               </div>
@@ -550,8 +550,8 @@ export default function Module6Page() {
               {ideasLoading && (
                 <div className="text-center py-14">
                   <div className="w-12 h-12 border-4 border-[#F4B942] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-                  <p className="text-sm font-medium text-white">Finding the right angles for your audience…</p>
-                  <p className="text-xs text-gray-400 mt-1">Based on your clarity data and ebook</p>
+                  <p className="text-sm font-medium text-[#1A1F36]">Finding the right angles for your audience…</p>
+                  <p className="text-xs text-gray-500 mt-1">Based on your clarity data and ebook</p>
                 </div>
               )}
 
@@ -567,8 +567,8 @@ export default function Module6Page() {
                         onClick={() => setSelectedIdeaIndex(i)}
                         className="w-full text-left rounded-xl p-4 transition-all"
                         style={{
-                          background: isSelected ? '#1c1500' : '#111827',
-                          border: `2px solid ${isSelected ? '#F4B942' : '#374151'}`,
+                          background: isSelected ? '#FFFBEB' : 'white',
+                          border: `2px solid ${isSelected ? '#F4B942' : '#e5e7eb'}`,
                         }}
                       >
                         {/* Top row */}
@@ -576,7 +576,7 @@ export default function Module6Page() {
                           <div className="flex items-center gap-2">
                             <div
                               className="w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0"
-                              style={{ borderColor: isSelected ? '#F4B942' : '#6B7280' }}
+                              style={{ borderColor: isSelected ? '#F4B942' : '#D1D5DB' }}
                             >
                               {isSelected && <div className="w-2.5 h-2.5 rounded-full" style={{ background: '#F4B942' }} />}
                             </div>
@@ -590,15 +590,15 @@ export default function Module6Page() {
                         </div>
 
                         {/* Angle name */}
-                        <p className="text-sm font-bold text-white mb-1">{idea.angle}</p>
+                        <p className="text-sm font-bold text-[#1A1F36] mb-1">{idea.angle}</p>
 
                         {/* Description */}
-                        <p className="text-xs text-gray-400 leading-relaxed mb-3">{idea.description}</p>
+                        <p className="text-xs text-gray-500 leading-relaxed mb-3">{idea.description}</p>
 
                         {/* Example title */}
-                        <div className="rounded-lg px-3 py-2" style={{ background: isSelected ? '#2a1f00' : '#1f2937' }}>
+                        <div className="rounded-lg px-3 py-2" style={{ background: isSelected ? '#FEF3C7' : '#F3F4F6' }}>
                           <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">Sample title</p>
-                          <p className="text-xs font-medium" style={{ color: isSelected ? '#F4B942' : '#D1D5DB' }}>
+                          <p className="text-xs font-medium" style={{ color: isSelected ? '#92400E' : '#4B5563' }}>
                             &ldquo;{idea.example_title}&rdquo;
                           </p>
                         </div>
@@ -612,7 +612,7 @@ export default function Module6Page() {
               {!ideasLoading && ideas.length > 0 && (
                 <button
                   onClick={handleRegenerateIdeas}
-                  className="flex items-center gap-1.5 text-sm text-gray-400 mx-auto"
+                  className="flex items-center gap-1.5 text-sm text-gray-500 mx-auto"
                 >
                   <RefreshIcon />
                   Generate different angles
@@ -626,15 +626,15 @@ export default function Module6Page() {
             <div>
               {/* Selected idea recap */}
               {selectedIdeaIndex !== null && ideas[selectedIdeaIndex] && (
-                <div className="rounded-xl p-4 mb-4" style={{ background: '#1c1500', borderLeft: '4px solid #F4B942', borderTop: '1px solid #374151', borderRight: '1px solid #374151', borderBottom: '1px solid #374151' }}>
+                <div className="rounded-xl p-4 mb-4" style={{ background: '#FFFBEB', borderLeft: '4px solid #F4B942', borderTop: '1px solid #e5e7eb', borderRight: '1px solid #e5e7eb', borderBottom: '1px solid #e5e7eb' }}>
                   <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">Your chosen angle</p>
-                  <p className="text-sm font-bold text-white mb-0.5">{ideas[selectedIdeaIndex].angle}</p>
-                  <p className="text-xs text-gray-400 italic">&ldquo;{ideas[selectedIdeaIndex].example_title}&rdquo;</p>
+                  <p className="text-sm font-bold text-[#1A1F36] mb-0.5">{ideas[selectedIdeaIndex].angle}</p>
+                  <p className="text-xs text-gray-500 italic">&ldquo;{ideas[selectedIdeaIndex].example_title}&rdquo;</p>
                 </div>
               )}
 
-              <h2 className="text-base font-bold text-white mb-1">Choose your format</h2>
-              <p className="text-sm text-gray-400 mb-4">How will you deliver this lead magnet?</p>
+              <h2 className="text-base font-bold text-[#1A1F36] mb-1">Choose your format</h2>
+              <p className="text-sm text-gray-500 mb-4">How will you deliver this lead magnet?</p>
 
               <div className="space-y-3">
                 {FORMAT_OPTIONS.map(opt => {
@@ -645,19 +645,19 @@ export default function Module6Page() {
                       onClick={() => setSelectedFormat(opt.key)}
                       className="w-full text-left rounded-xl p-4 transition-all"
                       style={{
-                        background: isSelected ? '#1c1500' : '#111827',
-                        border: `2px solid ${isSelected ? '#F4B942' : '#374151'}`,
+                        background: isSelected ? '#FFFBEB' : 'white',
+                        border: `2px solid ${isSelected ? '#F4B942' : '#e5e7eb'}`,
                       }}
                     >
                       <div className="flex items-center justify-between mb-1">
-                        <p className="text-sm font-bold text-white">{opt.label}</p>
+                        <p className="text-sm font-bold text-[#1A1F36]">{opt.label}</p>
                         {isSelected && (
                           <div className="w-5 h-5 rounded-full flex items-center justify-center" style={{ background: '#F4B942' }}>
                             <span className="text-[#1A1F36]"><CheckIcon /></span>
                           </div>
                         )}
                       </div>
-                      <p className="text-xs text-gray-400 leading-relaxed">{opt.description}</p>
+                      <p className="text-xs text-gray-500 leading-relaxed">{opt.description}</p>
                     </button>
                   )
                 })}
@@ -672,8 +672,8 @@ export default function Module6Page() {
               {generating && (
                 <div className="text-center py-16">
                   <div className="w-12 h-12 border-4 border-[#F4B942] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-                  <p className="text-sm font-medium text-white">Creating your lead magnet…</p>
-                  <p className="text-xs text-gray-400 mt-1">Making it useful enough to share, irresistible enough to download</p>
+                  <p className="text-sm font-medium text-[#1A1F36]">Creating your lead magnet…</p>
+                  <p className="text-xs text-gray-500 mt-1">Making it useful enough to share, irresistible enough to download</p>
                 </div>
               )}
 
@@ -685,9 +685,9 @@ export default function Module6Page() {
                     const isRegenerating = regeneratingSection === key
                     const content = getSection(key)
                     return (
-                      <div key={key} className="bg-gray-900 rounded-xl p-4 mb-3" style={{ border: '1px solid #374151' }}>
+                      <div key={key} className="bg-white rounded-xl p-4 mb-3 border border-gray-100">
                         <div className="flex items-center justify-between mb-2">
-                          <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">{label}</p>
+                          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">{label}</p>
                           <div className="flex items-center gap-3">
                             <button
                               onClick={() => setEditingSection(isEditing ? null : key)}
@@ -722,17 +722,17 @@ export default function Module6Page() {
                               setEditedSections(prev => ({ ...prev, [key]: e.target.value }))
                               setEditingSection(null)
                             }}
-                            className="w-full text-sm text-gray-200 leading-relaxed bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-yellow-400/40"
+                            className="w-full text-sm text-gray-700 leading-relaxed bg-[#F8F9FA] border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-yellow-400/40"
                             style={{ minHeight: '120px', resize: 'vertical' }}
                             autoFocus
                           />
                         ) : isRegenerating ? (
                           <div className="flex items-center gap-2 py-3">
                             <div className="w-4 h-4 border-2 border-[#F4B942] border-t-transparent rounded-full animate-spin" />
-                            <p className="text-xs text-gray-400">Rewriting…</p>
+                            <p className="text-xs text-gray-500">Rewriting…</p>
                           </div>
                         ) : (
-                          <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap">{content}</p>
+                          <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{content}</p>
                         )}
                       </div>
                     )
@@ -746,8 +746,8 @@ export default function Module6Page() {
 
         {/* ── Fixed Bottom Bar ──────────────────────────────────── */}
         <div
-          className="fixed bottom-0 bg-gray-900 px-4 py-4"
-          style={{ borderTop: '1px solid #374151', width: '100%', maxWidth: '430px', left: '50%', transform: 'translateX(-50%)' }}
+          className="fixed bottom-0 bg-white px-4 py-4"
+          style={{ borderTop: '1px solid #e5e7eb', width: '100%', maxWidth: '430px', left: '50%', transform: 'translateX(-50%)' }}
         >
           {/* Ideas step */}
           {step === 'ideas' && !ideasLoading && ideas.length > 0 && (
@@ -762,7 +762,7 @@ export default function Module6Page() {
           )}
 
           {step === 'ideas' && ideasLoading && (
-            <div className="w-full py-4 rounded-xl font-bold text-base flex items-center justify-center gap-2 opacity-40" style={{ background: '#111827', color: '#9CA3AF', border: '1px solid #374151' }}>
+            <div className="w-full py-4 rounded-xl font-bold text-base flex items-center justify-center gap-2 opacity-40" style={{ background: '#F3F4F6', color: '#9CA3AF', border: '1px solid #e5e7eb' }}>
               <div className="w-4 h-4 border-2 border-gray-500 border-t-transparent rounded-full animate-spin" />
               Finding angles…
             </div>
@@ -782,7 +782,7 @@ export default function Module6Page() {
 
           {/* Preview step — generating */}
           {step === 'preview' && generating && (
-            <div className="w-full py-4 rounded-xl font-bold text-base flex items-center justify-center gap-2 opacity-40" style={{ background: '#111827', color: '#9CA3AF', border: '1px solid #374151' }}>
+            <div className="w-full py-4 rounded-xl font-bold text-base flex items-center justify-center gap-2 opacity-40" style={{ background: '#F3F4F6', color: '#9CA3AF', border: '1px solid #e5e7eb' }}>
               <div className="w-4 h-4 border-2 border-gray-500 border-t-transparent rounded-full animate-spin" />
               Writing your lead magnet…
             </div>

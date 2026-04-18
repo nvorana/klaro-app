@@ -344,7 +344,7 @@ export default function Module4Page() {
   // ── Loading ──────────────────────────────────────────────────
   if (clarityLoading) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+      <div className="min-h-screen bg-[#F8F9FA] flex items-center justify-center">
         <div className="text-center">
           <div className="w-10 h-10 border-4 border-[#F4B942] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
           <p className="text-sm text-gray-500">Loading your progress…</p>
@@ -356,15 +356,15 @@ export default function Module4Page() {
   // ── Locked Screen ────────────────────────────────────────────
   if (locked) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center px-4">
+      <div className="min-h-screen bg-[#F8F9FA] flex items-center justify-center px-4">
         <div className="max-w-[380px] w-full text-center">
-          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-5" style={{ background: '#111827', border: '1px solid #374151' }}>
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-5" style={{ background: '#F3F4F6', border: '1px solid #e5e7eb' }}>
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
             </svg>
           </div>
-          <h1 className="text-lg font-bold text-white mb-2">Module 5 — Not Yet Open</h1>
-          <p className="text-sm text-gray-400 mb-1">The 7-Day Email Sequence opens in</p>
+          <h1 className="text-lg font-bold text-[#1A1F36] mb-2">Module 5 — Not Yet Open</h1>
+          <p className="text-sm text-gray-500 mb-1">The 7-Day Email Sequence opens in</p>
           <p className="text-3xl font-black mb-1" style={{ color: '#F4B942' }}>{daysUntilUnlock} {daysUntilUnlock === 1 ? 'day' : 'days'}</p>
           <p className="text-xs text-gray-500 mb-8">Your sales page is saved and ready.</p>
           <button onClick={() => router.push('/dashboard')} className="w-full py-3 rounded-xl font-bold text-sm" style={{ background: '#F4B942', color: '#1A1F36' }}>
@@ -380,7 +380,7 @@ export default function Module4Page() {
     return (
       <>
         <GoldConfetti trigger={showConfetti} onDone={() => setShowConfetti(false)} />
-        <div className="min-h-screen bg-gray-950">
+        <div className="min-h-screen bg-[#F8F9FA]">
         <div className="max-w-[430px] md:max-w-3xl mx-auto px-4 pt-6 pb-32">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: '#F4B942' }}>
@@ -388,35 +388,35 @@ export default function Module4Page() {
             </div>
             <div>
               <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Module 4</p>
-              <h1 className="text-base font-bold text-white">7-Day Email Sequence</h1>
+              <h1 className="text-base font-bold text-[#1A1F36]">7-Day Email Sequence</h1>
             </div>
           </div>
 
-          <div className="rounded-xl px-4 py-4 mb-5 flex items-start gap-3" style={{ background: '#064e3b', border: '1px solid #10B981' }}>
+          <div className="rounded-xl px-4 py-4 mb-5 flex items-start gap-3" style={{ background: '#ecfdf5', border: '1px solid #10B981' }}>
             <div className="w-6 h-6 rounded-full flex items-center justify-center mt-0.5 flex-shrink-0" style={{ background: '#10B981' }}>
               <span className="text-white"><CheckIcon /></span>
             </div>
             <div>
-              <p className="font-bold text-emerald-300">Module 4 Complete!</p>
-              <p className="text-sm text-emerald-300 mt-0.5">Your 7-day email sequence is saved.</p>
+              <p className="font-bold text-emerald-700">Module 4 Complete!</p>
+              <p className="text-sm text-emerald-700 mt-0.5">Your 7-day email sequence is saved.</p>
             </div>
           </div>
 
           {/* Coach review status (AP students) */}
           <ModuleReviewStatus moduleNumber={5} />
 
-          <div className="bg-gray-900 rounded-xl p-4 mb-4" style={{ border: '1px solid #374151' }}>
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Your Sequence</p>
+          <div className="bg-white rounded-xl p-4 mb-4 border border-gray-100">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Your Sequence</p>
             {emails.map(e => (
               <div key={e.day} className="flex items-center gap-3 mb-2 last:mb-0">
                 <div
                   className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
-                  style={{ background: e.type === 'selling' ? '#1c1500' : '#1f2937' }}
+                  style={{ background: e.type === 'selling' ? '#FEF3C7' : '#F3F4F6' }}
                 >
                   <MailIcon selling={e.type === 'selling'} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-white truncate">{e.subject_a || e.subject}</p>
+                  <p className="text-sm font-medium text-[#1A1F36] truncate">{e.subject_a || e.subject}</p>
                   <p className="text-xs text-gray-500">Day {e.day} &middot; {e.type === 'selling' ? 'Selling email' : 'Value email'}</p>
                 </div>
               </div>
@@ -424,8 +424,8 @@ export default function Module4Page() {
           </div>
 
           {nextModuleLocked ? (
-            <div className="rounded-xl p-4 mb-4 flex flex-col items-center gap-1" style={{ background: '#111827', border: '1px solid #374151' }}>
-              <div className="flex items-center gap-2 text-gray-400 font-semibold text-sm">
+            <div className="rounded-xl p-4 mb-4 flex flex-col items-center gap-1" style={{ background: '#F3F4F6', border: '1px solid #e5e7eb' }}>
+              <div className="flex items-center gap-2 text-gray-500 font-semibold text-sm">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                 </svg>
@@ -437,7 +437,7 @@ export default function Module4Page() {
             <div className="rounded-xl p-4 mb-4" style={{ background: '#1A1F36', border: '2px solid #F4B942' }}>
               <p className="text-xs font-medium mb-1" style={{ color: '#F4B942' }}>Up Next</p>
               <p className="text-white font-bold">Module 6 — Lead Magnet Builder</p>
-              <p className="text-gray-300 text-sm mt-1">Create a free lead magnet that builds your email list.</p>
+              <p className="text-gray-400 text-sm mt-1">Create a free lead magnet that builds your email list.</p>
               <button
                 onClick={() => router.push('/module/6')}
                 className="mt-3 w-full py-2.5 rounded-lg font-bold text-sm"
@@ -464,7 +464,7 @@ export default function Module4Page() {
   return (
     <>
       <GoldConfetti trigger={showConfetti} onDone={() => setShowConfetti(false)} />
-      <div className="min-h-screen bg-gray-950">
+      <div className="min-h-screen bg-[#F8F9FA]">
       <div className="max-w-[430px] md:max-w-3xl mx-auto px-4 pt-6 pb-36">
 
         {/* Header */}
@@ -482,7 +482,7 @@ export default function Module4Page() {
           </button>
           <div>
             <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Module 4</p>
-            <h1 className="text-base font-bold text-white">7-Day Email Sequence</h1>
+            <h1 className="text-base font-bold text-[#1A1F36]">7-Day Email Sequence</h1>
           </div>
         </div>
 
@@ -497,32 +497,32 @@ export default function Module4Page() {
         {/* ── URL Step ──────────────────────────────────────── */}
         {step === 'url' && (
           <div>
-            <div className="bg-gray-900 rounded-xl p-4 mb-4" style={{ border: '1px solid #374151' }}>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Writing emails for</p>
-              {ebookTitle && <p className="text-sm font-semibold text-white mb-1">{ebookTitle}</p>}
-              {clarity && <p className="text-xs text-gray-400">For: {clarity.target_market}</p>}
+            <div className="bg-white rounded-xl p-4 mb-4 border border-gray-100">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Writing emails for</p>
+              {ebookTitle && <p className="text-sm font-semibold text-[#1A1F36] mb-1">{ebookTitle}</p>}
+              {clarity && <p className="text-xs text-gray-500">For: {clarity.target_market}</p>}
             </div>
 
-            <div className="bg-gray-900 rounded-xl p-4 mb-4" style={{ border: '1px solid #374151' }}>
-              <label className="block text-sm font-semibold text-white mb-1">
+            <div className="bg-white rounded-xl p-4 mb-4 border border-gray-100">
+              <label className="block text-sm font-semibold text-[#1A1F36] mb-1">
                 Your Sales Page URL
               </label>
-              <p className="text-xs text-gray-400 mb-3">
+              <p className="text-xs text-gray-500 mb-3">
                 Emails 5–7 will link to this. You can skip it for now and add it in Systeme.io.
               </p>
               <input
                 type="url"
                 value={salesPageUrl}
                 onChange={e => setSalesPageUrl(e.target.value)}
-                className="w-full border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400/40 bg-gray-950 text-white"
-                style={{ borderColor: '#374151' }}
+                className="w-full border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400/40 bg-[#F8F9FA] text-[#1A1F36]"
+                style={{ borderColor: '#e5e7eb' }}
                 placeholder="https://yourpage.systeme.io/ebook"
               />
             </div>
 
-            <div className="rounded-xl p-4" style={{ background: '#1c1500', borderTop: '1px solid #374151', borderRight: '1px solid #374151', borderBottom: '1px solid #374151', borderLeft: '4px solid #F4B942' }}>
-              <p className="text-xs font-semibold text-white mb-1">What you&apos;ll get</p>
-              <p className="text-sm text-gray-400">
+            <div className="rounded-xl p-4" style={{ background: '#FFFBEB', borderTop: '1px solid #e5e7eb', borderRight: '1px solid #e5e7eb', borderBottom: '1px solid #e5e7eb', borderLeft: '4px solid #F4B942' }}>
+              <p className="text-xs font-semibold text-[#1A1F36] mb-1">What you&apos;ll get</p>
+              <p className="text-sm text-gray-600">
                 7 short, personal emails. Days 1–4 build trust with pure value. Days 5–7 gently sell your ebook — no hype, no fake urgency.
               </p>
             </div>
@@ -536,8 +536,8 @@ export default function Module4Page() {
             {generatingEmails && (
               <div className="text-center py-16">
                 <div className="w-12 h-12 border-4 border-[#F4B942] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-                <p className="text-sm font-medium text-white">Writing your 7-day sequence…</p>
-                <p className="text-xs text-gray-400 mt-1">Making each email feel personal and real</p>
+                <p className="text-sm font-medium text-[#1A1F36]">Writing your 7-day sequence…</p>
+                <p className="text-xs text-gray-500 mt-1">Making each email feel personal and real</p>
               </div>
             )}
 
@@ -549,9 +549,9 @@ export default function Module4Page() {
                   onClick={() => copyToClipboard(buildCopyAllText(), 'all')}
                   className="w-full py-3 rounded-xl font-semibold text-sm mb-4 flex items-center justify-center gap-2 transition-all"
                   style={{
-                    background: copiedLabel === 'all' ? '#065F46' : '#1f2937',
-                    color: copiedLabel === 'all' ? '#6EE7B7' : '#F4B942',
-                    border: `1px solid ${copiedLabel === 'all' ? '#10B981' : '#374151'}`,
+                    background: copiedLabel === 'all' ? '#ecfdf5' : '#F3F4F6',
+                    color: copiedLabel === 'all' ? '#065F46' : '#F4B942',
+                    border: `1px solid ${copiedLabel === 'all' ? '#10B981' : '#e5e7eb'}`,
                   }}
                 >
                   <CopyIcon />
@@ -566,8 +566,8 @@ export default function Module4Page() {
                     return (
                       <div
                         key={email.day}
-                        className="bg-gray-900 rounded-xl overflow-hidden"
-                        style={{ border: `1.5px solid ${isExpanded ? '#F4B942' : '#374151'}` }}
+                        className="bg-white rounded-xl overflow-hidden"
+                        style={{ border: `1.5px solid ${isExpanded ? '#F4B942' : '#e5e7eb'}` }}
                       >
                         {/* Header row */}
                         <button
@@ -576,7 +576,7 @@ export default function Module4Page() {
                         >
                           <div
                             className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
-                            style={{ background: email.type === 'selling' ? '#1c1500' : '#1f2937' }}
+                            style={{ background: email.type === 'selling' ? '#FEF3C7' : '#F3F4F6' }}
                           >
                             <MailIcon selling={email.type === 'selling'} />
                           </div>
@@ -586,14 +586,14 @@ export default function Module4Page() {
                               <span
                                 className="text-[10px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wide"
                                 style={{
-                                  background: email.type === 'selling' ? '#1c1500' : '#1f2937',
-                                  color: email.type === 'selling' ? '#F4B942' : '#9CA3AF',
+                                  background: email.type === 'selling' ? '#FEF3C7' : '#F3F4F6',
+                                  color: email.type === 'selling' ? '#92400E' : '#6B7280',
                                 }}
                               >
                                 {email.type === 'selling' ? 'Selling' : 'Value'}
                               </span>
                             </div>
-                            <p className="text-sm font-medium text-white truncate pr-2">
+                            <p className="text-sm font-medium text-[#1A1F36] truncate pr-2">
                               {email.subject_a || email.subject || ''}
                             </p>
                           </div>
@@ -639,29 +639,29 @@ export default function Module4Page() {
                             {isRegenerating ? (
                               <div className="flex items-center gap-2 py-4">
                                 <div className="w-4 h-4 border-2 border-[#F4B942] border-t-transparent rounded-full animate-spin" />
-                                <p className="text-sm text-gray-400">Rewriting Day {email.day}…</p>
+                                <p className="text-sm text-gray-500">Rewriting Day {email.day}…</p>
                               </div>
                             ) : (
                               <>
                                 {/* Subject line options */}
-                                <div className="mb-3 pb-3 space-y-1.5" style={{ borderBottom: '1px solid #374151' }}>
+                                <div className="mb-3 pb-3 space-y-1.5" style={{ borderBottom: '1px solid #e5e7eb' }}>
                                   <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-2">Subject Lines (pick one)</p>
                                   <div className="flex items-start gap-2">
                                     <span className="text-[10px] font-bold text-[#F4B942] mt-0.5 flex-shrink-0">A</span>
-                                    <p className="text-sm font-semibold text-white">{email.subject_a || email.subject}</p>
+                                    <p className="text-sm font-semibold text-[#1A1F36]">{email.subject_a || email.subject}</p>
                                   </div>
                                   {email.subject_b && (
                                     <div className="flex items-start gap-2">
                                       <span className="text-[10px] font-bold text-gray-500 mt-0.5 flex-shrink-0">B</span>
-                                      <p className="text-sm font-medium text-gray-400">{email.subject_b}</p>
+                                      <p className="text-sm font-medium text-gray-500">{email.subject_b}</p>
                                     </div>
                                   )}
                                 </div>
-                                <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap mb-3">
+                                <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap mb-3">
                                   {email.body}
                                 </p>
                                 {email.cta && (
-                                  <div className="rounded-lg px-3 py-2" style={{ background: '#1c1500', border: '1px solid #F4B942' }}>
+                                  <div className="rounded-lg px-3 py-2" style={{ background: '#FFFBEB', border: '1px solid #F4B942' }}>
                                     <p className="text-xs font-semibold mb-1" style={{ color: '#F4B942' }}>CTA Link</p>
                                     <p className="text-xs text-yellow-200 break-all">{email.cta}</p>
                                   </div>
@@ -685,9 +685,9 @@ export default function Module4Page() {
       {/* ── Fixed Bottom Action Bar ──────────────────────────── */}
       {step !== 'complete' && (
         <div
-          className="fixed bottom-0 bg-gray-900 px-4 py-4"
+          className="fixed bottom-0 bg-white px-4 py-4"
           style={{
-            borderTop: '1px solid #374151',
+            borderTop: '1px solid #e5e7eb',
             width: '100%',
             maxWidth: '430px',
             left: '50%',
@@ -707,7 +707,7 @@ export default function Module4Page() {
           {step === 'emails' && generatingEmails && (
             <div
               className="w-full py-4 rounded-xl font-bold text-base flex items-center justify-center gap-2 opacity-60"
-              style={{ background: '#111827', color: '#9CA3AF', border: '1px solid #374151' }}
+              style={{ background: '#F3F4F6', color: '#9CA3AF', border: '1px solid #e5e7eb' }}
             >
               <div className="w-4 h-4 border-2 border-gray-500 border-t-transparent rounded-full animate-spin" />
               Writing your sequence…

@@ -464,7 +464,7 @@ export default function Module2Page() {
                 </div>
               )
             })}
-            <span className="text-gray-400 text-xs ml-1">
+            <span className="text-gray-500 text-xs ml-1">
               {chapterDrafts.length} of {chapterOutlines.length} chapters done
             </span>
           </div>
@@ -575,7 +575,7 @@ export default function Module2Page() {
           {/* Premium spinner */}
           <div className="relative w-20 h-20 mb-8">
             <svg className="w-full h-full" viewBox="0 0 80 80">
-              <circle cx="40" cy="40" r="32" fill="none" stroke="#1f2937" strokeWidth="3"/>
+              <circle cx="40" cy="40" r="32" fill="none" stroke="#e5e7eb" strokeWidth="3"/>
               <circle
                 cx="40" cy="40" r="32"
                 fill="none"
@@ -798,7 +798,7 @@ export default function Module2Page() {
           {/* Premium spinner */}
           <div className="relative w-20 h-20 mb-8">
             <svg className="w-full h-full" viewBox="0 0 80 80">
-              <circle cx="40" cy="40" r="32" fill="none" stroke="#1f2937" strokeWidth="3"/>
+              <circle cx="40" cy="40" r="32" fill="none" stroke="#e5e7eb" strokeWidth="3"/>
               <circle
                 cx="40" cy="40" r="32"
                 fill="none"
@@ -994,8 +994,8 @@ export default function Module2Page() {
       {step === 'complete' && (
         <div className="flex-1 flex flex-col items-center justify-center px-6 pb-10 text-center">
           <div className="text-6xl mb-6">🎉</div>
-          <h2 className="text-2xl font-bold text-white mb-3">Your E-Book is Ready!</h2>
-          <p className="text-yellow-300 font-semibold text-sm mb-1 max-w-xs">{selectedTitle?.title}</p>
+          <h2 className="text-2xl font-bold text-[#1A1F36] mb-3">Your E-Book is Ready!</h2>
+          <p className="text-[#F4B942] font-semibold text-sm mb-1 max-w-xs">{selectedTitle?.title}</p>
           <p className="text-gray-500 text-xs mb-4 max-w-xs">
             {chapterDrafts.length} chapters written and saved. You&apos;ve just created your first digital product.
           </p>
