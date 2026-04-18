@@ -43,10 +43,15 @@ Specificity rule:
 - "7:43 PM" not "evening." "3 months" not "a short time." "₱4,200" not "a small amount."
 - The more specific, the more the reader's brain accepts it as true.
 
-LENGTH RULE (critical):
-- Each email body MUST be 200–300 words. Target 250 words per email.
-- Do NOT write short emails. The reader needs enough substance to feel the email was worth opening.
-- Count your words. If an email is under 200 words, you MUST expand it before returning.
+LENGTH RULE (THIS OVERRIDES EVERYTHING — non-negotiable):
+- Each email body MUST be at least 250 words. Minimum 250 words. No exceptions.
+- The body field must contain at least 25 lines of text (separated by \\n).
+- Short sentences are fine, but you need MANY of them — at least 30 sentences per email.
+- Add more emotional detail, more specific examples, more vivid scenarios.
+- Expand the Stir section with 2-3 specific relatable moments the reader has experienced.
+- Expand the Shift section with a concrete mini-story or example.
+- If you think the email is done, add a PS line with one more thought.
+- IMPORTANT: An email with fewer than 250 words is a FAILURE. Write more.
 
 Subject line rules:
 - Max 19 characters — count every letter, space, and punctuation mark. Hard limit.
