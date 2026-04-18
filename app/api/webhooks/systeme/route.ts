@@ -83,11 +83,11 @@ export async function POST(request: NextRequest) {
         await supabase
           .from('profiles')
           .update({
-            program_type:    'topis',
-            access_level:    'enrolled',
-            enrolled_at:     profile.enrolled_at || new Date().toISOString(),
+            program_type:     'topis',
+            access_level:     'enrolled',
+            enrolled_at:      profile.enrolled_at || new Date().toISOString(),
             access_suspended: false,
-            updated_at:      new Date().toISOString(),
+            updated_at:       new Date().toISOString(),
           })
           .eq('id', profile.id)
         await logAction('topis_enrolled')

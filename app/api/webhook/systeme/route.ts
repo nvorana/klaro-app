@@ -131,7 +131,6 @@ export async function POST(request: NextRequest) {
             program_type:     'topis',
             access_level:     'enrolled',
             enrolled_at:      profile.enrolled_at || new Date().toISOString(),
-            coach_id:         EDGAR_COACH_ID,
             access_suspended: false,
             updated_at:       new Date().toISOString(),
           })
