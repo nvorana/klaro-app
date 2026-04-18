@@ -302,14 +302,21 @@ export default function Module6Page() {
           hook: outline.hook,
         }),
       })
-      const { data: contentData, error: err2 } = await res2.json()
-      if (err2) throw new Error(err2)
+      const res2Json = await res2.json()
+      if (res2Json.error) throw new Error(res2Json.error)
+      const contentData = res2Json.data || {}
+      console.log('Lead magnet main_content response:', contentData)
 
-      setLeadMagnet({ ...outline, main_content: contentData.main_content })
+      setLeadMagnet({ ...outline, main_content: contentData.main_content || '' })
       setEditedSections({})
-    } catch {
+    } catch (err) {
+      console.error('Lead magnet generation error:', err)
       setError('Could not generate your lead magnet. Please try again.')
-      if (!leadMagnet) setStep('format')
+      // If we have no outline at all, go back to format step
+      setLeadMagnet(prev => {
+        if (!prev) setStep('format')
+        return prev
+      })
     } finally {
       setGenerating(false)
       setGenerationPhase(null)
