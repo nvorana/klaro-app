@@ -423,7 +423,7 @@ export default function Module2Page() {
 
       {/* Progress bar */}
       {step !== 'load' && step !== 'complete' && (
-        <div className="px-6 mb-6">
+        <div className="px-6 pt-4 mb-6">
           <div className="flex items-center gap-2">
             {PROGRESS_STEPS.map((label, i) => (
               <div key={label} className="flex items-center gap-2">
