@@ -132,6 +132,7 @@ export default function Module6Page() {
 
   // Preview step
   const [generating, setGenerating] = useState(false)
+  const [generationPhase, setGenerationPhase] = useState<'outline' | 'content' | null>(null)
   const [leadMagnet, setLeadMagnet] = useState<LeadMagnet | null>(null)
   const [editedSections, setEditedSections] = useState<Partial<LeadMagnet>>({})
   const [editingSection, setEditingSection] = useState<string | null>(null)
@@ -254,49 +255,74 @@ export default function Module6Page() {
     generateIdeas()
   }
 
-  // ── Generate lead magnet content ──────────────────────────────
+  // ── Generate lead magnet content (2 calls: outline → main content) ──
   async function handleGenerate() {
     if (!clarity || !selectedFormat) return
     setError('')
     setGenerating(true)
     setStep('preview')
+    setLeadMagnet(null)
 
     const selectedIdea = selectedIdeaIndex !== null ? ideas[selectedIdeaIndex] : null
+    const basePayload = {
+      target_market: clarity.target_market,
+      problem:       clarity.core_problem,
+      mechanism:     clarity.unique_mechanism,
+      ebook_title:   ebookTitle,
+      format:        selectedFormat,
+      idea_angle:    selectedIdea?.angle || '',
+      idea_description: selectedIdea?.description || '',
+      example_title: selectedIdea?.example_title || '',
+      emotional_trigger: selectedIdea?.emotional_trigger || '',
+    }
 
     try {
-      const res = await fetch('/api/generate/lead-magnet', {
+      // Call 1: Generate outline (title, hook, introduction, quick_win, bridge)
+      setGenerationPhase('outline')
+      const res1 = await fetch('/api/generate/lead-magnet', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...basePayload, section: 'outline' }),
+      })
+      const { data: outline, error: err1 } = await res1.json()
+      if (err1) throw new Error(err1)
+
+      // Show outline immediately (main_content will be empty for now)
+      setLeadMagnet({ ...outline, main_content: '' })
+
+      // Call 2: Generate main content (pass title + hook for context)
+      setGenerationPhase('content')
+      const res2 = await fetch('/api/generate/lead-magnet', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          target_market: clarity.target_market,
-          problem:       clarity.core_problem,
-          mechanism:     clarity.unique_mechanism,
-          ebook_title:   ebookTitle,
-          format:        selectedFormat,
-          idea_angle:    selectedIdea?.angle || '',
-          idea_description: selectedIdea?.description || '',
-          example_title: selectedIdea?.example_title || '',
-          emotional_trigger: selectedIdea?.emotional_trigger || '',
+          ...basePayload,
+          section: 'main_content',
+          title: outline.title,
+          hook: outline.hook,
         }),
       })
-      const { data, error: apiErr } = await res.json()
-      if (apiErr) throw new Error(apiErr)
-      setLeadMagnet(data)
+      const { data: contentData, error: err2 } = await res2.json()
+      if (err2) throw new Error(err2)
+
+      setLeadMagnet({ ...outline, main_content: contentData.main_content })
       setEditedSections({})
     } catch {
       setError('Could not generate your lead magnet. Please try again.')
-      setStep('format')
+      if (!leadMagnet) setStep('format')
     } finally {
       setGenerating(false)
+      setGenerationPhase(null)
     }
   }
 
   // ── Regenerate single section ─────────────────────────────────
   async function handleRegenerateSection(sectionKey: keyof LeadMagnet) {
-    if (!clarity || !selectedFormat) return
+    if (!clarity || !selectedFormat || !leadMagnet) return
     setRegeneratingSection(sectionKey)
     setError('')
     const selectedIdea = selectedIdeaIndex !== null ? ideas[selectedIdeaIndex] : null
+    const section = sectionKey === 'main_content' ? 'main_content' : 'outline'
     try {
       const res = await fetch('/api/generate/lead-magnet', {
         method: 'POST',
@@ -307,10 +333,13 @@ export default function Module6Page() {
           mechanism:     clarity.unique_mechanism,
           ebook_title:   ebookTitle,
           format:        selectedFormat,
+          section,
           idea_angle:    selectedIdea?.angle || '',
           idea_description: selectedIdea?.description || '',
           example_title: selectedIdea?.example_title || '',
           emotional_trigger: selectedIdea?.emotional_trigger || '',
+          title: leadMagnet.title,
+          hook: leadMagnet.hook,
         }),
       })
       const { data, error: apiErr } = await res.json()
@@ -668,12 +697,81 @@ export default function Module6Page() {
           {/* ── PREVIEW STEP ───────────────────────────────────── */}
           {step === 'preview' && (
             <div>
-              {/* Generating */}
+              {/* Generating — two-phase progress */}
               {generating && (
-                <div className="text-center py-16">
-                  <div className="w-12 h-12 border-4 border-[#F4B942] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-                  <p className="text-sm font-medium text-[#1A1F36]">Creating your lead magnet…</p>
-                  <p className="text-xs text-gray-500 mt-1">Making it useful enough to share, irresistible enough to download</p>
+                <div className="py-10 px-2">
+                  <style>{`
+                    @keyframes checkPop { 0% { transform: scale(0); } 50% { transform: scale(1.3); } 100% { transform: scale(1); } }
+                    @keyframes fadeSlide { 0% { opacity: 0; transform: translateX(8px); } 100% { opacity: 1; transform: translateX(0); } }
+                    @keyframes typingDotLM { 0%, 60%, 100% { opacity: 0.2; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-3px); } }
+                    .check-pop { animation: checkPop 0.35s ease-out forwards; }
+                    .fade-slide { animation: fadeSlide 0.3s ease-out forwards; }
+                    .td-lm { animation: typingDotLM 1.4s ease-in-out infinite; }
+                  `}</style>
+
+                  <div className="text-center mb-6">
+                    <p className="text-base font-bold text-[#1A1F36] mb-1">Building your lead magnet</p>
+                    <p className="text-xs text-gray-500">
+                      {generationPhase === 'outline' ? 'Crafting your title, hook, and structure…' : 'Writing the main content…'}
+                    </p>
+                    {/* Progress bar */}
+                    <div className="w-full h-2 rounded-full overflow-hidden mx-auto mt-4" style={{ background: '#F3F4F6', maxWidth: '280px' }}>
+                      <div
+                        className="h-full rounded-full transition-all duration-700 ease-out"
+                        style={{
+                          background: 'linear-gradient(90deg, #F4B942, #f59e0b)',
+                          width: generationPhase === 'outline' ? '30%' : leadMagnet?.main_content ? '100%' : '65%',
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="bg-white rounded-xl p-4 space-y-1" style={{ border: '1px solid #e5e7eb' }}>
+                    {[
+                      { key: 'outline', label: 'Title, Hook & Structure', done: generationPhase === 'content' || !generating },
+                      { key: 'content', label: 'Main Content', done: false },
+                    ].map(item => {
+                      const isDone = item.key === 'outline' && generationPhase === 'content'
+                      const isActive = item.key === generationPhase
+                      return (
+                        <div key={item.key} className={`flex items-center gap-3 rounded-lg px-3 py-3 transition-all duration-300 ${isActive ? 'bg-[#FFFBEB]' : isDone ? 'bg-[#f0fdf4]' : ''}`}>
+                          {isDone ? (
+                            <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 check-pop" style={{ background: '#10B981' }}>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="20 6 9 17 4 12" />
+                              </svg>
+                            </div>
+                          ) : isActive ? (
+                            <div className="w-7 h-7 rounded-full border-2 border-[#F4B942] flex items-center justify-center flex-shrink-0">
+                              <div className="flex items-center gap-[3px]">
+                                <span className="w-[4px] h-[4px] rounded-full bg-[#F4B942] td-lm" style={{ animationDelay: '0s' }} />
+                                <span className="w-[4px] h-[4px] rounded-full bg-[#F4B942] td-lm" style={{ animationDelay: '0.2s' }} />
+                                <span className="w-[4px] h-[4px] rounded-full bg-[#F4B942] td-lm" style={{ animationDelay: '0.4s' }} />
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="w-7 h-7 rounded-full flex-shrink-0" style={{ background: '#F3F4F6', border: '1px solid #e5e7eb' }} />
+                          )}
+                          <div className="flex-1">
+                            <p className={`text-sm font-semibold ${isDone ? 'text-[#1A1F36]' : isActive ? 'text-[#b45309]' : 'text-gray-400'}`}>
+                              {item.label}
+                            </p>
+                            {isDone && leadMagnet?.title && (
+                              <p className="text-xs text-gray-500 truncate fade-slide">{leadMagnet.title}</p>
+                            )}
+                            {isActive && (
+                              <p className="text-xs text-[#d97706] font-medium">
+                                {item.key === 'outline' ? 'Crafting structure…' : 'Writing the good stuff…'}
+                              </p>
+                            )}
+                          </div>
+                          {isDone && (
+                            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full flex-shrink-0 fade-slide">Done</span>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
                 </div>
               )}
 
@@ -784,7 +882,7 @@ export default function Module6Page() {
           {step === 'preview' && generating && (
             <div className="w-full py-4 rounded-xl font-bold text-base flex items-center justify-center gap-2 opacity-40" style={{ background: '#F3F4F6', color: '#9CA3AF', border: '1px solid #e5e7eb' }}>
               <div className="w-4 h-4 border-2 border-gray-500 border-t-transparent rounded-full animate-spin" />
-              Writing your lead magnet…
+              {generationPhase === 'outline' ? 'Building structure…' : 'Writing main content…'}
             </div>
           )}
 
