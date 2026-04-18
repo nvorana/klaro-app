@@ -137,6 +137,7 @@ export default function Module6Page() {
   const [editedSections, setEditedSections] = useState<Partial<LeadMagnet>>({})
   const [editingSection, setEditingSection] = useState<string | null>(null)
   const [regeneratingSection, setRegeneratingSection] = useState<string | null>(null)
+  const [downloading, setDownloading] = useState(false)
   const [copiedSection, setCopiedSection] = useState<string | null>(null)
 
   const supabase = createBrowserClient(
@@ -364,6 +365,41 @@ export default function Module6Page() {
     return editedSections[key] ?? leadMagnet?.[key] ?? ''
   }
 
+  // ── Download as Word doc ──────────────────────────────────────
+  async function handleDownload() {
+    if (!leadMagnet) return
+    setDownloading(true)
+    try {
+      const res = await fetch('/api/export/lead-magnet', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: getSection('title'),
+          format: selectedFormat,
+          hook: getSection('hook'),
+          introduction: getSection('introduction'),
+          main_content: getSection('main_content'),
+          quick_win: getSection('quick_win'),
+          bridge_to_ebook: getSection('bridge_to_ebook'),
+        }),
+      })
+      if (!res.ok) throw new Error('Export failed')
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${(getSection('title') || 'lead-magnet').replace(/[^a-zA-Z0-9\s-]/g, '').trim().replace(/\s+/g, '-').toLowerCase()}.docx`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch {
+      setError('Could not download your lead magnet. Please try again.')
+    } finally {
+      setDownloading(false)
+    }
+  }
+
   // ── Copy helper ───────────────────────────────────────────────
   function copyToClipboard(text: string, label: string) {
     navigator.clipboard.writeText(text).catch(() => {})
@@ -499,7 +535,29 @@ export default function Module6Page() {
               <div className="bg-white rounded-xl p-4 mb-4 border border-gray-100">
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Your Lead Magnet</p>
                 <p className="text-sm font-bold text-[#1A1F36] mb-1">{getSection('title')}</p>
-                <p className="text-xs text-gray-500 capitalize">{selectedFormat?.replace('_', ' ')} format</p>
+                <p className="text-xs text-gray-500 capitalize mb-3">{selectedFormat?.replace('_', ' ')} format</p>
+                <button
+                  onClick={handleDownload}
+                  disabled={downloading}
+                  className="w-full py-2.5 rounded-lg font-semibold text-sm flex items-center justify-center gap-2"
+                  style={{ background: '#1A1F36', color: 'white' }}
+                >
+                  {downloading ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Preparing…
+                    </>
+                  ) : (
+                    <>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="7 10 12 15 17 10" />
+                        <line x1="12" y1="15" x2="12" y2="3" />
+                      </svg>
+                      Download as Word Doc
+                    </>
+                  )}
+                </button>
               </div>
             )}
 
@@ -785,6 +843,30 @@ export default function Module6Page() {
               {/* Sections */}
               {!generating && leadMagnet && (
                 <div>
+                  {/* Download button */}
+                  <button
+                    onClick={handleDownload}
+                    disabled={downloading}
+                    className="w-full py-3 rounded-xl font-semibold text-sm mb-4 flex items-center justify-center gap-2 transition-all"
+                    style={{ background: '#1A1F36', color: 'white' }}
+                  >
+                    {downloading ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        Preparing download…
+                      </>
+                    ) : (
+                      <>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                          <polyline points="7 10 12 15 17 10" />
+                          <line x1="12" y1="15" x2="12" y2="3" />
+                        </svg>
+                        Download as Word Doc
+                      </>
+                    )}
+                  </button>
+
                   {SECTION_LABELS.map(({ key, label }) => {
                     const isEditing = editingSection === key
                     const isRegenerating = regeneratingSection === key
