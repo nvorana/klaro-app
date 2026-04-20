@@ -16,19 +16,39 @@ import { createAdminClient } from '@/lib/supabase/admin'
 //   KLARO-ENROLLED    → enrolled
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Normalize Systeme.io tag names. Handles "TOPIS | Student", "TOPIS 77 Student", etc.
+function normalizeTag(tagName: string): string {
+  return tagName
+    .replace(/[\s|_]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .trim()
+}
+
 function extractBatchNumber(tagName: string): number | null {
-  const match = tagName.match(/^TOPIS-(\d+)-/i)
-  return match ? parseInt(match[1]) : null
+  const normalized = normalizeTag(tagName)
+  const match = normalized.match(/(?:^|-)(\d{2,3})(?:-|$)/)
+  if (match) {
+    const num = parseInt(match[1])
+    if (!isNaN(num)) return num
+  }
+  return null
 }
 
 function detectTopisTag(tagName: string) {
+  const t = normalizeTag(tagName)
   return {
-    isStudent:   /^TOPIS-Student$/i.test(tagName),
-    isUnsettled: /^TOPIS-\d+-UNSETTLED$/i.test(tagName),
-    is2ndPay:    /^TOPIS-\d+-2nd-Pay-Settled$/i.test(tagName),
-    isFullPay:   /^TOPIS-\d+-Full-Payment$/i.test(tagName),
+    isStudent:   /^TOPIS(-\d+)?-Student(-\d+)?$/i.test(t),
+    isUnsettled: /^TOPIS-\d+-UNSETTLED$/i.test(t) || /^TOPIS-UNSETTLED-\d+$/i.test(t),
+    is2ndPay:    /^TOPIS-\d+-2nd-Pay-Settled$/i.test(t) || /^TOPIS-2nd-Pay-Settled-\d+$/i.test(t),
+    isFullPay:   /^TOPIS-\d+-Full-Payment$/i.test(t) || /^TOPIS-Full-Payment-\d+$/i.test(t),
     batchNumber: extractBatchNumber(tagName),
   }
+}
+
+function isAccelTag(tagName: string): boolean {
+  const t = normalizeTag(tagName)
+  return /^Accel-Enrolled$/i.test(t) || /^Accelerator-Enrolled$/i.test(t) || /^Accelerator-Program$/i.test(t)
 }
 
 export async function POST(request: NextRequest) {
@@ -80,16 +100,15 @@ export async function POST(request: NextRequest) {
     if (topis.isStudent && isAdded) {
       const profile = await getProfile()
       if (profile) {
-        await supabase
-          .from('profiles')
-          .update({
-            program_type:     'topis',
-            access_level:     'enrolled',
-            enrolled_at:      profile.enrolled_at || new Date().toISOString(),
-            access_suspended: false,
-            updated_at:       new Date().toISOString(),
-          })
-          .eq('id', profile.id)
+        const updates: Record<string, unknown> = {
+          program_type:     'topis',
+          access_level:     'enrolled',
+          enrolled_at:      profile.enrolled_at || new Date().toISOString(),
+          access_suspended: false,
+          updated_at:       new Date().toISOString(),
+        }
+        if (topis.batchNumber) updates.cohort_batch = topis.batchNumber
+        await supabase.from('profiles').update(updates).eq('id', profile.id)
         await logAction('topis_enrolled')
       } else {
         await logAction('topis_enrolled_pending_signup')
@@ -101,7 +120,7 @@ export async function POST(request: NextRequest) {
     // Enroll student in the Accelerator Program, auto-assign to coach Edgar
     const EDGAR_COACH_ID = 'e5d6cc0d-ae70-4e58-967b-f61a957eb442'
 
-    if (/^Accel-Enrolled$/i.test(tagName) && isAdded) {
+    if (isAccelTag(tagName) && isAdded) {
       const profile = await getProfile()
       if (profile) {
         const updates: Record<string, unknown> = {
