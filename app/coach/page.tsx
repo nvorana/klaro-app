@@ -70,7 +70,11 @@ const STATUS_CONFIG = {
 }
 
 // ── Page ──────────────────────────────────────────────────
-export default async function CoachDashboard() {
+export default async function CoachDashboard({
+  searchParams,
+}: {
+  searchParams: Promise<{ as_coach?: string }>
+}) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
@@ -89,19 +93,35 @@ export default async function CoachDashboard() {
   const isAdmin = coachProfile.role === 'admin'
   const adminClient = createAdminClient()
 
+  // Admin impersonation: ?as_coach=<coach_id> filters to that coach's students
+  const params = await searchParams
+  const impersonatedCoachId = isAdmin && params.as_coach ? params.as_coach : null
+
+  // Load all coaches (admin only — for the impersonation dropdown)
+  const { data: allCoaches } = isAdmin
+    ? await adminClient.from('profiles').select('id, full_name, email').eq('role', 'coach').order('full_name')
+    : { data: null }
+
+  const impersonatedCoach = impersonatedCoachId
+    ? (allCoaches ?? []).find(c => c.id === impersonatedCoachId) ?? null
+    : null
+
   // Load students using admin client to bypass RLS
-  const { data: students } = await (isAdmin
-    ? adminClient
-        .from('profiles')
-        .select('id, first_name, full_name, email, enrolled_at, last_active_at, coach_notes, dfy_flagged, access_level, unlocked_modules, program_type')
-        .eq('role', 'student')
-        .order('enrolled_at', { ascending: false })
-    : adminClient
-        .from('profiles')
-        .select('id, first_name, full_name, email, enrolled_at, last_active_at, coach_notes, dfy_flagged, access_level, unlocked_modules, program_type')
-        .eq('role', 'student')
-        .eq('coach_id', user.id)
-        .order('enrolled_at', { ascending: false })
+  // - If admin impersonating a coach: filter to that coach's students
+  // - If admin not impersonating: show all students
+  // - If coach: show only their own students
+  const studentQuery = adminClient
+    .from('profiles')
+    .select('id, first_name, full_name, email, enrolled_at, last_active_at, coach_notes, dfy_flagged, access_level, unlocked_modules, program_type, coach_id')
+    .eq('role', 'student')
+    .order('enrolled_at', { ascending: false })
+
+  const { data: students } = await (
+    impersonatedCoachId
+      ? studentQuery.eq('coach_id', impersonatedCoachId)
+      : isAdmin
+        ? studentQuery
+        : studentQuery.eq('coach_id', user.id)
   )
 
   if (!students || students.length === 0) {
@@ -181,6 +201,49 @@ export default async function CoachDashboard() {
           <CoachSignOut />
         </div>
       </div>
+
+      {/* ── Admin Impersonation Bar ───────────────────────── */}
+      {isAdmin && (
+        <div className="bg-purple-950/60 border-b border-purple-800/60 px-5 py-3">
+          {impersonatedCoach ? (
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 text-sm">
+                <span className="text-purple-300">👁️ Viewing as:</span>
+                <span className="text-white font-semibold">{impersonatedCoach.full_name}</span>
+                <span className="text-purple-400 text-xs">({impersonatedCoach.email})</span>
+              </div>
+              <Link
+                href="/coach"
+                className="text-xs font-bold bg-purple-800 hover:bg-purple-700 text-white px-3 py-1.5 rounded-lg transition-colors"
+              >
+                Exit
+              </Link>
+            </div>
+          ) : (
+            <form action="/coach" method="GET" className="flex items-center gap-2">
+              <label className="text-xs text-purple-300 font-medium">View as coach:</label>
+              <select
+                name="as_coach"
+                defaultValue=""
+                className="flex-1 bg-purple-900/60 border border-purple-700 text-white text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-purple-400"
+              >
+                <option value="">— Select a coach —</option>
+                {(allCoaches ?? []).map(c => (
+                  <option key={c.id} value={c.id}>
+                    {c.full_name || c.email}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="submit"
+                className="text-xs font-bold bg-purple-600 hover:bg-purple-500 text-white px-3 py-1.5 rounded-lg transition-colors"
+              >
+                View
+              </button>
+            </form>
+          )}
+        </div>
+      )}
 
       {/* ── Student List (tabs + summary cards are inside the client component) ── */}
       <div className="flex-1 px-4 pt-5 pb-28">
