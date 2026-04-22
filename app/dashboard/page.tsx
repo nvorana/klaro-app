@@ -16,7 +16,7 @@ export default async function DashboardPage() {
   // ── Profile ───────────────────────────────────────────────
   const { data: profile } = await supabase
     .from('profiles')
-    .select('full_name, access_level, enrolled_at, unlocked_modules, access_suspended, created_at, program_type')
+    .select('full_name, access_level, enrolled_at, unlocked_modules, access_suspended, created_at, program_type, role, module8_beta')
     .eq('id', user.id)
     .maybeSingle()
 
@@ -321,6 +321,62 @@ export default async function DashboardPage() {
             </div>
           )
         })}
+
+        {/* ── Module 8 card (beta) ───────────────────────────────── */}
+        {(() => {
+          const allSevenDone = completed.every(Boolean)
+          const profileRec = profile as { role?: string; module8_beta?: boolean }
+          const isAdmin = profileRec.role === 'admin'
+          const hasBeta = profileRec.module8_beta === true
+          const eligible = isAdmin || (hasBeta && allSevenDone && ['full_access', 'tier3', 'tier4'].includes(accessLevel))
+
+          return (
+            <div
+              className={`rounded-2xl p-4 ${eligible ? 'bg-white border-[#F4B942]' : 'bg-gray-50 border-gray-200'} border-2`}
+              style={eligible ? { boxShadow: '0 0 0 3px rgba(244, 185, 66, 0.15)' } : undefined}
+            >
+              <div className="flex items-start gap-3">
+                <div
+                  className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+                  style={{ background: eligible ? '#F4B942' : '#e5e7eb' }}
+                >
+                  {eligible ? (
+                    <span className="font-bold text-[#1A1F36] text-sm">8</span>
+                  ) : (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                    </svg>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <p className="text-[10px] font-bold uppercase tracking-wide" style={{ color: eligible ? '#F4B942' : '#9ca3af' }}>
+                      Module 8 · Beta
+                    </p>
+                  </div>
+                  <p className={`text-sm font-bold ${eligible ? 'text-[#1A1F36]' : 'text-gray-400'}`}>
+                    Turn Your E-book Into a Course
+                  </p>
+                  <p className="text-xs text-gray-500 mt-0.5 leading-snug">
+                    {eligible
+                      ? 'Advanced: build a full course blueprint from your e-book.'
+                      : 'Advanced. Coming soon — requires beta access + all 7 modules complete.'}
+                  </p>
+                </div>
+                {eligible && (
+                  <Link
+                    href="/module/8"
+                    className="px-4 py-2 rounded-lg text-xs font-bold flex-shrink-0"
+                    style={{ background: '#F4B942', color: '#1A1F36' }}
+                  >
+                    Open
+                  </Link>
+                )}
+              </div>
+            </div>
+          )
+        })()}
       </div>
 
       {/* ── Bottom Nav ─────────────────────────────────────── */}
