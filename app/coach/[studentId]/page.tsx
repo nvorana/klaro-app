@@ -6,7 +6,7 @@ import Link from 'next/link'
 import {
   ArrowLeft, Target, BookOpen, DollarSign, FileText, Mail, Gift, Megaphone,
   CheckCircle2, Circle, Star, MessageSquare, ClipboardList, Clock, Copy, Check, Phone,
-  ThumbsUp, AlertCircle, Unlock,
+  ThumbsUp, AlertCircle, Unlock, Eye, EyeOff, Download,
 } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
@@ -62,6 +62,78 @@ export default function StudentDetail() {
   const [reviewingModule, setReviewingModule] = useState<number | null>(null)
   const [revisionNote, setRevisionNote] = useState('')
   const [reviewLoading, setReviewLoading] = useState(false)
+  const [expandedWork, setExpandedWork] = useState<Record<number, boolean>>({})
+  const [copiedKey, setCopiedKey] = useState<string | null>(null)
+  const [downloading, setDownloading] = useState<string | null>(null)
+
+  function toggleWork(moduleNum: number) {
+    setExpandedWork(prev => ({ ...prev, [moduleNum]: !prev[moduleNum] }))
+  }
+
+  function copyField(text: string, key: string) {
+    navigator.clipboard.writeText(text)
+    setCopiedKey(key)
+    setTimeout(() => setCopiedKey(null), 2000)
+  }
+
+  async function downloadEbook() {
+    if (!outputs.ebook) return
+    setDownloading('ebook')
+    try {
+      const res = await fetch('/api/export/ebook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: outputs.ebook.title,
+          target_market: outputs.clarity?.target_market || '',
+          outline: outputs.ebook.outline,
+          chapters: outputs.ebook.chapters,
+        }),
+      })
+      if (res.ok) {
+        const blob = await res.blob()
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `${outputs.ebook.title || 'ebook'}.docx`
+        a.click()
+        URL.revokeObjectURL(url)
+      }
+    } finally {
+      setDownloading(null)
+    }
+  }
+
+  async function downloadLeadMagnet() {
+    if (!outputs.leadMagnet) return
+    setDownloading('lead-magnet')
+    try {
+      const res = await fetch('/api/export/lead-magnet', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: outputs.leadMagnet.title,
+          format: outputs.leadMagnet.format,
+          hook: outputs.leadMagnet.hook,
+          introduction: outputs.leadMagnet.introduction,
+          main_content: outputs.leadMagnet.main_content,
+          quick_win: outputs.leadMagnet.quick_win,
+          bridge_to_ebook: outputs.leadMagnet.bridge_to_ebook,
+        }),
+      })
+      if (res.ok) {
+        const blob = await res.blob()
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `${outputs.leadMagnet.title || 'lead-magnet'}.docx`
+        a.click()
+        URL.revokeObjectURL(url)
+      }
+    } finally {
+      setDownloading(null)
+    }
+  }
 
   useEffect(() => {
     loadStudent()
@@ -286,6 +358,173 @@ export default function StudentDetail() {
                   </div>
                 )}
 
+                {/* View Full Work toggle (any completed module) */}
+                {isCompleted && (
+                  <div className="mt-2 ml-10">
+                    <button
+                      onClick={() => toggleWork(moduleNum)}
+                      className="flex items-center gap-1.5 text-xs text-blue-400 font-semibold hover:text-blue-300"
+                    >
+                      {expandedWork[moduleNum] ? <EyeOff size={12} /> : <Eye size={12} />}
+                      {expandedWork[moduleNum] ? 'Hide work' : 'View full work'}
+                    </button>
+                  </div>
+                )}
+
+                {/* Expanded Work Content */}
+                {isCompleted && expandedWork[moduleNum] && (
+                  <div className="mt-3 ml-10 bg-gray-900 border border-gray-700 rounded-xl p-3">
+                    {moduleNum === 1 && outputs.clarity && (
+                      <div className="space-y-3">
+                        <WorkField label="Target Market" value={outputs.clarity.target_market} copyKey="c-market" copiedKey={copiedKey} onCopy={copyField} />
+                        <WorkField label="Core Problem" value={outputs.clarity.core_problem} copyKey="c-problem" copiedKey={copiedKey} onCopy={copyField} />
+                        <WorkField label="Unique Solution" value={outputs.clarity.unique_mechanism} copyKey="c-mech" copiedKey={copiedKey} onCopy={copyField} />
+                        <div className="bg-[#1c1500] border border-[#F4B942]/30 rounded-lg px-3 py-2">
+                          <p className="text-[10px] text-[#F4B942] font-bold uppercase tracking-wide mb-1">Clarity Sentence</p>
+                          <p className="text-gray-300 text-xs leading-relaxed">{outputs.clarity.full_sentence}</p>
+                          <div className="mt-2 flex justify-end">
+                            <CopyIconBtn text={outputs.clarity.full_sentence} copyKey="c-sent" copiedKey={copiedKey} onCopy={copyField} />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {moduleNum === 2 && outputs.ebook && (
+                      <div className="space-y-3">
+                        <WorkField label="Ebook Title" value={outputs.ebook.title} copyKey="e-title" copiedKey={copiedKey} onCopy={copyField} />
+                        {outputs.ebook.outline?.chapter_outlines && (
+                          <div>
+                            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wide mb-1">Chapters</p>
+                            <div className="space-y-1">
+                              {outputs.ebook.outline.chapter_outlines.map((ch: any, idx: number) => (
+                                <p key={idx} className="text-gray-400 text-xs">
+                                  <span className="text-gray-500 font-semibold">{idx + 1}.</span> {ch.title || ch.chapter_title || `Chapter ${idx + 1}`}
+                                </p>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        <button
+                          onClick={downloadEbook}
+                          disabled={downloading === 'ebook'}
+                          className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold border border-[#F4B942]/40 text-[#F4B942] hover:bg-[#F4B942]/10 transition-colors disabled:opacity-50"
+                        >
+                          <Download size={12} />
+                          {downloading === 'ebook' ? 'Downloading...' : 'Download Ebook (.docx)'}
+                        </button>
+                      </div>
+                    )}
+
+                    {moduleNum === 3 && outputs.offer && (
+                      <div className="space-y-3">
+                        {outputs.offer.offer_statement && (
+                          <WorkField label="Offer Statement" value={outputs.offer.offer_statement} copyKey="o-statement" copiedKey={copiedKey} onCopy={copyField} multiline />
+                        )}
+                        {outputs.offer.selling_price && (
+                          <WorkField label="Selling Price" value={`₱${outputs.offer.selling_price}`} copyKey="o-price" copiedKey={copiedKey} onCopy={copyField} />
+                        )}
+                        {outputs.offer.total_value && (
+                          <WorkField label="Total Value" value={`₱${outputs.offer.total_value}`} copyKey="o-value" copiedKey={copiedKey} onCopy={copyField} />
+                        )}
+                        {outputs.offer.guarantee && (
+                          <WorkField label="Guarantee" value={outputs.offer.guarantee} copyKey="o-guarantee" copiedKey={copiedKey} onCopy={copyField} multiline />
+                        )}
+                      </div>
+                    )}
+
+                    {moduleNum === 4 && outputs.salesPage && (
+                      <div className="space-y-3">
+                        {outputs.salesPage.headline && (
+                          <WorkField label="Headline" value={outputs.salesPage.headline} copyKey="sp-head" copiedKey={copiedKey} onCopy={copyField} multiline />
+                        )}
+                        {outputs.salesPage.full_copy && (
+                          <div>
+                            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wide mb-1">Full Sales Copy</p>
+                            <div className="bg-gray-800 rounded-lg px-3 py-2 max-h-60 overflow-y-auto">
+                              <p className="text-gray-300 text-xs leading-relaxed whitespace-pre-wrap">{outputs.salesPage.full_copy}</p>
+                            </div>
+                            <div className="mt-1.5 flex justify-end">
+                              <CopyIconBtn text={outputs.salesPage.full_copy} copyKey="sp-full" copiedKey={copiedKey} onCopy={copyField} />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {moduleNum === 5 && outputs.emailSeq && (
+                      <div className="space-y-2">
+                        {Array.isArray(outputs.emailSeq.emails) ? (
+                          outputs.emailSeq.emails.map((email: any, idx: number) => (
+                            <div key={idx} className="bg-gray-800 rounded-lg px-3 py-2">
+                              <div className="flex items-center justify-between mb-1">
+                                <p className="text-[10px] text-[#F4B942] font-bold uppercase">Day {email.day ?? idx + 1}{email.subject_a ? `: ${email.subject_a}` : email.subject ? `: ${email.subject}` : ''}</p>
+                                {email.body && <CopyIconBtn text={email.body} copyKey={`em-${idx}`} copiedKey={copiedKey} onCopy={copyField} />}
+                              </div>
+                              {email.body && (
+                                <p className="text-gray-400 text-xs leading-relaxed whitespace-pre-wrap max-h-40 overflow-y-auto">{email.body}</p>
+                              )}
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-gray-500 text-xs">7 emails written (no content data)</p>
+                        )}
+                      </div>
+                    )}
+
+                    {moduleNum === 6 && outputs.leadMagnet && (
+                      <div className="space-y-3">
+                        <WorkField label="Title" value={outputs.leadMagnet.title} copyKey="lm-title" copiedKey={copiedKey} onCopy={copyField} />
+                        {outputs.leadMagnet.format && (
+                          <WorkField label="Format" value={outputs.leadMagnet.format} copyKey="lm-format" copiedKey={copiedKey} onCopy={copyField} />
+                        )}
+                        {outputs.leadMagnet.hook && (
+                          <WorkField label="Hook" value={outputs.leadMagnet.hook} copyKey="lm-hook" copiedKey={copiedKey} onCopy={copyField} multiline />
+                        )}
+                        {outputs.leadMagnet.introduction && (
+                          <WorkField label="Introduction" value={outputs.leadMagnet.introduction} copyKey="lm-intro" copiedKey={copiedKey} onCopy={copyField} multiline />
+                        )}
+                        {outputs.leadMagnet.main_content && (
+                          <div>
+                            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wide mb-1">Main Content</p>
+                            <div className="bg-gray-800 rounded-lg px-3 py-2 max-h-60 overflow-y-auto">
+                              <p className="text-gray-300 text-xs leading-relaxed whitespace-pre-wrap">{outputs.leadMagnet.main_content}</p>
+                            </div>
+                            <div className="mt-1.5 flex justify-end">
+                              <CopyIconBtn text={outputs.leadMagnet.main_content} copyKey="lm-main" copiedKey={copiedKey} onCopy={copyField} />
+                            </div>
+                          </div>
+                        )}
+                        <button
+                          onClick={downloadLeadMagnet}
+                          disabled={downloading === 'lead-magnet'}
+                          className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold border border-[#F4B942]/40 text-[#F4B942] hover:bg-[#F4B942]/10 transition-colors disabled:opacity-50"
+                        >
+                          <Download size={12} />
+                          {downloading === 'lead-magnet' ? 'Downloading...' : 'Download Lead Magnet (.docx)'}
+                        </button>
+                      </div>
+                    )}
+
+                    {moduleNum === 7 && outputs.posts && (
+                      <div>
+                        {outputs.posts.full_post ? (
+                          <div>
+                            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wide mb-1">Facebook Posts</p>
+                            <div className="bg-gray-800 rounded-lg px-3 py-2 max-h-60 overflow-y-auto">
+                              <p className="text-gray-300 text-xs leading-relaxed whitespace-pre-wrap">{outputs.posts.full_post}</p>
+                            </div>
+                            <div className="mt-1.5 flex justify-end">
+                              <CopyIconBtn text={outputs.posts.full_post} copyKey="p-full" copiedKey={copiedKey} onCopy={copyField} />
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-gray-500 text-xs">Posts generated (no content data)</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Review controls (AP students only, completed modules only) */}
                 {isAP && isCompleted && (
                   <div className="mt-2 ml-10">
@@ -454,6 +693,50 @@ export default function StudentDetail() {
           )}
         </div>
 
+      </div>
+    </div>
+  )
+}
+
+// ── Helper components for inline work viewer ─────────────────────────────────
+
+function CopyIconBtn({ text, copyKey, copiedKey, onCopy }: {
+  text: string
+  copyKey: string
+  copiedKey: string | null
+  onCopy: (text: string, key: string) => void
+}) {
+  const isCopied = copiedKey === copyKey
+  return (
+    <button
+      onClick={(e) => { e.stopPropagation(); onCopy(text, copyKey) }}
+      className="shrink-0 p-1 rounded-md transition-all"
+      style={{ background: isCopied ? '#064e3b' : '#374151' }}
+      title="Copy to clipboard"
+    >
+      {isCopied
+        ? <Check size={11} className="text-green-400" />
+        : <Copy size={11} className="text-gray-400" />
+      }
+    </button>
+  )
+}
+
+function WorkField({ label, value, copyKey, copiedKey, onCopy, multiline }: {
+  label: string
+  value: string
+  copyKey: string
+  copiedKey: string | null
+  onCopy: (text: string, key: string) => void
+  multiline?: boolean
+}) {
+  if (!value) return null
+  return (
+    <div>
+      <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wide mb-1">{label}</p>
+      <div className="flex items-start gap-2">
+        <p className={`text-gray-300 text-xs leading-relaxed flex-1 ${multiline ? 'whitespace-pre-wrap' : ''}`}>{value}</p>
+        <CopyIconBtn text={value} copyKey={copyKey} copiedKey={copiedKey} onCopy={onCopy} />
       </div>
     </div>
   )
