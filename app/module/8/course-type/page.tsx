@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import ValidatorFeedback from '../_components/ValidatorFeedback'
 
 // Screen 3 — Choose the Right Course Type
 // Two independent picks: course_depth + delivery_format (closed lists).
@@ -30,6 +31,23 @@ interface CourseTypePayload {
   rejected_alternatives: { value: string; reason: string }[]
 }
 
+interface QCResponse {
+  draft: CourseTypePayload
+  decision: 'pass' | 'revise' | 'escalate' | 'blocked_by_rule'
+  decision_reason?: string
+  weighted_average?: number | null
+  validator_scores?: { name: string; score: number; recommendation: string }[]
+  validator_feedback?: {
+    name: string
+    overall_score: number
+    pass_recommendation: string
+    top_issues?: string[]
+    suggested_fixes?: string[]
+  }[]
+  hard_rule_failures?: { rule_id: string; message: string }[]
+  duplicate_flags?: { message: string }[]
+}
+
 export default function CourseTypePage() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
@@ -37,6 +55,7 @@ export default function CourseTypePage() {
   const [approving, setApproving] = useState(false)
   const [error, setError] = useState('')
   const [result, setResult] = useState<CourseTypePayload | null>(null)
+  const [qc, setQc] = useState<QCResponse | null>(null)
   const [userDepth, setUserDepth] = useState<string>('')
   const [userFormat, setUserFormat] = useState<string>('')
 
@@ -79,6 +98,7 @@ export default function CourseTypePage() {
         return
       }
       setResult(data.draft as CourseTypePayload)
+      setQc(data as QCResponse)
       setUserDepth(data.draft.course_depth)
       setUserFormat(data.draft.delivery_format)
     } catch {
@@ -149,6 +169,19 @@ export default function CourseTypePage() {
               You can override the recommendations if you want a different direction.
             </p>
           </div>
+        )}
+
+        {/* Validator feedback (from QC engine) */}
+        {result && qc && (
+          <ValidatorFeedback
+            decision={qc.decision}
+            decisionReason={qc.decision_reason}
+            weightedAverage={qc.weighted_average}
+            validatorScores={qc.validator_scores}
+            validatorFeedback={qc.validator_feedback}
+            hardRuleFailures={qc.hard_rule_failures}
+            duplicateFlags={qc.duplicate_flags}
+          />
         )}
 
         {/* AI Recommendation banner */}

@@ -214,6 +214,55 @@ export async function logAudit(args: {
 
 import { REGENERATE_WINDOW_MS } from './config'
 
+// ─── Validator runs ────────────────────────────────────────────────────────
+
+export async function persistValidatorRuns(
+  sessionId: string,
+  screenId: ScreenId,
+  draftVersion: number,
+  validatorResults: Array<{
+    validator_name: string
+    response: Record<string, unknown>
+  }>
+): Promise<void> {
+  const admin = createAdminClient()
+  if (validatorResults.length === 0) return
+
+  await admin.from('module8_validator_runs').insert(
+    validatorResults.map(v => ({
+      session_id: sessionId,
+      screen_id: screenId,
+      draft_version: draftVersion,
+      validator_name: v.validator_name,
+      score_payload_jsonb: v.response,
+      recommended_action: (v.response as { pass_recommendation?: string })?.pass_recommendation ?? null,
+    }))
+  )
+}
+
+// ─── QC runs ───────────────────────────────────────────────────────────────
+
+export async function persistQCRun(args: {
+  sessionId: string
+  screenId: ScreenId
+  draftVersion: number
+  ruleResults: Record<string, unknown>
+  duplicateResults: Record<string, unknown>
+  finalDecision: 'pass' | 'revise' | 'escalate' | 'blocked_by_rule'
+}): Promise<void> {
+  const admin = createAdminClient()
+  await admin.from('module8_qc_runs').insert({
+    session_id: args.sessionId,
+    screen_id: args.screenId,
+    draft_version: args.draftVersion,
+    rule_results_jsonb: args.ruleResults,
+    duplicate_results_jsonb: args.duplicateResults,
+    final_decision: args.finalDecision,
+  })
+}
+
+// ─── Regenerate limit (derived from audit log) ─────────────────────────────
+
 export async function getRegenerationsInWindow(
   userId: string,
   screenId: ScreenId

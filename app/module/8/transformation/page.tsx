@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import ValidatorFeedback from '../_components/ValidatorFeedback'
 
 // Screen 2 — Reconfirm the Transformation
 
@@ -14,6 +15,23 @@ interface TransformationPayload {
   implicit_outcomes: string[]
   duration_commitment: string
   audience_protective_clause?: string
+}
+
+interface QCResponse {
+  draft: TransformationPayload
+  decision: 'pass' | 'revise' | 'escalate' | 'blocked_by_rule'
+  decision_reason?: string
+  weighted_average?: number | null
+  validator_scores?: { name: string; score: number; recommendation: string }[]
+  validator_feedback?: {
+    name: string
+    overall_score: number
+    pass_recommendation: string
+    top_issues?: string[]
+    suggested_fixes?: string[]
+  }[]
+  hard_rule_failures?: { rule_id: string; message: string }[]
+  duplicate_flags?: { message: string }[]
 }
 
 interface UserInputs {
@@ -40,6 +58,7 @@ export default function TransformationPage() {
   const [approving, setApproving] = useState(false)
   const [error, setError] = useState('')
   const [result, setResult] = useState<TransformationPayload | null>(null)
+  const [qc, setQc] = useState<QCResponse | null>(null)
   const [upstreamContext, setUpstreamContext] = useState<ApprovedOutputs>({})
 
   const [inputs, setInputs] = useState<UserInputs>({
@@ -104,6 +123,7 @@ export default function TransformationPage() {
         return
       }
       setResult(data.draft as TransformationPayload)
+      setQc(data as QCResponse)
     } catch {
       setError('Could not generate. Please try again.')
     } finally {
@@ -214,6 +234,18 @@ export default function TransformationPage() {
           <div className="mb-3 p-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700">
             {error}
           </div>
+        )}
+
+        {result && qc && (
+          <ValidatorFeedback
+            decision={qc.decision}
+            decisionReason={qc.decision_reason}
+            weightedAverage={qc.weighted_average}
+            validatorScores={qc.validator_scores}
+            validatorFeedback={qc.validator_feedback}
+            hardRuleFailures={qc.hard_rule_failures}
+            duplicateFlags={qc.duplicate_flags}
+          />
         )}
 
         {result && (

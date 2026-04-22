@@ -1,21 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { getActiveSession, upsertStepDraft, logAudit } from '@/lib/module8/persistence'
+import {
+  getActiveSession,
+  upsertStepDraft,
+  persistValidatorRuns,
+  persistQCRun,
+  logAudit,
+  getStepOutput,
+} from '@/lib/module8/persistence'
 import { resolveRequiredContext } from '@/lib/module8/context'
 import { runCreator } from '@/lib/module8/creator'
+import { runQCEngine } from '@/lib/module8/qc'
 import { getConfig } from '@/lib/module8/config'
 import type { ScreenId } from '@/lib/module8/types'
 
-// Screen-specific imports
 import { readinessRequestSchema, readinessCreatorSchema, scoreReadiness, type ReadinessPayload } from '@/lib/module8/schemas/screen_1'
 import { transformationRequestSchema, transformationCreatorSchema, type TransformationPayload } from '@/lib/module8/schemas/screen_2'
 import { courseTypeRequestSchema, courseTypeCreatorSchema, type CourseTypePayload } from '@/lib/module8/schemas/screen_3'
 
 // POST /api/module8/screen/:screenId/generate
 //
-// Phase 1b: runs Creator with step-specific prompt + schema, persists draft.
-// Phase 2 will add: hard rule precheck, validators in parallel, revision loop,
-// drift check. For now, draft is persisted and returned for user review.
+// Phase 2a: runs Creator + QC engine (hard rules + validators + decision).
+// Revision loop (Phase 3) will re-run Creator internally if needed.
+//
+// For now, if decision is 'revise', 'escalate', or 'blocked_by_rule', we return
+// the draft + validator feedback so the UI can surface it to the user. They
+// can manually edit and approve, or trigger regenerate for a fresh draft.
 
 export async function POST(
   request: NextRequest,
@@ -26,7 +36,7 @@ export async function POST(
 
   if (![1, 2, 3].includes(screenId)) {
     return NextResponse.json(
-      { error: `Screen ${screenId} generate is not yet implemented in Phase 1b. Phases 2+ cover Screens 4-9.` },
+      { error: `Screen ${screenId} generate is not yet implemented. Phase 2b will add Screens 4-6.` },
       { status: 400 }
     )
   }
@@ -44,13 +54,13 @@ export async function POST(
   try {
     let draftPayload: ReadinessPayload | TransformationPayload | CourseTypePayload
     let promptVersion: string
+    let upstreamContext: Record<string, unknown> = {}
 
+    // ─── Screen-specific Creator dispatch ───────────────────────────────
     if (screenId === 1) {
-      // ── Screen 1: Readiness ─────────────────────────────────────────
       const answers = readinessRequestSchema.parse(body.answers ?? body)
       const { readiness_score, readiness_verdict } = scoreReadiness(answers)
 
-      // Creator generates recommended_next_path + coach_notes only
       const creatorResult = await runCreator(
         {
           promptRef: config.creator_prompt_ref!,
@@ -62,7 +72,6 @@ export async function POST(
         readinessCreatorSchema
       )
       promptVersion = creatorResult.prompt_version
-
       draftPayload = {
         ...answers,
         readiness_score,
@@ -71,10 +80,7 @@ export async function POST(
         coach_notes: creatorResult.draft.coach_notes,
       }
     } else if (screenId === 2) {
-      // ── Screen 2: Transformation ────────────────────────────────────
       const userInputs = transformationRequestSchema.parse(body)
-
-      // Resolve required upstream context
       const { context, missing } = await resolveRequiredContext(
         user.id,
         session.id,
@@ -86,6 +92,7 @@ export async function POST(
           { status: 400 }
         )
       }
+      upstreamContext = context
 
       const creatorResult = await runCreator(
         {
@@ -100,7 +107,6 @@ export async function POST(
       promptVersion = creatorResult.prompt_version
       draftPayload = creatorResult.draft as TransformationPayload
     } else if (screenId === 3) {
-      // ── Screen 3: Course Type ───────────────────────────────────────
       const userInputs = courseTypeRequestSchema.parse(body)
       const { context, missing } = await resolveRequiredContext(
         user.id,
@@ -113,6 +119,7 @@ export async function POST(
           { status: 400 }
         )
       }
+      upstreamContext = context
 
       const creatorResult = await runCreator(
         {
@@ -130,19 +137,90 @@ export async function POST(
       return NextResponse.json({ error: 'unsupported_screen' }, { status: 400 })
     }
 
-    // Persist draft
-    await upsertStepDraft(session.id, screenId, draftPayload as unknown as Record<string, unknown>, promptVersion)
+    // ─── Persist draft ────────────────────────────────────────────────
+    const stepRow = await upsertStepDraft(
+      session.id,
+      screenId,
+      draftPayload as unknown as Record<string, unknown>,
+      promptVersion
+    )
 
     await logAudit({
       sessionId: session.id,
       userId: user.id,
-      eventType: 'screen_generate_completed',
+      eventType: 'screen_creator_completed',
       screenId,
       actor: 'creator',
       promptVersion,
     })
 
-    return NextResponse.json({ success: true, draft: draftPayload, decision: 'pass', prompt_version: promptVersion })
+    // ─── Run QC engine ────────────────────────────────────────────────
+    const existing = await getStepOutput(session.id, screenId)
+    const revisionCount = existing?.revision_count ?? 0
+
+    const qc = await runQCEngine({
+      screenId,
+      draft: draftPayload as unknown as Record<string, unknown>,
+      upstreamContext,
+      revisionCount,
+    })
+
+    // Persist validator runs + QC run record
+    const draftVersion = (stepRow as { draft_version?: number } | null)?.draft_version ?? 1
+    await persistValidatorRuns(
+      session.id,
+      screenId,
+      draftVersion,
+      qc.validatorResults.map(v => ({
+        validator_name: v.validator_name,
+        response: v.response as unknown as Record<string, unknown>,
+      }))
+    )
+    await persistQCRun({
+      sessionId: session.id,
+      screenId,
+      draftVersion,
+      ruleResults: {
+        failures: qc.hardRuleFailures,
+        warnings: qc.hardRuleWarnings,
+      },
+      duplicateResults: { flags: qc.duplicateFlags },
+      finalDecision: qc.decision,
+    })
+
+    await logAudit({
+      sessionId: session.id,
+      userId: user.id,
+      eventType: `screen_qc_${qc.decision}`,
+      screenId,
+      actor: 'validator',
+      payload: {
+        decision: qc.decision,
+        weighted_average: qc.decisionResult.weighted_average,
+        validator_count: qc.validatorResults.length,
+        hard_rule_failure_count: qc.hardRuleFailures.length,
+      },
+    })
+
+    return NextResponse.json({
+      success: true,
+      draft: draftPayload,
+      decision: qc.decision,
+      decision_reason: qc.decisionResult.reason,
+      weighted_average: qc.decisionResult.weighted_average,
+      validator_scores: qc.decisionResult.validator_scores,
+      validator_feedback: qc.validatorResults.map(v => ({
+        name: v.validator_name,
+        overall_score: v.response.overall_score,
+        pass_recommendation: v.response.pass_recommendation,
+        top_issues: v.response.top_issues,
+        suggested_fixes: v.response.suggested_fixes,
+      })),
+      hard_rule_failures: qc.hardRuleFailures,
+      hard_rule_warnings: qc.hardRuleWarnings,
+      duplicate_flags: qc.duplicateFlags,
+      prompt_version: promptVersion,
+    })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     console.error(`[Module 8 Screen ${screenId} generate error]`, message)
