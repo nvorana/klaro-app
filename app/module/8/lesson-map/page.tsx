@@ -135,9 +135,7 @@ export default function LessonMapPage() {
         body: JSON.stringify({ payload }),
       })
       if (res.ok) {
-        // Phase 2b ends here — Screens 7-9 are Phase 3-4
-        alert('Phase 2b complete. Screens 7-9 come next.')
-        router.push('/dashboard')
+        router.push('/module/8/implementation-layer')
       }
     } finally {
       setApproving(false)

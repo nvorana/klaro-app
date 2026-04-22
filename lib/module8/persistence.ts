@@ -240,6 +240,33 @@ export async function persistValidatorRuns(
   )
 }
 
+// ─── Revision runs ─────────────────────────────────────────────────────────
+
+export async function persistRevisionRun(args: {
+  sessionId: string
+  screenId: ScreenId
+  sourceDraftVersion: number
+  revisionIndex: number
+  writableFields: string[]
+  readOnlyContextHash: string
+  revisionOutput: Record<string, unknown>
+  mergeResult: { fields_changed: string[]; fields_stripped: string[] }
+  driftDetected: boolean
+}): Promise<void> {
+  const admin = createAdminClient()
+  await admin.from('module8_revision_runs').insert({
+    session_id: args.sessionId,
+    screen_id: args.screenId,
+    source_draft_version: args.sourceDraftVersion,
+    revision_index: args.revisionIndex,
+    writable_fields_jsonb: args.writableFields,
+    read_only_context_hash: args.readOnlyContextHash,
+    revision_output_jsonb: args.revisionOutput,
+    merge_result_jsonb: args.mergeResult,
+    drift_detected: args.driftDetected,
+  })
+}
+
 // ─── QC runs ───────────────────────────────────────────────────────────────
 
 export async function persistQCRun(args: {

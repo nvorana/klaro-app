@@ -20,6 +20,8 @@ import { courseTypeRequestSchema, courseTypeCreatorSchema, type CourseTypePayloa
 import { chapterAuditRequestSchema, chapterAuditCreatorSchema, type ChapterAuditPayload } from '@/lib/module8/schemas/screen_4'
 import { courseSkeletonRequestSchema, courseSkeletonCreatorSchema, type CourseSkeletonPayload } from '@/lib/module8/schemas/screen_5'
 import { lessonMapRequestSchema, lessonMapCreatorSchema, type LessonMapModulePayload, type LessonMapFullPayload } from '@/lib/module8/schemas/screen_6'
+import { implementationLayerRequestSchema, implementationLayerCreatorSchema, type ImplementationLayerPayload } from '@/lib/module8/schemas/screen_7'
+import { studentExperienceRequestSchema, studentExperienceCreatorSchema, type StudentExperiencePayload } from '@/lib/module8/schemas/screen_8'
 
 // POST /api/module8/screen/:screenId/generate
 //
@@ -37,9 +39,9 @@ export async function POST(
   const { screenId: screenIdStr } = await params
   const screenId = parseInt(screenIdStr) as ScreenId
 
-  if (![1, 2, 3, 4, 5, 6].includes(screenId)) {
+  if (![1, 2, 3, 4, 5, 6, 7, 8].includes(screenId)) {
     return NextResponse.json(
-      { error: `Screen ${screenId} generate is not yet implemented. Phase 3 will add Screens 7-8, Phase 4 adds Screen 9.` },
+      { error: `Screen ${screenId} generate is not yet implemented. Phase 4 will add Screen 9 (blueprint assembly).` },
       { status: 400 }
     )
   }
@@ -55,7 +57,7 @@ export async function POST(
   const config = getConfig(screenId)
 
   try {
-    let draftPayload: ReadinessPayload | TransformationPayload | CourseTypePayload | ChapterAuditPayload | CourseSkeletonPayload | LessonMapFullPayload
+    let draftPayload: ReadinessPayload | TransformationPayload | CourseTypePayload | ChapterAuditPayload | CourseSkeletonPayload | LessonMapFullPayload | ImplementationLayerPayload | StudentExperiencePayload
     let promptVersion: string
     let upstreamContext: Record<string, unknown> = {}
 
@@ -231,6 +233,63 @@ export async function POST(
         lesson_map: updatedMap,
         complete,
       } as LessonMapFullPayload
+    } else if (screenId === 7) {
+      // ── Screen 7: Implementation Layer ──────────────────────────────
+      const userInputs = implementationLayerRequestSchema.parse(body)
+      const { context, missing } = await resolveRequiredContext(
+        user.id,
+        session.id,
+        config.required_context_fields
+      )
+      if (missing.length > 0) {
+        return NextResponse.json({ error: 'missing_upstream_context', missing }, { status: 400 })
+      }
+      upstreamContext = context
+
+      // Also pull offer_bonuses for asset reuse hint
+      const { context: offerContext } = await resolveRequiredContext(
+        user.id,
+        session.id,
+        ['offer_bonuses']
+      )
+
+      const creatorResult = await runCreator(
+        {
+          promptRef: config.creator_prompt_ref!,
+          context: { ...context, offer_bonuses: offerContext.offer_bonuses ?? [] },
+          userInputs,
+          temperature: 0.5,
+          maxTokens: 2500,
+        },
+        implementationLayerCreatorSchema
+      )
+      promptVersion = creatorResult.prompt_version
+      draftPayload = creatorResult.draft as ImplementationLayerPayload
+    } else if (screenId === 8) {
+      // ── Screen 8: Student Experience ────────────────────────────────
+      const userInputs = studentExperienceRequestSchema.parse(body)
+      const { context, missing } = await resolveRequiredContext(
+        user.id,
+        session.id,
+        config.required_context_fields
+      )
+      if (missing.length > 0) {
+        return NextResponse.json({ error: 'missing_upstream_context', missing }, { status: 400 })
+      }
+      upstreamContext = context
+
+      const creatorResult = await runCreator(
+        {
+          promptRef: config.creator_prompt_ref!,
+          context,
+          userInputs,
+          temperature: 0.5,
+          maxTokens: 1500,
+        },
+        studentExperienceCreatorSchema
+      )
+      promptVersion = creatorResult.prompt_version
+      draftPayload = creatorResult.draft as StudentExperiencePayload
     } else {
       return NextResponse.json({ error: 'unsupported_screen' }, { status: 400 })
     }
