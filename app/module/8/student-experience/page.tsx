@@ -137,9 +137,7 @@ export default function StudentExperiencePage() {
         body: JSON.stringify({ payload: result }),
       })
       if (res.ok) {
-        // Phase 3 ends here. Screen 9 (Blueprint) is Phase 4.
-        alert('Phase 3 complete — Screens 1-8 are all built. Screen 9 (Blueprint Assembly) comes next.')
-        router.push('/dashboard')
+        router.push('/module/8/blueprint')
       }
     } finally {
       setApproving(false)

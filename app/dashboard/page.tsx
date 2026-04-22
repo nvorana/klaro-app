@@ -51,6 +51,15 @@ export default async function DashboardPage() {
   const completedCount = completed.filter(Boolean).length
   const progressPercent = Math.round((completedCount / 7) * 100)
 
+  // ── Module 8 completion (advanced beta) ──────────────────
+  const { data: module8Progress } = await supabase
+    .from('module_progress')
+    .select('completed_at')
+    .eq('user_id', user.id)
+    .eq('module_number', 8)
+    .maybeSingle()
+  const module8Completed = !!module8Progress?.completed_at
+
   // ── Reviews (AP students only) ────────────────────────────
   const isAP = profile.program_type === 'accelerator'
   let reviewMap: Record<number, { status: string; note: string | null }> = {}
@@ -329,6 +338,34 @@ export default async function DashboardPage() {
           const isAdmin = profileRec.role === 'admin'
           const hasBeta = profileRec.module8_beta === true
           const eligible = isAdmin || (hasBeta && allSevenDone && ['full_access', 'tier3', 'tier4'].includes(accessLevel))
+
+          // Completed state: green like other modules
+          if (module8Completed) {
+            return (
+              <div className="bg-white rounded-2xl p-4 border-2" style={{ borderColor: '#d1fae5' }}>
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: '#ecfdf5' }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[10px] font-bold uppercase tracking-wide text-emerald-600">
+                      Module 8 · Complete
+                    </p>
+                    <p className="text-sm font-bold text-[#1A1F36]">Turn Your E-book Into a Course</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Your course blueprint is approved.</p>
+                  </div>
+                  <Link
+                    href="/module/8"
+                    className="px-4 py-2 rounded-lg text-xs font-bold flex-shrink-0 border border-emerald-200 text-emerald-600"
+                  >
+                    View
+                  </Link>
+                </div>
+              </div>
+            )
+          }
 
           return (
             <div

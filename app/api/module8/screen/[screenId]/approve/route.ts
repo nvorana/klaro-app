@@ -5,8 +5,10 @@ import {
   getStepOutput,
   approveStepOutput,
   updateSessionScreen,
+  markSessionComplete,
   logAudit,
 } from '@/lib/module8/persistence'
+import { createAdminClient } from '@/lib/supabase/admin'
 import type { ScreenId } from '@/lib/module8/types'
 
 // POST /api/module8/screen/:screenId/approve
@@ -43,6 +45,31 @@ export async function POST(
   // Advance session current_screen if this is the latest unfinished screen
   if ((session.current_screen ?? 0) <= screenId && screenId < 9) {
     await updateSessionScreen(session.id, (screenId + 1) as ScreenId)
+  }
+
+  // ── Screen 9 approval: mark Module 8 complete ─────────────────────────
+  if (screenId === 9) {
+    await markSessionComplete(session.id)
+
+    // Write module_progress row so dashboard sees Module 8 as completed
+    const admin = createAdminClient()
+    await admin.from('module_progress').upsert(
+      {
+        user_id: user.id,
+        module_number: 8,
+        completed: true,
+        completed_at: new Date().toISOString(),
+      },
+      { onConflict: 'user_id,module_number' }
+    )
+
+    await logAudit({
+      sessionId: session.id,
+      userId: user.id,
+      eventType: 'module_8_completed',
+      screenId: 9,
+      actor: 'user',
+    })
   }
 
   await logAudit({
