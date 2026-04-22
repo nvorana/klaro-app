@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
     async function getProfile() {
       const { data } = await supabase
         .from('profiles')
-        .select('id, enrolled_at, access_level')
+        .select('id, enrolled_at, access_level, unlocked_modules')
         .eq('email', email)
         .maybeSingle()
       return data
@@ -123,11 +123,16 @@ export async function POST(request: NextRequest) {
     if (isAccelTag(tagName) && isAdded) {
       const profile = await getProfile()
       if (profile) {
+        // AP students get modules 1 and 2 unlocked by default
+        const currentUnlocked: number[] = (profile as { unlocked_modules?: number[] }).unlocked_modules ?? []
+        const mergedUnlocked = Array.from(new Set([...currentUnlocked, 1, 2])).sort((a, b) => a - b)
+
         const updates: Record<string, unknown> = {
           program_type:     'accelerator',
           coach_id:         EDGAR_COACH_ID,
           enrolled_at:      profile.enrolled_at || new Date().toISOString(),
           access_suspended: false,
+          unlocked_modules: mergedUnlocked,
           updated_at:       new Date().toISOString(),
         }
         // Don't downgrade access_level if they already have tier access
