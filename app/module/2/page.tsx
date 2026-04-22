@@ -347,6 +347,13 @@ export default function Module2Page() {
         completed_at: new Date().toISOString(),
       }, { onConflict: 'user_id,module_number' })
 
+      // Auto-unlock next module for AP students (no-op for other programs)
+      fetch('/api/student/complete-module', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ moduleNumber: 2 }),
+      }).catch(() => {})
+
       setShowConfetti(true)
       setStep('complete')
     } catch (e) {

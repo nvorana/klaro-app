@@ -404,6 +404,13 @@ export default function Module1Page() {
         { onConflict: 'user_id,module_number' }
       )
 
+      // Auto-unlock next module for AP students (no-op for other programs)
+      fetch('/api/student/complete-module', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ moduleNumber: 1 }),
+      }).catch(() => {})
+
       setShowConfetti(true)
       setStep('complete')
     } catch {
