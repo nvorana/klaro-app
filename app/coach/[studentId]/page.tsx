@@ -6,7 +6,7 @@ import Link from 'next/link'
 import {
   ArrowLeft, Target, BookOpen, DollarSign, FileText, Mail, Gift, Megaphone,
   CheckCircle2, Circle, Star, MessageSquare, ClipboardList, Clock, Copy, Check, Phone,
-  ThumbsUp, AlertCircle, Unlock, Eye, EyeOff, Download,
+  ThumbsUp, AlertCircle, Unlock, Lock, Eye, EyeOff, Download,
 } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
@@ -65,6 +65,24 @@ export default function StudentDetail() {
   const [expandedWork, setExpandedWork] = useState<Record<number, boolean>>({})
   const [copiedKey, setCopiedKey] = useState<string | null>(null)
   const [downloading, setDownloading] = useState<string | null>(null)
+  const [lockLoading, setLockLoading] = useState<number | null>(null)
+
+  async function toggleModuleLock(moduleNum: number, currentlyUnlocked: boolean) {
+    setLockLoading(moduleNum)
+    const endpoint = currentlyUnlocked ? '/api/coach/lock-modules' : '/api/coach/unlock-modules'
+    try {
+      await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ studentIds: [studentId], moduleNumber: moduleNum }),
+      })
+      await loadStudent()
+    } catch (e) {
+      console.error('Toggle lock error:', e)
+    } finally {
+      setLockLoading(null)
+    }
+  }
 
   function toggleWork(moduleNum: number) {
     setExpandedWork(prev => ({ ...prev, [moduleNum]: !prev[moduleNum] }))
@@ -311,6 +329,9 @@ export default function StudentDetail() {
               const moduleNum = i + 1
               const review = getReview(moduleNum)
               const isCompleted = completions[i]
+              const unlockedModules: number[] = student.unlocked_modules ?? []
+              const isUnlocked = unlockedModules.includes(moduleNum) || moduleNum === 1
+              const isLockLoading = lockLoading === moduleNum
 
               return (
               <div key={i} className="bg-gray-800/50 rounded-xl p-3">
@@ -345,11 +366,46 @@ export default function StudentDetail() {
                         <AlertCircle size={11} /> Revise
                       </span>
                     )}
-                    {!isCompleted && !review && (
-                      <span className="text-gray-600 text-xs">—</span>
+                    {!isCompleted && !review && !isUnlocked && (
+                      <span className="text-gray-600 text-xs flex items-center gap-1">
+                        <Lock size={11} /> Locked
+                      </span>
+                    )}
+                    {!isCompleted && !review && isUnlocked && moduleNum > 1 && (
+                      <span className="text-blue-400 text-xs font-semibold flex items-center gap-1">
+                        <Unlock size={11} /> Unlocked
+                      </span>
                     )}
                   </div>
                 </div>
+
+                {/* Lock / Unlock control (per-module, AP students only — module 1 always unlocked) */}
+                {isAP && moduleNum > 1 && (
+                  <div className="mt-2 ml-10">
+                    <button
+                      onClick={() => toggleModuleLock(moduleNum, isUnlocked)}
+                      disabled={isLockLoading}
+                      className={`text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50 ${
+                        isUnlocked ? 'text-red-400 hover:text-red-300' : 'text-emerald-400 hover:text-emerald-300'
+                      }`}
+                    >
+                      {isLockLoading ? (
+                        <>
+                          <div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
+                          {isUnlocked ? 'Locking…' : 'Unlocking…'}
+                        </>
+                      ) : isUnlocked ? (
+                        <>
+                          <Lock size={11} /> Lock this module
+                        </>
+                      ) : (
+                        <>
+                          <Unlock size={11} /> Unlock this module
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
 
                 {/* Review note display */}
                 {review?.status === 'needs_revision' && review.note && (
