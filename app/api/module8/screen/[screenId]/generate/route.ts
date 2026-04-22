@@ -17,6 +17,9 @@ import type { ScreenId } from '@/lib/module8/types'
 import { readinessRequestSchema, readinessCreatorSchema, scoreReadiness, type ReadinessPayload } from '@/lib/module8/schemas/screen_1'
 import { transformationRequestSchema, transformationCreatorSchema, type TransformationPayload } from '@/lib/module8/schemas/screen_2'
 import { courseTypeRequestSchema, courseTypeCreatorSchema, type CourseTypePayload } from '@/lib/module8/schemas/screen_3'
+import { chapterAuditRequestSchema, chapterAuditCreatorSchema, type ChapterAuditPayload } from '@/lib/module8/schemas/screen_4'
+import { courseSkeletonRequestSchema, courseSkeletonCreatorSchema, type CourseSkeletonPayload } from '@/lib/module8/schemas/screen_5'
+import { lessonMapRequestSchema, lessonMapCreatorSchema, type LessonMapModulePayload, type LessonMapFullPayload } from '@/lib/module8/schemas/screen_6'
 
 // POST /api/module8/screen/:screenId/generate
 //
@@ -34,9 +37,9 @@ export async function POST(
   const { screenId: screenIdStr } = await params
   const screenId = parseInt(screenIdStr) as ScreenId
 
-  if (![1, 2, 3].includes(screenId)) {
+  if (![1, 2, 3, 4, 5, 6].includes(screenId)) {
     return NextResponse.json(
-      { error: `Screen ${screenId} generate is not yet implemented. Phase 2b will add Screens 4-6.` },
+      { error: `Screen ${screenId} generate is not yet implemented. Phase 3 will add Screens 7-8, Phase 4 adds Screen 9.` },
       { status: 400 }
     )
   }
@@ -52,7 +55,7 @@ export async function POST(
   const config = getConfig(screenId)
 
   try {
-    let draftPayload: ReadinessPayload | TransformationPayload | CourseTypePayload
+    let draftPayload: ReadinessPayload | TransformationPayload | CourseTypePayload | ChapterAuditPayload | CourseSkeletonPayload | LessonMapFullPayload
     let promptVersion: string
     let upstreamContext: Record<string, unknown> = {}
 
@@ -133,6 +136,101 @@ export async function POST(
       )
       promptVersion = creatorResult.prompt_version
       draftPayload = creatorResult.draft as CourseTypePayload
+    } else if (screenId === 4) {
+      // ── Screen 4: Chapter Audit ─────────────────────────────────────
+      const userInputs = chapterAuditRequestSchema.parse(body)
+      const { context, missing } = await resolveRequiredContext(
+        user.id,
+        session.id,
+        config.required_context_fields
+      )
+      if (missing.length > 0) {
+        return NextResponse.json({ error: 'missing_upstream_context', missing }, { status: 400 })
+      }
+      upstreamContext = context
+
+      const creatorResult = await runCreator(
+        {
+          promptRef: config.creator_prompt_ref!,
+          context,
+          userInputs,
+          temperature: 0.5,
+          maxTokens: 3000,
+        },
+        chapterAuditCreatorSchema
+      )
+      promptVersion = creatorResult.prompt_version
+      draftPayload = creatorResult.draft as ChapterAuditPayload
+    } else if (screenId === 5) {
+      // ── Screen 5: Course Skeleton ───────────────────────────────────
+      const userInputs = courseSkeletonRequestSchema.parse(body)
+      const { context, missing } = await resolveRequiredContext(
+        user.id,
+        session.id,
+        config.required_context_fields
+      )
+      if (missing.length > 0) {
+        return NextResponse.json({ error: 'missing_upstream_context', missing }, { status: 400 })
+      }
+      upstreamContext = context
+
+      const creatorResult = await runCreator(
+        {
+          promptRef: config.creator_prompt_ref!,
+          context,
+          userInputs,
+          temperature: 0.6,
+          maxTokens: 2500,
+        },
+        courseSkeletonCreatorSchema
+      )
+      promptVersion = creatorResult.prompt_version
+      draftPayload = creatorResult.draft as CourseSkeletonPayload
+    } else if (screenId === 6) {
+      // ── Screen 6: Lesson Map (per-module) ───────────────────────────
+      const userInputs = lessonMapRequestSchema.parse(body)
+      const { context, missing } = await resolveRequiredContext(
+        user.id,
+        session.id,
+        config.required_context_fields
+      )
+      if (missing.length > 0) {
+        return NextResponse.json({ error: 'missing_upstream_context', missing }, { status: 400 })
+      }
+      upstreamContext = context
+
+      const creatorResult = await runCreator(
+        {
+          promptRef: config.creator_prompt_ref!,
+          context,
+          userInputs,
+          temperature: 0.6,
+          maxTokens: 2500,
+        },
+        lessonMapCreatorSchema
+      )
+      promptVersion = creatorResult.prompt_version
+
+      // Accumulate: merge this module's lessons into the full lesson_map
+      const existing = await getStepOutput(session.id, 6)
+      const prevPayload = (existing?.draft_payload_jsonb ?? existing?.approved_payload_jsonb) as LessonMapFullPayload | null
+      const prevMap = prevPayload?.lesson_map ?? []
+
+      const newModule = creatorResult.draft as LessonMapModulePayload
+      const updatedMap = [
+        ...prevMap.filter(m => m.module_number !== newModule.module_number),
+        newModule,
+      ].sort((a, b) => a.module_number - b.module_number)
+
+      // Check completeness against module_map from Screen 5
+      const moduleMap = context.module_map as Array<{ module_number: number }> | undefined
+      const totalModulesNeeded = moduleMap?.length ?? 0
+      const complete = totalModulesNeeded > 0 && updatedMap.length === totalModulesNeeded
+
+      draftPayload = {
+        lesson_map: updatedMap,
+        complete,
+      } as LessonMapFullPayload
     } else {
       return NextResponse.json({ error: 'unsupported_screen' }, { status: 400 })
     }

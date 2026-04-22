@@ -124,10 +124,7 @@ export default function CourseTypePage() {
         body: JSON.stringify({ payload: finalPayload }),
       })
       if (res.ok) {
-        // Phase 1b ends here. Screens 4+ come in Phase 2.
-        // For now, send them back to dashboard with a "Phase 1b complete" view.
-        alert('Phase 1b complete. Screens 4-9 are coming next. Your Screen 3 decision is saved.')
-        router.push('/dashboard')
+        router.push('/module/8/chapter-audit')
       }
     } finally {
       setApproving(false)
