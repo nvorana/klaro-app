@@ -577,6 +577,12 @@ export default function AdminDashboard({ students, coaches, adminName }: Props) 
           <h1 className="text-white text-lg font-bold">Student Management</h1>
         </div>
         <div className="flex items-center gap-3">
+          <a
+            href="/admin/test-module8"
+            className="text-[11px] font-bold text-[#F4B942] border border-[#F4B942]/40 px-3 py-1.5 rounded-lg hover:bg-[#F4B942]/10 transition-colors"
+          >
+            Test Module 8
+          </a>
           <div className="w-9 h-9 rounded-full bg-[#F4B942] flex items-center justify-center text-[#1A1F36] text-sm font-bold">
             {adminName[0]}
           </div>
