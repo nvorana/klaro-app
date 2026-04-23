@@ -43,11 +43,15 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  // Force password change for coaches (or anyone) created with a temp password
+  // Force password change for coaches (or anyone) created with a temp password.
+  // But allow the user to be on any password-related page so they're not trapped.
   const mustChangePassword = user?.user_metadata?.must_change_password === true
-  const isOnChangePassword = request.nextUrl.pathname.startsWith('/change-password')
+  const isOnPasswordFlow =
+    request.nextUrl.pathname.startsWith('/change-password') ||
+    request.nextUrl.pathname.startsWith('/reset-password') ||
+    request.nextUrl.pathname.startsWith('/forgot-password')
 
-  if (user && mustChangePassword && !isOnChangePassword) {
+  if (user && mustChangePassword && !isOnPasswordFlow) {
     return NextResponse.redirect(new URL('/change-password', request.url))
   }
 
