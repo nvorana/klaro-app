@@ -55,8 +55,12 @@ export function isModuleUnlockedForStudent(
     return true
   }
 
-  // ── TOPIS: always weekly drip, ignoring access_level tier ─────────────
+  // ── TOPIS: weekly drip by default, but explicit unlocked_modules override
+  //    wins (used to grandfather past-batch alumni who should see all 7).
   if (programType === 'topis') {
+    if (unlockedModules && unlockedModules.length > 0) {
+      return unlockedModules.includes(moduleNumber)
+    }
     return isModuleUnlocked(enrolledAt, moduleNumber)
   }
 
