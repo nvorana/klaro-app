@@ -122,12 +122,12 @@ export default function Module6Page() {
       // ── Access check ──────────────────────────────────────────
       const { data: profile } = await supabase
         .from('profiles')
-        .select('access_level, enrolled_at, unlocked_modules')
+        .select('access_level, enrolled_at, unlocked_modules, program_type')
         .eq('id', user.id)
         .maybeSingle()
 
       if (profile) {
-        const unlocked = isModuleUnlockedForStudent(profile.unlocked_modules, profile.access_level, profile.enrolled_at, 7)
+        const unlocked = isModuleUnlockedForStudent(profile.unlocked_modules, profile.access_level, profile.enrolled_at, 7, profile.program_type)
         if (!unlocked) {
           setDaysUntilUnlock(profile.enrolled_at ? getDaysUntilUnlock(profile.enrolled_at, 7) : 0)
           setLocked(true)

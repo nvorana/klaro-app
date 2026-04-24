@@ -150,7 +150,7 @@ export default function Module4Page() {
       // ── Access check ──────────────────────────────────────────
       const { data: profile } = await supabase
         .from('profiles')
-        .select('access_level, enrolled_at, unlocked_modules')
+        .select('access_level, enrolled_at, unlocked_modules, program_type')
         .eq('id', user.id)
         .maybeSingle()
 
@@ -159,7 +159,8 @@ export default function Module4Page() {
           profile.unlocked_modules,
           profile.access_level,
           profile.enrolled_at,
-          4
+          4,
+          profile.program_type
         )
         if (!unlocked) {
           const days = profile.enrolled_at ? getDaysUntilUnlock(profile.enrolled_at, 4) : 0

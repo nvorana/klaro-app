@@ -27,6 +27,7 @@ export default async function DashboardPage() {
 
   const accessLevel = profile.access_level as string
   const unlockedModules = profile.unlocked_modules as number[] | null
+  const programType = profile.program_type as string | null
 
   // ── Module completion ─────────────────────────────────────
   const [
@@ -88,7 +89,7 @@ export default async function DashboardPage() {
   // ── Next step module ──────────────────────────────────────
   let nextStepModule = -1
   for (let i = 0; i < 7; i++) {
-    const unlocked = isModuleUnlockedForStudent(unlockedModules, accessLevel, enrolledAt, i + 1)
+    const unlocked = isModuleUnlockedForStudent(unlockedModules, accessLevel, enrolledAt, i + 1, programType)
     if (unlocked && !completed[i]) {
       nextStepModule = i + 1
       break
@@ -221,7 +222,7 @@ export default async function DashboardPage() {
         {MODULE_INFO.map((mod, i) => {
           const moduleNum = mod.number
           const isCompleted = completed[i]
-          const unlocked = isModuleUnlockedForStudent(unlockedModules, accessLevel, enrolledAt, moduleNum)
+          const unlocked = isModuleUnlockedForStudent(unlockedModules, accessLevel, enrolledAt, moduleNum, programType)
           const daysLeft = !unlocked && enrolledAt ? getDaysUntilUnlock(enrolledAt, moduleNum) : 0
           const isNext = moduleNum === nextStepModule
 

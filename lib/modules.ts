@@ -3,6 +3,7 @@ export const TIER_MODULE_LIMITS: Record<string, number> = {
   'tier1':       1,
   'tier2':       4,
   'tier3':       7,
+  'tier4':       7,
   'full_access': 7,
   'enrolled':    7, // legacy: treat as full for time-gated logic
 }
@@ -26,28 +27,59 @@ export function isModuleUnlockedByTier(accessLevel: string | null, moduleNumber:
 }
 
 /**
- * Primary unlock check — uses unlocked_modules array if present,
- * falls back to tier-based logic for legacy students.
+ * Primary unlock check.
+ *
+ * Policy (program-first pacing — everyone in a program runs at program pace
+ * regardless of payment method):
+ *
+ * 1. Module 1 is always available to any non-pending student
+ * 2. If program_type = 'topis' → weekly drip only (0, 7, 14, 21, 28, 35, 42
+ *    days since enrolled_at). Payment tier does NOT skip the drip — a
+ *    fully-paid TOPIS student is paced the same as an installment-paying one.
+ * 3. If program_type = 'accelerator' → unlocked_modules array (modules 1-2
+ *    on enrollment, next unlocks when student completes current, or coach
+ *    unlocks manually)
+ * 4. Otherwise (tier students / legacy / admins-assigned-full_access with
+ *    no program_type): access_level decides. tier1=1, tier2=4, tier3/tier4/
+ *    full_access=7. No pacing enforced.
  */
 export function isModuleUnlockedForStudent(
   unlockedModules: number[] | null | undefined,
   accessLevel: string | null,
   enrolledAt: string | null,
-  moduleNumber: number
+  moduleNumber: number,
+  programType?: string | null
 ): boolean {
   // Module 1 is always available to any non-pending student
   if (moduleNumber === 1 && accessLevel && accessLevel !== 'pending') {
     return true
   }
-  // Array-based (new system — TOPIS, Accel, manually unlocked)
+
+  // ── TOPIS: always weekly drip, ignoring access_level tier ─────────────
+  if (programType === 'topis') {
+    return isModuleUnlocked(enrolledAt, moduleNumber)
+  }
+
+  // ── Accelerator: unlocked_modules array controls access ───────────────
+  if (programType === 'accelerator') {
+    if (unlockedModules && unlockedModules.length > 0) {
+      return unlockedModules.includes(moduleNumber)
+    }
+    // Safety fallback: if array empty, only Module 1 (already handled above)
+    return false
+  }
+
+  // ── Non-program students: unlocked_modules takes priority if populated
   if (unlockedModules && unlockedModules.length > 0) {
     return unlockedModules.includes(moduleNumber)
   }
-  // Tier-based fallback (existing tier1/tier2/tier3/full_access students)
-  if (accessLevel && ['tier1', 'tier2', 'tier3', 'full_access'].includes(accessLevel)) {
+
+  // Tier-based fallback (tier1/2/3/4/full_access without program_type)
+  if (accessLevel && ['tier1', 'tier2', 'tier3', 'tier4', 'full_access'].includes(accessLevel)) {
     return isModuleUnlockedByTier(accessLevel, moduleNumber)
   }
-  // Legacy time-based fallback
+
+  // Legacy time-based fallback (very old accounts pre-program_type)
   return isModuleUnlocked(enrolledAt, moduleNumber)
 }
 
