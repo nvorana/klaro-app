@@ -330,7 +330,7 @@ function CustomField({ label, value, onChange, disabled, placeholder, multiline 
           disabled={disabled}
           placeholder={placeholder}
           rows={2}
-          className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm bg-white resize-none"
+          className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm bg-white text-[#1A1F36] placeholder:text-gray-400 resize-none"
         />
       ) : (
         <input
@@ -339,7 +339,7 @@ function CustomField({ label, value, onChange, disabled, placeholder, multiline 
           onChange={e => onChange(e.target.value)}
           disabled={disabled}
           placeholder={placeholder}
-          className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm bg-white"
+          className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm bg-white text-[#1A1F36] placeholder:text-gray-400"
         />
       )}
     </div>
