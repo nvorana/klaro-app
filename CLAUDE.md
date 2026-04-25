@@ -11,7 +11,7 @@ KLARO gives students a guided workspace to execute each of the program modules. 
 - KLARO USERS are Filipino creators packaging their knowledge into a sellable digital product. They are NOT necessarily entrepreneurs or business owners. They could be nurses, teachers, hobbyists, retirees, ministry workers, students, OFWs, parents — anyone with knowledge to share.
 - The END AUDIENCE of the AI-generated content is **dynamic**, defined per user by the `target_market` and `problem` fields in their clarity sentence. Never hardcode audience assumptions ("busy professionals", "first-time entrepreneurs") into prompts — pull audience context from the user's input instead.
 - The app's PURPOSE is constant: help Filipino creators turn knowledge into ebooks / digital products / sales pages / emails / lead magnets / FB content for whatever specific Filipino market they choose to serve.
-- Register is constant: casual conversational English with light natural Taglish warmth. Not formal, not academic, not hype-style.
+- Register is constant: casual conversational English with natural Taglish warmth. Target ratio: **~70% English / ~30% Tagalog** at the word level. Tagalog appears in dialogue, emotional beats, and short reactions — not as the carrying language. A Filipino-American reader should be able to follow the prose without translation. Not formal, not academic, not hype-style. (Backed by Reddit corpus data: organic urban Filipino written register sits around 68/32 — 70/30 is right in the natural zone.)
 
 **Full technical specification:** See `KLARO_Technical_Brief.md` in this folder.
 

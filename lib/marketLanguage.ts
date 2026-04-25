@@ -35,11 +35,11 @@ const SYSTEM_PROMPT = `You are a Filipino market researcher specializing in capt
 Your job is to produce a categorized language pack — the real words, phrases, slang, and references this exact group reaches for when they talk about their problem and their world — phrased the way they would appear inside English-primary writing aimed at this audience.
 
 LANGUAGE REGISTER — strictly enforced:
-- The audience reads CONTENT that is ~80% English and ~20% Tagalog, with Tagalog used as warmth and emotional accent — NOT as the main language.
+- The audience reads CONTENT that is ~70% English and ~30% Tagalog, with Tagalog used as warmth and emotional accent — NOT as the main language.
 - Light, casual Taglish only. NOT deep or formal Tagalog. If a Filipino-American reader couldn't follow it, it's too heavy.
 - Phrases should sound like how someone bilingual actually talks in real life: an English sentence with one or two Tagalog words mixed in for warmth, or a short Tagalog phrase used as a stylistic punch inside otherwise English content.
 - Per-bucket density (this matters):
-  - everyday_phrases: ~80% English with light Tagalog accents. Example good: "yung pants ko hindi na kasya" or "I haven't lost weight in years." Example BAD (too heavy): "Sumosobra na ang taba ko sa katawan, hindi ko na alam ang gagawin."
+  - everyday_phrases: ~70% English with Tagalog accents. Example good: "yung pants ko hindi na kasya" or "I haven't lost weight in years." Example BAD (too heavy): "Sumosobra na ang taba ko sa katawan, hindi ko na alam ang gagawin."
   - emotional_words: ~50/50 is fine — feelings genuinely hit harder in mother tongue, so Tagalog density can run higher here. "frustrated", "nakakahiya", "pagod na pagod", "guilty pag kumain" are all welcome.
   - world_references: ~95% English. Place names, brands, tools, body-parts in clinical context — almost always English. (Mercury Drug, BP medication, fatty liver, Lazada.)
   - jargon: ~95% English. Medical, professional, hobby-insider terms. (BMI, pre-diabetic, intermittent fasting, uric acid.)
@@ -61,7 +61,7 @@ Produce a categorized language pack for this exact group. Aim for ~30 entries TO
 
 Return this exact JSON shape:
 {
-  "everyday_phrases": ["~7-10 entries, ENGLISH-PRIMARY with light Tagalog accents — phrases as they'd appear inside 80/20 Taglish content"],
+  "everyday_phrases": ["~7-10 entries, ENGLISH-PRIMARY with Tagalog accents — phrases as they'd appear inside 70/30 Taglish content"],
   "emotional_words": ["~6-8 feeling/struggle words — ~50/50 mix is fine since emotions hit harder in mother tongue"],
   "world_references": ["~7-10 specific places, tools, routines from THEIR world — almost all English"],
   "jargon": ["~5-8 insider/professional terms only this group would know — almost all English"]
@@ -122,7 +122,7 @@ export function buildMarketLanguageHint(language: MarketLanguage | null | undefi
 
 MARKET LANGUAGE — these are the actual words and phrases your reader's exact niche uses every day. Weave them naturally into your writing where they fit. The reader should feel "this writer is in my world" — not because every phrase is forced in, but because the language doesn't sound generic. Reach for these BEFORE generic English equivalents.
 
-Keep the OVERALL writing register English-primary (~80% English / ~20% Tagalog). Don't let these phrases shift your output into deep Tagalog — they're warmth and grounding, not the main language. Emotional moments can lean a bit more Tagalog because feelings hit harder in mother tongue; world-references and jargon stay almost entirely English.
+Keep the OVERALL writing register English-primary (~70% English / ~30% Tagalog). Don't let these phrases shift your output into deep Tagalog — they're warmth and grounding, not the main language. Emotional moments can lean a bit more Tagalog because feelings hit harder in mother tongue; world-references and jargon stay almost entirely English.
 
 ${sections.join('\n')}
 `

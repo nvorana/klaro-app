@@ -59,7 +59,7 @@ Rules for ALL posts:
 - No hard selling in the post itself
 - Sound like a real person, not a marketer
 - No emojis unless it feels naturally Filipino
-- WRITING REGISTER: ~80% English / ~20% Tagalog. The post body is English; Tagalog is reserved for emotional punches, hooks, gut-check moments, and short reactions ("hindi mo kasalanan", "diba", "yung feeling na…"). The character can BE Filipino without the prose BEING Tagalog. If a post reads as ~90% Tagalog, you have failed this rule.
+- WRITING REGISTER: ~70% English / ~30% Tagalog. The post body is English; Tagalog is reserved for emotional punches, hooks, gut-check moments, and short reactions ("hindi mo kasalanan", "diba", "yung feeling na…"). The character can BE Filipino without the prose BEING Tagalog. If a post reads as ~90% Tagalog, you have failed this rule.
 
 Return ONLY a valid JSON object, no other text:
 {

@@ -19,7 +19,7 @@ WRITING RULES — follow these strictly:
 - VARY sentence length deliberately. Mix long explanatory sentences with punchy 3–6 word sentences. Short sentences land harder. Use them after important points.
 - Use simple words.
 - Clarity over cleverness. Done beats perfect.
-- WRITING REGISTER (strictly enforced): body content is ~80% English / ~20% Tagalog. The narrative prose, explanations, and instructions are written in English. Tagalog appears as warmth, internal thoughts, dialogue snippets, and short emotional beats — never as the carrying language. A Filipino-American reader should follow the prose without translation. ✓ Right: "He caught his reflection. Lumolobo na talaga, he thought." ✗ Too heavy: "Si Mang Ramon ay tumitingin sa salamin, hindi makapaniwala na lumobo na ang kanyang katawan."
+- WRITING REGISTER (strictly enforced): body content is ~70% English / ~30% Tagalog. The narrative prose, explanations, and instructions are written in English. Tagalog appears as warmth, internal thoughts, dialogue snippets, and short emotional beats — never as the carrying language. A Filipino-American reader should follow the prose without translation. ✓ Right: "He caught his reflection. Lumolobo na talaga, he thought." ✗ Too heavy: "Si Mang Ramon ay tumitingin sa salamin, hindi makapaniwala na lumobo na ang kanyang katawan."
 - TITLES AND SUBTITLES must be 100% English — no Tagalog or Filipino words whatsoever.
 - Chapter titles must also be 100% English.
 - The character can BE Filipino without the PROSE being Tagalog. If a passage reads as ~90% Tagalog, you have failed the register rule.
@@ -282,7 +282,7 @@ CHARACTER (the protagonist):
 - Include one moment of false hope, followed by a harder fall
 
 VOICE:
-- Simple words. Conversational. ~80% English / ~20% Tagalog — narrative prose in English, Tagalog reserved for dialogue and short emotional beats.
+- Simple words. Conversational. ~70% English / ~30% Tagalog — narrative prose in English, Tagalog reserved for dialogue and short emotional beats.
 - Real dialogue in quotation marks — what people actually say (this is where Tagalog naturally lives)
 - Vary sentence length: long for tension, short for impact
 
@@ -677,7 +677,7 @@ STEP 3 — BUILD THE INTRODUCTION WITH THIS EXACT STRUCTURE:
 WRITING RULES:
 - Short paragraphs (2–4 sentences max, then vary with single punchy lines)
 - Conversational — trusted friend explaining something life-changing
-- ~80% English / ~20% Tagalog. Tagalog as warmth and emotional accent only — narrative prose stays English.
+- ~70% English / ~30% Tagalog. Tagalog as warmth and emotional accent only — narrative prose stays English.
 - NEVER use hype, fake promises, or clichés
 
 Return this exact JSON:

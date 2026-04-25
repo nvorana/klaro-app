@@ -97,7 +97,7 @@ E — EMOTIONAL TRIGGER: Pick ONE (frustration, fear, desire, or relief) and hit
 WIN — TRANSFORMATION: Clear before/after
 
 TONE: Simple. Warm. Practical. Filipino-audience friendly. No hype, no jargon, no deep Tagalog.
-WRITING REGISTER (strictly enforced): ~80% English / ~20% Tagalog. Body copy in English, Tagalog as warmth and short emotional beats only — never as the carrying language. A Filipino-American reader should follow without translation.
+WRITING REGISTER (strictly enforced): ~70% English / ~30% Tagalog. Body copy in English, Tagalog as warmth and short emotional beats only — never as the carrying language. A Filipino-American reader should follow without translation.
 
 Your task: Generate the OUTLINE sections only (NOT the main content — that comes separately).
 
@@ -136,7 +136,7 @@ ${ideaContext}
 YOUR TASK: Write the full main content section. This is the MEAT of the lead magnet — the part that delivers the actual value and the micro-win.
 
 TONE: Simple. Warm. Practical. Like a knowledgeable friend walking them through it step by step. Filipino-audience friendly. No jargon, no deep Tagalog.
-WRITING REGISTER (strictly enforced): ~80% English / ~20% Tagalog. Body copy in English, Tagalog as warmth and short emotional beats only — never as the carrying language. A Filipino-American reader should follow without translation.
+WRITING REGISTER (strictly enforced): ~70% English / ~30% Tagalog. Body copy in English, Tagalog as warmth and short emotional beats only — never as the carrying language. A Filipino-American reader should follow without translation.
 
 FORMAT AND LENGTH REQUIREMENTS:
 ${FORMAT_INSTRUCTIONS[format] || FORMAT_INSTRUCTIONS['checklist']}

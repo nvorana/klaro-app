@@ -132,7 +132,7 @@ THIS IS DAY ${day} OF A 7-DAY SEQUENCE.
 WRITING RULES:
 
 Language:
-- Taglish: 75% English, 25% Tagalog at the word level
+- Taglish: 70% English, 30% Tagalog at the word level
 - Tagalog is for emotional punch — hooks, gut-check moments, rhetorical questions, PS lines
 - Use casual everyday Tagalog only: pero, kasi, lang, talaga, diba, kahit, parang, na, e
 - NEVER use deep or formal Filipino (subalit, gayunpaman, nangangailangan, pinapanood)

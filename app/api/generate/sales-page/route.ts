@@ -50,7 +50,7 @@ Selling price: ₱${selling_price.toLocaleString()}
 Guarantee: ${guarantee}
 
 STYLE RULES (apply to every section):
-- 80% English, 20% Tagalog. Weave Tagalog phrases naturally — never forced.
+- 70% English, 30% Tagalog. Weave Tagalog phrases naturally — never forced.
 - Short, rhythmic sentences. 1-2 sentences per paragraph in pain and lead sections.
 - Conversational, human tone. Write like you're talking to a friend, not presenting to a boardroom.
 - No hype, no exaggerated income claims, no fake urgency.

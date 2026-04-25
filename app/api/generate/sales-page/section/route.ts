@@ -48,7 +48,7 @@ function buildPrompt(
 
   const styleRules = `
 STYLE RULES (apply strictly):
-- 80% English, 20% Tagalog. Weave Tagalog phrases naturally where they land harder.
+- 70% English, 30% Tagalog. Weave Tagalog phrases naturally where they land harder.
 - Short, rhythmic sentences. 1-2 sentences per paragraph in emotional sections.
 - Conversational, human tone. Like talking to a friend over coffee, not a boardroom pitch.
 - No emojis. No em dash (use comma or period instead). No hype or fake urgency.
