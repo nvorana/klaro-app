@@ -111,5 +111,54 @@ export default async function AdminPage() {
     programType: (c.program_type as string | null) ?? 'unknown',
   }))
 
-  return <AdminDashboard students={enriched} coaches={enrichedCoaches} adminName={adminName} />
+  // ── Cohort summaries (for the cohort unlock panel) ──────────────────────
+  // Group enrolled, non-suspended students by program_type + cohort_batch.
+  // Skip cohorts where the most recent enrollee is more than 60 days old
+  // (those are alumni cohorts; no need to manage their unlocks).
+  const cohortMap = new Map<string, {
+    program_type: 'topis' | 'accelerator'
+    cohort_batch: number
+    students: typeof enriched
+  }>()
+
+  for (const s of enriched) {
+    if (s.cohortBatch == null) continue
+    if (s.programType !== 'topis' && s.programType !== 'accelerator') continue
+    if (s.suspended) continue
+    if (s.accessLevel !== 'enrolled') continue  // skip full_access alumni
+    const key = `${s.programType}:${s.cohortBatch}`
+    if (!cohortMap.has(key)) {
+      cohortMap.set(key, {
+        program_type: s.programType as 'topis' | 'accelerator',
+        cohort_batch: s.cohortBatch,
+        students: [],
+      })
+    }
+    cohortMap.get(key)!.students.push(s)
+  }
+
+  const cohortSummaries = Array.from(cohortMap.values())
+    .map(({ program_type, cohort_batch, students }) => {
+      // Find the most-common unlocked_modules pattern
+      const counts = new Map<string, { modules: number[]; count: number }>()
+      for (const s of students) {
+        const key = JSON.stringify(s.unlockedModules)
+        const existing = counts.get(key)
+        if (existing) existing.count++
+        else counts.set(key, { modules: s.unlockedModules, count: 1 })
+      }
+      const mostCommon = Array.from(counts.values()).sort((a, b) => b.count - a.count)[0]
+      return {
+        program_type,
+        cohort_batch,
+        student_count: students.length,
+        current_unlocked: mostCommon?.modules ?? [],
+      }
+    })
+    .sort((a, b) => {
+      if (a.program_type !== b.program_type) return a.program_type < b.program_type ? -1 : 1
+      return b.cohort_batch - a.cohort_batch
+    })
+
+  return <AdminDashboard students={enriched} coaches={enrichedCoaches} adminName={adminName} cohortSummaries={cohortSummaries} />
 }

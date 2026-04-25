@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import CohortUnlockPanel from './CohortUnlockPanel'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -28,10 +29,18 @@ interface Coach {
   programType: string
 }
 
+interface CohortSummary {
+  program_type: 'topis' | 'accelerator'
+  cohort_batch: number
+  student_count: number
+  current_unlocked: number[]
+}
+
 interface Props {
   students: Student[]
   coaches: Coach[]
   adminName: string
+  cohortSummaries?: CohortSummary[]
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -502,7 +511,7 @@ function CoachesPanel({ coaches }: { coaches: Coach[] }) {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export default function AdminDashboard({ students, coaches, adminName }: Props) {
+export default function AdminDashboard({ students, coaches, adminName, cohortSummaries }: Props) {
   const router = useRouter()
   const [activeTab, setActiveTab] = useState<'topis' | 'accelerator'>('topis')
   const [signingOut, setSigningOut] = useState(false)
@@ -612,6 +621,11 @@ export default function AdminDashboard({ students, coaches, adminName }: Props) 
 
       {/* ── Coaches panel ─────────────────────────────────────────────────────── */}
       <CoachesPanel coaches={coaches} />
+
+      {/* ── Cohort unlock panel ──────────────────────────────────────────────── */}
+      {cohortSummaries && cohortSummaries.length > 0 && (
+        <CohortUnlockPanel initialCohorts={cohortSummaries} />
+      )}
 
       {/* ── Program tabs ──────────────────────────────────────────────────────── */}
       <div className="px-4 mb-4">
