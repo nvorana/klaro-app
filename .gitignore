@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# claude code internal
+.claude/
+
+# vocab research scratch artifacts (cached comments + dictionary, regenerable)
+scripts/vocab-research/output/

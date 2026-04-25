@@ -4,7 +4,14 @@ This is KLARO, an AI-powered web app for students of the One Person Income Syste
 
 ## What This App Does
 
-KLARO gives students a guided workspace to execute each of the 6 program modules. Each module has an AI-powered tool that takes the student's personal data as input and produces a ready-to-use output (ebook, sales page, email sequence, etc.). Access is controlled via Systeme.io webhooks using tags.
+KLARO gives students a guided workspace to execute each of the program modules. Each module has an AI-powered tool that takes the student's personal data as input and produces a ready-to-use output (ebook, sales page, email sequence, etc.). Access is controlled via Systeme.io webhooks using tags.
+
+**Critical framing — read before editing prompts:**
+
+- KLARO USERS are Filipino creators packaging their knowledge into a sellable digital product. They are NOT necessarily entrepreneurs or business owners. They could be nurses, teachers, hobbyists, retirees, ministry workers, students, OFWs, parents — anyone with knowledge to share.
+- The END AUDIENCE of the AI-generated content is **dynamic**, defined per user by the `target_market` and `problem` fields in their clarity sentence. Never hardcode audience assumptions ("busy professionals", "first-time entrepreneurs") into prompts — pull audience context from the user's input instead.
+- The app's PURPOSE is constant: help Filipino creators turn knowledge into ebooks / digital products / sales pages / emails / lead magnets / FB content for whatever specific Filipino market they choose to serve.
+- Register is constant: casual conversational English with light natural Taglish warmth. Not formal, not academic, not hype-style.
 
 **Full technical specification:** See `KLARO_Technical_Brief.md` in this folder.
 
@@ -213,4 +220,10 @@ Progress bar:
 
 ## Target Audience
 
-Filipino entrepreneurs learning to sell ebooks and digital products. Most are non-technical, many use mobile phones, and most are not comfortable with marketing or writing. The app does all the heavy lifting — students just make choices from options the app generates.
+**Two layers — keep them straight:**
+
+1. **KLARO USERS (the creators):** Filipino creators learning to package their knowledge into ebooks and digital products. They are not necessarily entrepreneurs — they could be nurses, teachers, retirees, students, OFWs, hobbyists, ministry workers, or anyone with expertise to share. Most are non-technical, many use mobile phones, and most are not comfortable with marketing or writing. The app does all the heavy lifting — students just make choices from options the app generates.
+
+2. **END AUDIENCE (who their ebook/sales page/emails are for):** Fully dynamic per user. Defined by the `target_market` field in the user's clarity sentence. Could be any Filipino group — OFW nurses, working moms, college students, devoted hobbyists, churchgoers, retirees, etc. Prompts must pull audience context from the user's input, never hardcode assumptions about who the audience is.
+
+**Niche language principle:** When generating sales copy, marketing materials, or any persuasive content for a specific niche, the AI should use the language, slang, jargon, and emotional vocabulary that niche actually uses. The reader should feel "the creator is in my world — they get me." This is more important than generic "good copy" — people live in bubbles, and the language IS the bubble. Generic preferred-vocabulary (`lib/preferredVocabulary.ts`) is the BASELINE register only; niche-specific language must be layered on top from the user's clarity-sentence inputs and any market research data captured during clarity.

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { openai, AI_MODEL } from '@/lib/openai'
+import { getMarketLanguageHintForUser } from '@/lib/marketLanguage'
 
 // POST /api/generate/objections
 // Body: { target_market: string, problem: string, mechanism: string, ebook_title: string }
@@ -8,8 +9,9 @@ import { openai, AI_MODEL } from '@/lib/openai'
 export async function POST(request: NextRequest) {
   try {
     const { target_market, problem, mechanism, ebook_title } = await request.json()
+    const marketHint = await getMarketLanguageHintForUser()
 
-    const prompt = `You are a buyer psychology expert for the Philippine digital products market.
+    const prompt = `You are a buyer psychology expert for the Philippine digital products market.${marketHint}
 
 Target market: ${target_market}
 Problem being solved: ${problem}

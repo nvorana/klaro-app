@@ -394,6 +394,11 @@ export default function Module1Page() {
       })
       if (clarityErr) throw clarityErr
 
+      // Fire-and-forget: warm the niche-language cache. If this fails or is
+      // still in-flight when the user starts a downstream module, the lazy
+      // backfill in that module will generate it on the fly. Same end result.
+      fetch('/api/generate/market-language', { method: 'POST' }).catch(() => {})
+
       await supabase.from('module_progress').upsert(
         {
           user_id: user.id,

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { openai, AI_MODEL } from '@/lib/openai'
+import { getMarketLanguageHintForUser } from '@/lib/marketLanguage'
 
 // POST /api/generate/ebook-chapter
 // Body: { title, target_market, problem, mechanism, chapter: { chapter_number, title, goal, quick_win } }
@@ -13,7 +14,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    const prompt = `You are an ebook ghostwriter for the Philippine digital products market.
+    const marketHint = await getMarketLanguageHintForUser()
+
+    const prompt = `You are an ebook ghostwriter for the Philippine digital products market.${marketHint}
 
 Ebook title: "${title}"
 Target market: ${target_market}

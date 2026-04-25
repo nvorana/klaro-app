@@ -880,7 +880,7 @@ Generate all 7 emails in a single AI call.
 
 **OpenAI Prompt:**
 ```
-You are an email copywriter specializing in digital products for Filipino entrepreneurs.
+You are an email copywriter specializing in digital products for Filipino creators selling to whatever niche audience their clarity sentence specifies.
 
 Clarity Sentence: "I help [TARGET_MARKET] who struggle with [PROBLEM] through [MECHANISM]"
 Ebook title: [TITLE]

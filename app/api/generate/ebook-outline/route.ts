@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { openai, AI_MODEL } from '@/lib/openai'
+import { getMarketLanguageHintForUser } from '@/lib/marketLanguage'
 
 // POST /api/generate/ebook-outline
 // Body: { target_market, problem, mechanism }
@@ -14,8 +15,9 @@ export async function POST(request: NextRequest) {
     }
 
     const clarity_sentence = `I help ${target_market} who struggle with ${problem} through ${mechanism}`
+    const marketHint = await getMarketLanguageHintForUser()
 
-    const prompt = `You are an ebook strategist for the Philippine digital products market.
+    const prompt = `You are an ebook strategist for the Philippine digital products market.${marketHint}
 
 Clarity Sentence: "${clarity_sentence}"
 

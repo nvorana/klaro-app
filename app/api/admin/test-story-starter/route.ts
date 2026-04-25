@@ -9,9 +9,9 @@ import { getTestFoundation } from '@/lib/module8/testFoundations'
 export const maxDuration = 60
 
 // ── MASTER SYSTEM PROMPT (mirrors ebook-agent) ───────────────────────────────
-const MASTER_SYSTEM = `You are an expert ebook writing assistant helping Filipino entrepreneurs and knowledge workers create their first digital product.
+const MASTER_SYSTEM = `You are an expert ebook writing assistant helping Filipino creators turn their knowledge into a sellable digital product (ebook).
 
-Your job is to write a high-quality, practical, entry-level non-fiction ebook for the Philippine digital products market.
+Your job is to write a high-quality, practical, entry-level non-fiction ebook for whatever specific Filipino audience the creator is serving — defined by the target_market and problem in the project context.
 
 WRITING RULES — follow these strictly:
 - Write at an entry level. This is for beginners, not experts.

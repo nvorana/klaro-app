@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { openai, AI_MODEL } from '@/lib/openai'
 import { findBannedWords, buildCorrectionPrompt } from '@/lib/bannedWords'
+import { buildVocabularyHint } from '@/lib/preferredVocabulary'
+import { getMarketLanguageHintForUser } from '@/lib/marketLanguage'
 
 // ─── MASTER SYSTEM PROMPT ────────────────────────────────────────────────────
 
-const MASTER_SYSTEM_PROMPT = `You are an expert ebook writing assistant helping Filipino entrepreneurs and knowledge workers create their first digital product.
+const MASTER_SYSTEM_PROMPT = `You are an expert ebook writing assistant helping Filipino creators turn their knowledge into a sellable digital product (ebook).
 
-Your job is to write a high-quality, practical, entry-level non-fiction ebook for the Philippine digital products market.
+Your job is to write a high-quality, practical, entry-level non-fiction ebook for whatever specific Filipino audience the creator is serving — that audience is defined by the target_market and problem provided in the project context, and may be anyone from students to OFWs to working parents to retirees to hobbyists.
 
 WRITING RULES — follow these strictly:
 - Write at an entry level. This is for beginners, not experts.
@@ -30,7 +32,9 @@ SOFT BAN (avoid unless truly necessary): maximize, optimize, elevate, breakthrou
 These words make content sound AI-generated and feel out of touch to a Filipino reader.
 Write like a practical friend — not a TED Talk, not a LinkedIn post.
 ❌ AI style: "Unlock your full potential with this powerful method."
-✅ Market style: "Ganito mo magagawa ito… kahit busy ka pa."
+✅ Market style: "Ganito mo magagawa ito step-by-step, kahit first time mo pa lang."
+
+${buildVocabularyHint(80)}
 
 Always return valid JSON only. No explanations outside JSON. No markdown fences.`
 
@@ -97,9 +101,10 @@ interface TokenUsage {
 async function callOpenAI(
   prompt: string,
   context: Message[] = [],
-  maxTokens = 2500
+  maxTokens = 2500,
+  systemSuffix = ''
 ): Promise<unknown> {
-  const { result } = await callOpenAIWithUsage(prompt, context, maxTokens)
+  const { result } = await callOpenAIWithUsage(prompt, context, maxTokens, systemSuffix)
   return result
 }
 
@@ -107,10 +112,11 @@ async function callOpenAI(
 async function callOpenAIWithUsage(
   prompt: string,
   context: Message[] = [],
-  maxTokens = 2500
+  maxTokens = 2500,
+  systemSuffix = ''
 ): Promise<{ result: unknown; usage: TokenUsage }> {
   const messages = [
-    { role: 'system' as const, content: MASTER_SYSTEM_PROMPT },
+    { role: 'system' as const, content: MASTER_SYSTEM_PROMPT + systemSuffix },
     ...context,
     { role: 'user' as const, content: prompt },
   ]
@@ -574,19 +580,20 @@ async function generateStandardChapterMultiPass(
   project: Project,
   bookTitle: string,
   chapter: ChapterOutline,
-  _allChapters: ChapterOutline[]
+  _allChapters: ChapterOutline[],
+  marketHint = ''
 ): Promise<ChapterDraft> {
   console.log(`[ebook-agent] Chapter ${chapter.number} multi-pass — starting`)
 
   // Pass 0 + Pass 1 in parallel (both are independent)
   const [previewData, quoteData] = await Promise.all([
-    callOpenAI(pass0_PreviewPrompt(chapter), [], 300) as Promise<{ chapter_preview: string }>,
-    callOpenAI(pass1_QuotePrompt(chapter), [], 400) as Promise<{ quote: { text: string; author: string } }>,
+    callOpenAI(pass0_PreviewPrompt(chapter), [], 300, marketHint) as Promise<{ chapter_preview: string }>,
+    callOpenAI(pass1_QuotePrompt(chapter), [], 400, marketHint) as Promise<{ quote: { text: string; author: string } }>,
   ])
   console.log(`[ebook-agent] Chapter ${chapter.number} — preview + quote done`)
 
   // Pass 2: Story Starter
-  const storyData = await callOpenAI(pass2_StoryPrompt(project, bookTitle, chapter), [], 1500) as {
+  const storyData = await callOpenAI(pass2_StoryPrompt(project, bookTitle, chapter), [], 1500, marketHint) as {
     story_starter: string
   }
   console.log(`[ebook-agent] Chapter ${chapter.number} — story done`)
@@ -595,7 +602,8 @@ async function generateStandardChapterMultiPass(
   const lessonsData = await callOpenAI(
     pass3_LessonsPrompt(project, chapter, storyData.story_starter),
     [{ role: 'assistant', content: JSON.stringify(storyData) }],
-    3000
+    3000,
+    marketHint
   ) as { core_lessons: string }
   console.log(`[ebook-agent] Chapter ${chapter.number} — lessons done`)
 
@@ -606,12 +614,13 @@ async function generateStandardChapterMultiPass(
       { role: 'assistant', content: JSON.stringify(storyData) },
       { role: 'assistant', content: JSON.stringify(lessonsData) },
     ],
-    2000
+    2000,
+    marketHint
   ) as { practical_steps: PracticalStep[] }
   console.log(`[ebook-agent] Chapter ${chapter.number} — steps done`)
 
   // Pass 5: Quick Win
-  const quickWinData = await callOpenAI(pass5_QuickWinPrompt(chapter), [], 1500) as {
+  const quickWinData = await callOpenAI(pass5_QuickWinPrompt(chapter), [], 1500, marketHint) as {
     quick_win: QuickWin
   }
   console.log(`[ebook-agent] Chapter ${chapter.number} — quick win done`)
@@ -717,20 +726,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing stage or project' }, { status: 400 })
     }
 
-    // Guard: excluded markets
-    const excluded = /(college student|fresh grad|jobless|unemployed|walang trabaho|no job|wala pang trabaho)/i
-    if (excluded.test(project.target_market)) {
-      return NextResponse.json({
-        error: 'excluded_market',
-        message: 'KLARO is designed for working professionals and business owners. Please refine your target market.'
-      }, { status: 422 })
-    }
+    // Audience is dynamic — defined by the creator's clarity sentence.
+    // No employment-status gate; the only validation that matters is whether
+    // the target_market is specific enough to write a focused ebook for.
+
+    // Per-user niche language pack — appended to the system prompt so all
+    // passes in this request speak the same niche bubble.
+    const marketHint = await getMarketLanguageHintForUser()
 
     switch (stage) {
 
       // Stage 1: Generate title options + chapter outline
       case 'outline': {
-        const result = await callOpenAI(outlinePrompt(project), [], 2000) as {
+        const result = await callOpenAI(outlinePrompt(project), [], 2000, marketHint) as {
           title_options: TitleOption[]
           recommended: number
           chapters: ChapterOutline[]
@@ -750,12 +758,13 @@ export async function POST(request: NextRequest) {
         let result: ChapterDraft
 
         if (chapterType === 'standard') {
-          result = await generateStandardChapterMultiPass(project, bookTitle, chapter, allChapters)
+          result = await generateStandardChapterMultiPass(project, bookTitle, chapter, allChapters, marketHint)
         } else {
           result = await callOpenAI(
             singlePassChapterPrompt(project, bookTitle, chapter, allChapters),
             [],
-            4500
+            4500,
+            marketHint
           ) as ChapterDraft
         }
 
@@ -767,7 +776,7 @@ export async function POST(request: NextRequest) {
         const bookTitle    = data.book_title as string
         const bookSubtitle = data.book_subtitle as string
         const chapters     = data.chapters as ChapterOutline[]
-        const result = await callOpenAI(introductionPrompt(project, bookTitle, bookSubtitle, chapters), [], 1800) as { introduction: string }
+        const result = await callOpenAI(introductionPrompt(project, bookTitle, bookSubtitle, chapters), [], 1800, marketHint) as { introduction: string }
         return NextResponse.json({ stage, data: result })
       }
 
@@ -775,7 +784,7 @@ export async function POST(request: NextRequest) {
       case 'conclusion': {
         const bookTitle = data.book_title as string
         const chapters  = data.chapters as ChapterOutline[]
-        const result = await callOpenAI(conclusionPrompt(project, bookTitle, chapters), [], 1000) as { conclusion: string }
+        const result = await callOpenAI(conclusionPrompt(project, bookTitle, chapters), [], 1000, marketHint) as { conclusion: string }
         return NextResponse.json({ stage, data: result })
       }
 
@@ -825,7 +834,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: `Unknown section: ${section}` }, { status: 400 })
         }
 
-        const { result, usage } = await callOpenAIWithUsage(prompt, context, maxTokens)
+        const { result, usage } = await callOpenAIWithUsage(prompt, context, maxTokens, marketHint)
         return NextResponse.json({ stage, section, data: result, usage })
       }
 

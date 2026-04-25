@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { openai, AI_MODEL } from '@/lib/openai'
+import { getMarketLanguageHintForUser } from '@/lib/marketLanguage'
 
 // POST /api/generate/offer
 // Body: { action, ...context }
@@ -20,12 +21,13 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const { action } = body
+    const marketHint = await getMarketLanguageHintForUser()
 
     // ── Transformation ─────────────────────────────────────────────────────────
     if (action === 'transformation') {
       const { target_market, problem, mechanism, ebook_title, student_input } = body
 
-      const prompt = `You are an offer strategist for Filipino digital product sellers.
+      const prompt = `You are an offer strategist for Filipino digital product sellers.${marketHint}
 
 Ebook: "${ebook_title}"
 Target market: ${target_market}
@@ -61,7 +63,7 @@ Return ONLY a valid JSON object:
     if (action === 'price_anchor') {
       const { target_market, ebook_title, transformation, selling_price, total_value } = body
 
-      const prompt = `You are a pricing strategist for Filipino digital products.
+      const prompt = `You are a pricing strategist for Filipino digital products.${marketHint}
 
 Product: "${ebook_title}"
 Who it's for: ${target_market}
@@ -97,7 +99,7 @@ Return ONLY a valid JSON object:
         .map(b => `- ${b.bonus_name} (${b.format}) — ₱${b.value_peso.toLocaleString()} value`)
         .join('\n')
 
-      const prompt = `You are an offer strategist for Filipino digital product sellers. Write a complete Irresistible Offer Statement.
+      const prompt = `You are an offer strategist for Filipino digital product sellers.${marketHint} Write a complete Irresistible Offer Statement.
 
 PRODUCT DETAILS:
 Ebook: "${ebook_title}"

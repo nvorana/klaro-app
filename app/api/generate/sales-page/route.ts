@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { openai, AI_MODEL } from '@/lib/openai'
+import { getMarketLanguageHintForUser } from '@/lib/marketLanguage'
 
 export const maxDuration = 120
 
@@ -36,7 +37,9 @@ export async function POST(request: NextRequest) {
       .map((b, i) => `Bonus ${i + 1}: "${b.bonus_name}" — ${b.description} (Value: ₱${b.value_peso.toLocaleString()})`)
       .join('\n')
 
-    const prompt = `You are CHILLYONARYO, a master Taglish direct response copywriter for the Philippine info product market.
+    const marketHint = await getMarketLanguageHintForUser()
+
+    const prompt = `You are CHILLYONARYO, a master Taglish direct response copywriter for the Philippine info product market.${marketHint}
 
 Clarity Sentence: "I help ${target_market} who struggle with ${problem} through ${mechanism}"
 Ebook title: "${ebook_title}"

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { openai, AI_MODEL } from '@/lib/openai'
+import { getMarketLanguageHintForUser } from '@/lib/marketLanguage'
 
 export const maxDuration = 30
 
@@ -15,7 +16,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    const prompt = `You are a lead magnet strategist for Filipino digital product sellers.
+    const marketHint = await getMarketLanguageHintForUser()
+
+    const prompt = `You are a lead magnet strategist for Filipino digital product sellers.${marketHint}
 
 A student is selling an ebook titled "${ebook_title || 'their ebook'}".
 Their clarity sentence: "I help ${target_market} who struggle with ${problem} through ${mechanism}."

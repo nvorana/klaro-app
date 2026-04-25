@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { openai, AI_MODEL } from '@/lib/openai'
+import { getMarketLanguageHintForUser } from '@/lib/marketLanguage'
 
 export const maxDuration = 60
 
@@ -298,6 +299,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
+    const marketHint = await getMarketLanguageHintForUser()
+
     const prompt = buildPrompt(section as SectionKey, {
       target_market,
       problem,
@@ -307,7 +310,7 @@ export async function POST(request: NextRequest) {
       total_value: total_value || 0,
       selling_price: selling_price || 297,
       guarantee: guarantee || '30-day money-back guarantee',
-    })
+    }) + marketHint
 
     const completion = await openai.chat.completions.create({
       model: AI_MODEL,

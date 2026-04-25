@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { openai, AI_MODEL } from '@/lib/openai'
+import { getMarketLanguageHintForUser } from '@/lib/marketLanguage'
 
 // POST /api/generate/bonus
 // Body: { ebook_title, target_market, problem, objection }
@@ -13,7 +14,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    const prompt = `You are a digital product strategist.
+    const marketHint = await getMarketLanguageHintForUser()
+
+    const prompt = `You are a digital product strategist.${marketHint}
 
 Main ebook: "${ebook_title}" — helps ${target_market} with ${problem}
 Objection to neutralize: "${objection}"

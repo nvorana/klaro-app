@@ -28,14 +28,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    // Guard: excluded markets — never generate for college students/fresh grads or jobless
-    const excluded = /(college student|fresh grad|jobless|unemployed|walang trabaho|no job|wala pang trabaho)/i
-    if (excluded.test(target_market)) {
-      return NextResponse.json({
-        error: 'excluded_market',
-        message: 'KLARO is designed for working professionals and business owners. Please refine your target market to a more specific employed or income-earning audience — for example: "call center agents", "OFWs in healthcare", or "freelance designers".'
-      }, { status: 422 })
-    }
+    // Audience is dynamic — defined by the creator's target_market input.
+    // No employment-status gate; the creator decides who their ebook serves.
 
     let prompt = ''
 

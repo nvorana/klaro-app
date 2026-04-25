@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { openai, AI_MODEL } from '@/lib/openai'
+import { getMarketLanguageHintForUser } from '@/lib/marketLanguage'
 
 export const maxDuration = 60
 
@@ -184,7 +185,8 @@ export async function POST(request: NextRequest) {
     const { target_market, problem, mechanism, ebook_title, sales_page_url, day } = await request.json()
 
     const emailDay = day || 1
-    const prompt = buildSingleEmailPrompt(emailDay, target_market, problem, mechanism, ebook_title, sales_page_url || '')
+    const marketHint = await getMarketLanguageHintForUser()
+    const prompt = buildSingleEmailPrompt(emailDay, target_market, problem, mechanism, ebook_title, sales_page_url || '') + marketHint
 
     const completion = await openai.chat.completions.create({
       model: AI_MODEL,

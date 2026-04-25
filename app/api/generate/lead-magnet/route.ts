@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { openai, AI_MODEL } from '@/lib/openai'
+import { getMarketLanguageHintForUser } from '@/lib/marketLanguage'
 
 export const maxDuration = 60
 
@@ -163,6 +164,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
+    const marketHint = await getMarketLanguageHintForUser()
     let prompt: string
     if (section === 'main_content') {
       prompt = buildMainContentPrompt(
@@ -177,6 +179,7 @@ export async function POST(request: NextRequest) {
         idea_angle, idea_description, example_title, emotional_trigger
       )
     }
+    prompt += marketHint
 
     const completion = await openai.chat.completions.create({
       model: AI_MODEL,

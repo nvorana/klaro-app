@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { openai, AI_MODEL } from '@/lib/openai'
+import { getMarketLanguageHintForUser } from '@/lib/marketLanguage'
 
 // POST /api/generate/content-posts
 // Body: { target_market, problem, mechanism, post_type, count }
@@ -16,7 +17,9 @@ export async function POST(request: NextRequest) {
       personal_insight: 'Share an observation or perspective about the reader\'s situation. Make it feel like the writer truly gets their world — not from the outside looking in, but from within.',
     }
 
-    const prompt = `You are a Facebook content strategist for Filipino digital product sellers.
+    const marketHint = await getMarketLanguageHintForUser()
+
+    const prompt = `You are a Facebook content strategist for Filipino digital product sellers.${marketHint}
 
 Target market: ${target_market}
 Problem they face: ${problem}
