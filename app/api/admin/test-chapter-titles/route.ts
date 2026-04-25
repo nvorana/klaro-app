@@ -50,43 +50,19 @@ Return this exact JSON:
 }`
 }
 
-// ── NEW PROMPT (workshop-style sales copy framing) ────────────────────────────
+// ── NEW PROMPT (simple workshop-style) ────────────────────────────────────────
 
 function newPrompt(targetMarket: string, problem: string, ebookTitle: string, chapters: ChapterGoal[]): string {
   const chapterList = chapters.map(c => `Chapter ${c.number}: ${c.goal}`).join('\n')
 
-  return `TASK: Generate irresistible chapter titles for this ebook.
-
-Book: "${ebookTitle}"
+  return `Book: "${ebookTitle}"
 Target Market: ${targetMarket}
 Problem: ${problem}
 
 CHAPTER GOALS:
 ${chapterList}
 
-For each chapter goal above, write a chapter title that makes the reader STOP and want to read it.
-
-USE PERSUASIVE SALES COPY STRATEGY. Each title is a hook.
-The reader should feel: "If I skip this chapter, I'll miss something."
-
-Each title must be: intriguing, captivating, vivid, specific.
-Use simple words ${targetMarket} would actually use — not jargon.
-
-Choose from these proven hook patterns (vary across chapters — don't reuse the same pattern back-to-back):
-- A surprising contradiction ("The Wrong Way Most People Solve X")
-- A specific, unexpected claim ("Why I Stopped Reading Self-Help Books")
-- A question that nags the reader ("What If You're Already Closer Than You Think?")
-- A counter-intuitive truth ("The Best Time to Start Is When You're Tired")
-- A specific number + outcome ("3 Mistakes That Cost Me ₱50,000")
-- An insider truth ("The Thing No One Tells First-Time Parents")
-- A "before/after" framing ("From Stuck at ₱0 to Your First Sale")
-
-NEVER use:
-- Openers like "Introduction to...", "Understanding...", "How to...", "The Power of..."
-- Vague titles: "Getting Started", "The Basics", "Moving Forward"
-- Banned hype words: ultimate, complete, mastering, comprehensive, powerful, secrets
-
-LENGTH: 5–10 words per title. Punchy. Specific.
+Can you come up with a nice, cute, succinct, witty, attention-grabbing chapter titles.
 
 Return this exact JSON:
 {
