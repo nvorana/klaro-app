@@ -3,6 +3,7 @@
 // Philippine market. Applied to all AI-generated content in KLARO.
 
 export const HARD_BANNED = [
+  // ─── Original hype/marketing tells ───────────────────────────────────────
   'unlock',
   'unleash',
   'discover',
@@ -17,6 +18,43 @@ export const HARD_BANNED = [
   'ignite',
   'amplify',
   'supercharge',
+
+  // ─── Category A: ChatGPT signature words ─────────────────────────────────
+  'delve into',
+  'delve',
+  'realm',
+  'in the realm of',
+  'tapestry',
+  'testament',
+  'a testament to',
+  'pivotal',
+  'robust',
+  'garner',
+  'foster',
+  'alignment',
+  'landscape',
+
+  // ─── Category B: Empty filler descriptors ────────────────────────────────
+  'meticulous',
+  'meticulously',
+  'multifaceted',
+  'nuanced',
+  'profound',
+  'profoundly',
+  'holistic',
+  'comprehensive',
+  'streamline',
+  'empower',
+  'leverage',
+
+  // ─── Category D: Stock corporate phrases ─────────────────────────────────
+  "in today's fast-paced world",
+  'ever-evolving',
+  'ever-changing',
+  'at the end of the day',
+  'the bottom line is',
+  'paradigm shift',
+  'synergy',
 ]
 
 export const SOFT_BANNED = [
@@ -24,6 +62,7 @@ export const SOFT_BANNED = [
   'optimize',
   'elevate',
   'breakthrough',
+  'align',  // soft — "align with goals" is borderline; full "alignment" is hard-banned
 ]
 
 const ALL_BANNED = [...HARD_BANNED, ...SOFT_BANNED]
