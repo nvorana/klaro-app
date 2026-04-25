@@ -47,7 +47,6 @@ const SECTION_DEFS = [
   { key: 'lessons', label: 'Pass 3 — Core Lessons',    maxTokens: 3000, color: 'text-blue-400'   },
   { key: 'steps',   label: 'Pass 4 — Practical Steps', maxTokens: 2000, color: 'text-green-400'  },
   { key: 'quickwin',label: 'Pass 5 — Quick Win',       maxTokens: 1500, color: 'text-amber-400'  },
-  { key: 'close',   label: 'Pass 6 — Confidence Close',maxTokens: 900,  color: 'text-purple-400' },
 ]
 
 type OutlineStage = 'idle' | 'loading' | 'done' | 'error'
@@ -199,20 +198,6 @@ function SectionCard({ sec, maxTokens }: { sec: SectionResult; maxTokens: number
             )
           })()}
 
-          {sec.key === 'close' && (() => {
-            const d = sec.data as { confidence_close: string; references: string[] }
-            return (
-              <div>
-                <p className="text-gray-300 text-xs leading-relaxed whitespace-pre-wrap">{d.confidence_close}</p>
-                {d.references?.length > 0 && (
-                  <div className="mt-3">
-                    <p className="text-[10px] text-gray-500 uppercase font-bold mb-1">References</p>
-                    {d.references.map((r, i) => <p key={i} className="text-gray-500 text-[11px] italic">{r}</p>)}
-                  </div>
-                )}
-              </div>
-            )
-          })()}
         </div>
       )}
     </div>

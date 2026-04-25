@@ -61,7 +61,7 @@ interface ChapterDraft {
   core_lessons: string
   practical_steps: PracticalStep[]
   quick_win: QuickWin
-  confidence_close: string
+  confidence_close?: string  // legacy — kept optional for old chapters in DB
 }
 
 // ─── Progress steps (for top bar) ─────────────────────────────────────────────
@@ -737,15 +737,17 @@ export default function Module2Page() {
             </div>
           )}
 
-          {/* Section: Confidence Close */}
-          <div className="mb-8">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-purple-500 text-xs font-bold uppercase tracking-wide">🎯 Confidence Close</span>
+          {/* Confidence Close — kept for backwards compat with old chapter drafts */}
+          {currentDraft.confidence_close && (
+            <div className="mb-8">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-purple-500 text-xs font-bold uppercase tracking-wide">🎯 Confidence Close</span>
+              </div>
+              <div className="bg-white border border-gray-100 rounded-xl p-4">
+                <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-line">{currentDraft.confidence_close}</p>
+              </div>
             </div>
-            <div className="bg-white border border-gray-100 rounded-xl p-4">
-              <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-line">{currentDraft.confidence_close}</p>
-            </div>
-          </div>
+          )}
 
           {/* Action buttons */}
           <div className="space-y-3">
@@ -941,10 +943,12 @@ export default function Module2Page() {
                         </div>
                       </div>
                     )}
-                    <div>
-                      <p className="text-xs text-purple-500 font-bold uppercase tracking-wide mb-1">🎯 Confidence Close</p>
-                      <p className="text-gray-600 text-sm leading-relaxed whitespace-pre-line">{ch.confidence_close}</p>
-                    </div>
+                    {ch.confidence_close && (
+                      <div>
+                        <p className="text-xs text-purple-500 font-bold uppercase tracking-wide mb-1">🎯 Confidence Close</p>
+                        <p className="text-gray-600 text-sm leading-relaxed whitespace-pre-line">{ch.confidence_close}</p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

@@ -80,7 +80,6 @@ interface ChapterDraft {
   core_lessons: string
   practical_steps: PracticalStep[]
   quick_win: QuickWin
-  confidence_close: string
   references?: string[]
 }
 
@@ -422,32 +421,6 @@ Return this exact JSON:
 }`
 }
 
-function pass6_ClosePrompt(chapter: ChapterOutline, nextChapter: ChapterOutline | null): string {
-  const nextRef = nextChapter
-    ? `The NEXT chapter is Chapter ${nextChapter.number}: "${nextChapter.title}" — which covers: ${nextChapter.goal}`
-    : 'This is the final chapter.'
-
-  return `TASK: Confidence Close for Chapter ${chapter.number} — "${chapter.title}"
-
-${nextRef}
-
-Write ONLY the Confidence Close and references. This is the last thing the reader sees before turning the page.
-
-RULES:
-- 2–3 short paragraphs only
-- Paragraph 1: Reinforce that the reader CAN do what this chapter taught — tie it to one specific action from the Practical Steps or Quick Win
-- Paragraph 2: Remove the most common self-doubt they feel right now. Be specific — name the doubt, then dismantle it with a real reason
-- Final sentence: A teaser for the next chapter that creates genuine curiosity. Reference the EXACT next chapter title. NOT "In the next chapter we will discuss..." — something more alive, like: "The next piece? It's the one most people skip — and it's why Chapter ${nextChapter ? nextChapter.number : ''} exists."
-- Do NOT use generic motivation ("You've got this!", "Believe in yourself")
-- If this chapter mentioned any specific books, studies, articles, or named authors, list them in references. Otherwise return [].
-
-Return this exact JSON:
-{
-  "confidence_close": "Full closing text here — use \\n\\n between paragraphs",
-  "references": []
-}`
-}
-
 // ─── SINGLE-PASS CHAPTER PROMPT (non-standard types) ─────────────────────────
 
 function singlePassChapterPrompt(project: Project, bookTitle: string, chapter: ChapterOutline, allChapters: ChapterOutline[]): string {
@@ -507,7 +480,6 @@ Return this exact JSON:
     "instructions": ["Specific step", "Next step"],
     "immediate_result": "The tangible thing they will have when done"
   },
-  "confidence_close": "...",
   "references": []
 }`
 
@@ -602,10 +574,8 @@ async function generateStandardChapterMultiPass(
   project: Project,
   bookTitle: string,
   chapter: ChapterOutline,
-  allChapters: ChapterOutline[]
+  _allChapters: ChapterOutline[]
 ): Promise<ChapterDraft> {
-  const nextChapter = allChapters.find(c => c.number === chapter.number + 1) ?? null
-
   console.log(`[ebook-agent] Chapter ${chapter.number} multi-pass — starting`)
 
   // Pass 0 + Pass 1 in parallel (both are independent)
@@ -646,17 +616,6 @@ async function generateStandardChapterMultiPass(
   }
   console.log(`[ebook-agent] Chapter ${chapter.number} — quick win done`)
 
-  // Pass 6: Confidence Close (story + lessons as context, next chapter ref)
-  const closeData = await callOpenAI(
-    pass6_ClosePrompt(chapter, nextChapter),
-    [
-      { role: 'assistant', content: JSON.stringify(storyData) },
-      { role: 'assistant', content: JSON.stringify(lessonsData) },
-    ],
-    900
-  ) as { confidence_close: string; references: string[] }
-  console.log(`[ebook-agent] Chapter ${chapter.number} — close done`)
-
   return {
     number:           chapter.number,
     title:            chapter.title,
@@ -666,8 +625,7 @@ async function generateStandardChapterMultiPass(
     core_lessons:     lessonsData.core_lessons,
     practical_steps:  stepsData.practical_steps,
     quick_win:        quickWinData.quick_win,
-    confidence_close: closeData.confidence_close,
-    references:       closeData.references ?? [],
+    references:       [],
   }
 }
 
@@ -826,11 +784,8 @@ export async function POST(request: NextRequest) {
         const section      = data.section as string
         const bookTitle    = data.book_title as string
         const chapter      = data.chapter as ChapterOutline
-        const allChapters  = data.all_chapters as ChapterOutline[]
         const ctxStory     = data.ctx_story     as string | undefined
         const ctxLessons   = data.ctx_lessons   as string | undefined
-
-        const nextChapter  = allChapters.find(c => c.number === chapter.number + 1) ?? null
 
         let prompt: string
         let maxTokens: number
@@ -865,14 +820,6 @@ export async function POST(request: NextRequest) {
           case 'quickwin':
             prompt    = pass5_QuickWinPrompt(chapter)
             maxTokens = 1500
-            break
-          case 'close':
-            prompt    = pass6_ClosePrompt(chapter, nextChapter)
-            maxTokens = 900
-            context   = [
-              ...(ctxStory   ? [{ role: 'assistant' as const, content: JSON.stringify({ story_starter: ctxStory }) }] : []),
-              ...(ctxLessons ? [{ role: 'assistant' as const, content: JSON.stringify({ core_lessons: ctxLessons }) }] : []),
-            ]
             break
           default:
             return NextResponse.json({ error: `Unknown section: ${section}` }, { status: 400 })

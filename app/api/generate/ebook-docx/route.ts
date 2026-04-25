@@ -39,7 +39,6 @@ interface ChapterDraft {
   core_lessons: string
   practical_steps: PracticalStep[]
   quick_win: QuickWin
-  confidence_close: string
   references?: string[]
 }
 
@@ -354,13 +353,6 @@ function buildDocument(ebook: EbookData): Document {
           spacing: { after: 160 },
         }))
       }
-    }
-
-    // Confidence Close
-    if (ch.confidence_close) {
-      children.push(sectionLabel('Closing', '6a329f'))
-      children.push(spacer(80))
-      children.push(...textToParagraphs(ch.confidence_close, true))
     }
 
     // References
