@@ -254,30 +254,38 @@ Return this exact JSON:
 }
 
 function pass2_StoryPrompt(project: Project, bookTitle: string, chapter: ChapterOutline): string {
-  return `TASK: Story Starter for Chapter ${chapter.number} — "${chapter.title}"
+  return `TASK: Story-driven introduction for Chapter ${chapter.number} — "${chapter.title}"
 
 Book: "${bookTitle}"
 Target Market: ${project.target_market}
 Problem: ${project.problem}
 Chapter Goal: ${chapter.goal}
 
-Write ONLY the Story Starter for this chapter. Do NOT teach yet — pure storytelling.
+Write an introduction for this chapter that uses a STORY.
 
-CINEMATIC TECHNIQUE — follow this exactly:
-- Open in a specific moment, mid-scene. No preamble.
-- Use a fictional but hyper-realistic Filipino character from the target market. Give them a full name and a concrete situation.
-- VARY sentence length deliberately. Long sentences for building tension. Then short ones. Very short ones. One-word sentences if needed.
-- Use real Taglish dialogue in quotation marks — the words people actually say to themselves or others.
-- Show the pain through specific sensory detail — not "she was stressed" but what she saw, said, felt, or did.
-- Include at least one moment of false hope followed by a harder fall. (e.g. They thought it was fixed. It wasn't.)
-- End the story with a powerful realization line — something that flips their understanding.
-- NEVER start the transition with "In this chapter" or generic openers.
-- Transition to the lesson with something like: "Because here's what most [target market] don't realize:" or "That's the thing about [topic]."
-- 300–500 words. No more. No padding.
+The story must be: engaging, unique, intriguing, captivating, vivid.
+Use simple words that ${project.target_market} can relate to.
+
+End with a POWERFUL HOOK that keeps the reader hanging — they MUST keep reading.
+USE PERSUASIVE SALES COPY STRATEGY to make the reader read every line.
+Every paragraph pulls them to the next.
+
+CHARACTER (the protagonist):
+- Fictional but hyper-realistic Filipino from ${project.target_market}
+- Full name, specific job, specific city, specific situation
+- Show their pain through sensory detail — what they saw, said, felt, did
+- Include one moment of false hope, followed by a harder fall
+
+VOICE:
+- Simple words. Conversational. Light Taglish where it lands harder than English.
+- Real dialogue in quotation marks — what people actually say
+- Vary sentence length: long for tension, short for impact
+
+LENGTH: 300–500 words.
 
 Return this exact JSON:
 {
-  "story_starter": "Full story text here — use \\n\\n between paragraphs for line breaks"
+  "story_starter": "Full story text — use \\n\\n between paragraphs"
 }`
 }
 
