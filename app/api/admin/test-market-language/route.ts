@@ -66,34 +66,82 @@ export async function POST(request: NextRequest) {
   if (me?.role !== 'admin') return NextResponse.json({ error: 'Forbidden — admin only' }, { status: 403 })
 
   const body = await request.json()
-  const { foundation_id, chapter_index } = body as { foundation_id: string; chapter_index: number }
+  const {
+    foundation_id,
+    chapter_index,
+    // Custom niche inputs (used when foundation_id is empty)
+    target_market: customTarget,
+    core_problem: customProblem,
+    unique_mechanism: customMechanism,
+    ebook_title: customEbookTitle,
+    chapter_title: customChapterTitle,
+    chapter_goal: customChapterGoal,
+  } = body as {
+    foundation_id?: string
+    chapter_index?: number
+    target_market?: string
+    core_problem?: string
+    unique_mechanism?: string
+    ebook_title?: string
+    chapter_title?: string
+    chapter_goal?: string
+  }
 
-  const foundation = getTestFoundation(foundation_id)
-  if (!foundation) return NextResponse.json({ error: 'Unknown foundation_id' }, { status: 400 })
+  // Resolve project context — either from preset foundation or custom inputs.
+  let label: string
+  let target_market: string
+  let core_problem: string
+  let unique_mechanism: string
+  let ebook_title: string
+  let clarity_sentence: string
+  let chapter_title: string
+  let chapter_goal: string
+  let chapter_number = 1
 
-  const ch = foundation.ebook_chapters[chapter_index] ?? foundation.ebook_chapters[0]
-  if (!ch) return NextResponse.json({ error: 'No chapter at that index' }, { status: 400 })
+  if (foundation_id) {
+    const foundation = getTestFoundation(foundation_id)
+    if (!foundation) return NextResponse.json({ error: 'Unknown foundation_id' }, { status: 400 })
+    const ch = foundation.ebook_chapters[chapter_index ?? 0] ?? foundation.ebook_chapters[0]
+    if (!ch) return NextResponse.json({ error: 'No chapter at that index' }, { status: 400 })
+    label = foundation.label
+    target_market = foundation.target_market
+    core_problem = foundation.core_problem
+    unique_mechanism = foundation.unique_mechanism
+    ebook_title = foundation.ebook_title
+    clarity_sentence = foundation.clarity_sentence
+    chapter_title = ch.title
+    chapter_goal = ch.core_lessons
+    chapter_number = ch.chapter_number
+  } else {
+    if (!customTarget?.trim() || !customProblem?.trim() || !customMechanism?.trim() || !customChapterTitle?.trim() || !customChapterGoal?.trim()) {
+      return NextResponse.json({
+        error: 'Custom niche requires target_market, core_problem, unique_mechanism, chapter_title, and chapter_goal.',
+      }, { status: 400 })
+    }
+    label = 'Custom niche'
+    target_market = customTarget.trim()
+    core_problem = customProblem.trim()
+    unique_mechanism = customMechanism.trim()
+    ebook_title = customEbookTitle?.trim() || `A practical guide for ${target_market}`
+    clarity_sentence = `I help ${target_market} who struggle with ${core_problem} through ${unique_mechanism}`
+    chapter_title = customChapterTitle.trim()
+    chapter_goal = customChapterGoal.trim()
+  }
 
   try {
-    // Step 1 — generate the niche language pack for this foundation.
+    // Step 1 — generate the niche language pack.
     const languageStarted = Date.now()
     const language: MarketLanguage = await generateMarketLanguage({
-      target_market: foundation.target_market,
-      problem: foundation.core_problem,
-      mechanism: foundation.unique_mechanism,
-      clarity_sentence: foundation.clarity_sentence,
+      target_market,
+      problem: core_problem,
+      mechanism: unique_mechanism,
+      clarity_sentence,
     })
     const languageElapsed = Date.now() - languageStarted
     const marketHint = buildMarketLanguageHint(language)
 
     // Step 2 — same story prompt run TWICE in parallel.
-    const prompt = storyPrompt(
-      foundation.target_market,
-      foundation.core_problem,
-      foundation.ebook_title,
-      ch.title,
-      ch.core_lessons,
-    )
+    const prompt = storyPrompt(target_market, core_problem, ebook_title, chapter_title, chapter_goal)
 
     const [withResult, withoutResult] = await Promise.all([
       runStory(prompt, marketHint),
@@ -102,10 +150,10 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      foundation_label: foundation.label,
-      target_market: foundation.target_market,
-      ebook_title: foundation.ebook_title,
-      chapter: { number: ch.chapter_number, title: ch.title, goal: ch.core_lessons },
+      foundation_label: label,
+      target_market,
+      ebook_title,
+      chapter: { number: chapter_number, title: chapter_title, goal: chapter_goal },
       language_pack: language,
       language_elapsed_ms: languageElapsed,
       prompt_used: prompt,

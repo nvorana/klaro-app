@@ -74,9 +74,21 @@ interface Result {
   without_language: { story: string; word_count: number; elapsed_ms: number }
 }
 
+type Mode = 'preset' | 'custom'
+
 export default function TestMarketLanguagePage() {
+  const [mode, setMode] = useState<Mode>('preset')
   const [foundationId, setFoundationId] = useState<string>('softening_silence')
   const [chapterIndex, setChapterIndex] = useState<number>(0)
+
+  // Custom niche inputs
+  const [customTarget, setCustomTarget] = useState('Filipino men in their 50s struggling to lose weight')
+  const [customProblem, setCustomProblem] = useState('belly weight that won\'t budge despite eating less, knees and BP starting to act up')
+  const [customMechanism, setCustomMechanism] = useState('a simple eat-and-walk system designed for busy older men, not gym-style workouts')
+  const [customEbookTitle, setCustomEbookTitle] = useState('Lighter at 50: A Practical Guide for Filipino Men Who Want Their Energy Back')
+  const [customChapterTitle, setCustomChapterTitle] = useState('Why Crash Diets Fail Men in Their 50s')
+  const [customChapterGoal, setCustomChapterGoal] = useState('Explain why aggressive diets backfire after 50, introduce the slow-and-steady principle, get the reader to accept that small consistent changes beat heroic effort')
+
   const [running, setRunning] = useState(false)
   const [result, setResult] = useState<Result | null>(null)
   const [error, setError] = useState('')
@@ -91,10 +103,20 @@ export default function TestMarketLanguagePage() {
     setResult(null)
     setWinner(null)
     try {
+      const payload = mode === 'preset'
+        ? { foundation_id: foundationId, chapter_index: chapterIndex }
+        : {
+            target_market: customTarget,
+            core_problem: customProblem,
+            unique_mechanism: customMechanism,
+            ebook_title: customEbookTitle,
+            chapter_title: customChapterTitle,
+            chapter_goal: customChapterGoal,
+          }
       const res = await fetch('/api/admin/test-market-language', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ foundation_id: foundationId, chapter_index: chapterIndex }),
+        body: JSON.stringify(payload),
       })
       const data = await res.json()
       if (!res.ok) {
@@ -134,42 +156,81 @@ export default function TestMarketLanguagePage() {
 
         {/* Inputs */}
         <div className="bg-white rounded-2xl p-5 border border-gray-100 mb-4">
-          <p className="text-xs font-semibold text-[#1A1F36] uppercase tracking-wide mb-3">Test Input</p>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
-            <div>
-              <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Foundation (niche)</label>
-              <select
-                value={foundationId}
-                onChange={e => { setFoundationId(e.target.value); setChapterIndex(0) }}
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs font-semibold text-[#1A1F36] uppercase tracking-wide">Test Input</p>
+            <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
+              <button
+                onClick={() => setMode('preset')}
                 disabled={running}
-                className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm bg-white"
+                className="px-3 py-1 rounded-md text-[11px] font-semibold transition-all"
+                style={{
+                  background: mode === 'preset' ? '#1A1F36' : 'transparent',
+                  color: mode === 'preset' ? '#F4B942' : '#6b7280',
+                }}
               >
-                {FOUNDATIONS.map(f => (
-                  <option key={f.id} value={f.id}>{f.label}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Chapter</label>
-              <select
-                value={chapterIndex}
-                onChange={e => setChapterIndex(Number(e.target.value))}
+                Preset foundation
+              </button>
+              <button
+                onClick={() => setMode('custom')}
                 disabled={running}
-                className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm bg-white"
+                className="px-3 py-1 rounded-md text-[11px] font-semibold transition-all"
+                style={{
+                  background: mode === 'custom' ? '#1A1F36' : 'transparent',
+                  color: mode === 'custom' ? '#F4B942' : '#6b7280',
+                }}
               >
-                {currentFoundation.chapters.map((ch, i) => (
-                  <option key={ch.chapter_number} value={i}>Ch {ch.chapter_number}: {ch.title}</option>
-                ))}
-              </select>
+                Custom niche
+              </button>
             </div>
           </div>
 
-          <div className="bg-gray-50 rounded-lg p-3 border border-gray-100 mb-3 text-xs text-gray-600">
-            <p><span className="font-semibold">Target:</span> {currentFoundation.target_market}</p>
-            <p><span className="font-semibold">Book:</span> {currentFoundation.ebook_title}</p>
-            <p><span className="font-semibold">Chapter goal:</span> {selectedChapter.core_lessons}</p>
-          </div>
+          {mode === 'preset' ? (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                <div>
+                  <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Foundation (niche)</label>
+                  <select
+                    value={foundationId}
+                    onChange={e => { setFoundationId(e.target.value); setChapterIndex(0) }}
+                    disabled={running}
+                    className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm bg-white"
+                  >
+                    {FOUNDATIONS.map(f => (
+                      <option key={f.id} value={f.id}>{f.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Chapter</label>
+                  <select
+                    value={chapterIndex}
+                    onChange={e => setChapterIndex(Number(e.target.value))}
+                    disabled={running}
+                    className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm bg-white"
+                  >
+                    {currentFoundation.chapters.map((ch, i) => (
+                      <option key={ch.chapter_number} value={i}>Ch {ch.chapter_number}: {ch.title}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="bg-gray-50 rounded-lg p-3 border border-gray-100 mb-3 text-xs text-gray-600">
+                <p><span className="font-semibold">Target:</span> {currentFoundation.target_market}</p>
+                <p><span className="font-semibold">Book:</span> {currentFoundation.ebook_title}</p>
+                <p><span className="font-semibold">Chapter goal:</span> {selectedChapter.core_lessons}</p>
+              </div>
+            </>
+          ) : (
+            <div className="space-y-3 mb-3">
+              <CustomField label="Target market" value={customTarget} onChange={setCustomTarget} disabled={running} placeholder='e.g. Filipino men in their 50s struggling to lose weight' />
+              <CustomField label="Core problem" value={customProblem} onChange={setCustomProblem} disabled={running} placeholder="What they're stuck on, in their words" />
+              <CustomField label="Unique mechanism / solution" value={customMechanism} onChange={setCustomMechanism} disabled={running} placeholder="What the creator's approach is" />
+              <CustomField label="Ebook title (optional)" value={customEbookTitle} onChange={setCustomEbookTitle} disabled={running} placeholder="Leave blank to auto-generate" />
+              <CustomField label="Chapter title" value={customChapterTitle} onChange={setCustomChapterTitle} disabled={running} placeholder="The chapter being tested" />
+              <CustomField label="Chapter goal / core lessons" value={customChapterGoal} onChange={setCustomChapterGoal} disabled={running} placeholder="What this chapter teaches" multiline />
+            </div>
+          )}
 
           <button
             onClick={runComparison}
@@ -247,6 +308,40 @@ export default function TestMarketLanguagePage() {
           </>
         )}
       </div>
+    </div>
+  )
+}
+
+function CustomField({ label, value, onChange, disabled, placeholder, multiline }: {
+  label: string
+  value: string
+  onChange: (v: string) => void
+  disabled: boolean
+  placeholder?: string
+  multiline?: boolean
+}) {
+  return (
+    <div>
+      <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5">{label}</label>
+      {multiline ? (
+        <textarea
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          disabled={disabled}
+          placeholder={placeholder}
+          rows={2}
+          className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm bg-white resize-none"
+        />
+      ) : (
+        <input
+          type="text"
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          disabled={disabled}
+          placeholder={placeholder}
+          className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm bg-white"
+        />
+      )}
     </div>
   )
 }
