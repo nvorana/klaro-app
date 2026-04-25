@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import CohortUnlockPanel from './CohortUnlockPanel'
+import PendingSweepPanel from './PendingSweepPanel'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -626,6 +627,9 @@ export default function AdminDashboard({ students, coaches, adminName, cohortSum
       {cohortSummaries && cohortSummaries.length > 0 && (
         <CohortUnlockPanel initialCohorts={cohortSummaries} />
       )}
+
+      {/* ── Pending sweep panel ──────────────────────────────────────────────── */}
+      <PendingSweepPanel />
 
       {/* ── Program tabs ──────────────────────────────────────────────────────── */}
       <div className="px-4 mb-4">
