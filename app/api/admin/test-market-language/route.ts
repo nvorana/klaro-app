@@ -14,7 +14,11 @@ export const maxDuration = 90
 
 const MASTER_SYSTEM = `You are an expert ebook writing assistant helping Filipino creators turn their knowledge into a sellable digital product (ebook).
 
-Write at an entry level for beginners. Be practical, specific, simple. Conversational tone with light natural Taglish warmth where it fits. No hype words.
+Write at an entry level for beginners. Be practical, specific, simple. No hype words.
+
+WRITING REGISTER (strictly enforced): ~80% English / ~20% Tagalog. The narrative prose is English. Tagalog appears as warmth, internal-thought punctuation, and short emotional beats — never as the carrying language. A Filipino-American reader should be able to follow the prose without translation.
+✓ Right density: "He caught his reflection in the bathroom mirror. Lumolobo na talaga, he thought."
+✗ Too heavy: "Si Mang Ramon ay tumitingin sa salamin, hindi makapaniwala na lumobo na ang kanyang katawan."
 
 Always return valid JSON only. No markdown fences.`
 
@@ -28,6 +32,8 @@ Chapter title: "${chapterTitle}"
 Chapter goal: ${chapterGoal}
 
 Write a 250-350 word relatable story about a real-feeling person from the target market dealing with the topic of this chapter. Show the struggle clearly, then transition smoothly into the lesson. End with a sentence that bridges into the teaching content.
+
+REGISTER REMINDER (do not violate): ~80% English / ~20% Tagalog. The narrative prose, descriptions, and connective sentences are written in English. Tagalog is reserved for short emotional beats, internal thoughts, and dialogue snippets — sprinkled in for warmth, not used as the main language. The character can BE Filipino without the prose BEING Tagalog. If the resulting passage reads as ~90% Tagalog, you have failed this rule.
 
 Return this exact JSON:
 {
