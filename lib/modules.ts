@@ -55,13 +55,18 @@ export function isModuleUnlockedForStudent(
     return true
   }
 
-  // ── TOPIS: weekly drip by default, but explicit unlocked_modules override
-  //    wins (used to grandfather past-batch alumni who should see all 7).
+  // ── TOPIS: weekly drip + additive explicit unlocks ────────────────────
+  // The student gets access if EITHER the drip has unlocked this module,
+  // OR the module is in their explicit unlocked_modules array.
+  // This way, manual unlocks add to the drip without disabling future
+  // weekly unlocks. Used for:
+  //   - past-batch alumni: unlocked_modules=[1..7] gives them all immediately
+  //   - mid-cohort early access: unlocked_modules=[1,2] lets the class start
+  //     Module 2 early; the drip still adds 3,4,5,6,7 weekly
   if (programType === 'topis') {
-    if (unlockedModules && unlockedModules.length > 0) {
-      return unlockedModules.includes(moduleNumber)
-    }
-    return isModuleUnlocked(enrolledAt, moduleNumber)
+    if (isModuleUnlocked(enrolledAt, moduleNumber)) return true
+    if (unlockedModules && unlockedModules.includes(moduleNumber)) return true
+    return false
   }
 
   // ── Accelerator: unlocked_modules array controls access ───────────────
