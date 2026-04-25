@@ -14,10 +14,10 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface MarketLanguage {
-  everyday_phrases: string[]   // casual Taglish phrases this market uses
-  emotional_words: string[]    // feeling/struggle words they reach for
-  world_references: string[]   // places, tools, routines, situations specific to their world
-  jargon: string[]             // insider slang, niche terminology
+  everyday_phrases: string[]   // English-primary day-to-day phrases with light Tagalog accents
+  emotional_words: string[]    // feeling/struggle words — Tagalog density can run higher here
+  world_references: string[]   // places, tools, routines, situations — almost all English
+  jargon: string[]             // insider/professional terms — almost all English
 }
 
 interface ProjectContext {
@@ -30,12 +30,21 @@ interface ProjectContext {
 // ─── Generator ────────────────────────────────────────────────────────────────
 // Single OpenAI call. Returns the full categorized language pack.
 
-const SYSTEM_PROMPT = `You are a Filipino market researcher specializing in capturing the actual day-to-day language a specific niche audience uses.
+const SYSTEM_PROMPT = `You are a Filipino market researcher specializing in capturing the actual day-to-day language a specific niche audience uses for ENGLISH-PRIMARY content (with light Taglish warmth).
 
-Your job is to produce a categorized language pack — the real words, phrases, slang, and references this exact group reaches for when they talk about their problem and their world.
+Your job is to produce a categorized language pack — the real words, phrases, slang, and references this exact group reaches for when they talk about their problem and their world — phrased the way they would appear inside English-primary writing aimed at this audience.
 
-Rules:
-- Use casual Taglish where it would be natural for this group. Some markets are mostly English, some mix heavily — match the group.
+LANGUAGE REGISTER — strictly enforced:
+- The audience reads CONTENT that is ~80% English and ~20% Tagalog, with Tagalog used as warmth and emotional accent — NOT as the main language.
+- Light, casual Taglish only. NOT deep or formal Tagalog. If a Filipino-American reader couldn't follow it, it's too heavy.
+- Phrases should sound like how someone bilingual actually talks in real life: an English sentence with one or two Tagalog words mixed in for warmth, or a short Tagalog phrase used as a stylistic punch inside otherwise English content.
+- Per-bucket density (this matters):
+  - everyday_phrases: ~80% English with light Tagalog accents. Example good: "yung pants ko hindi na kasya" or "I haven't lost weight in years." Example BAD (too heavy): "Sumosobra na ang taba ko sa katawan, hindi ko na alam ang gagawin."
+  - emotional_words: ~50/50 is fine — feelings genuinely hit harder in mother tongue, so Tagalog density can run higher here. "frustrated", "nakakahiya", "pagod na pagod", "guilty pag kumain" are all welcome.
+  - world_references: ~95% English. Place names, brands, tools, body-parts in clinical context — almost always English. (Mercury Drug, BP medication, fatty liver, Lazada.)
+  - jargon: ~95% English. Medical, professional, hobby-insider terms. (BMI, pre-diabetic, intermittent fasting, uric acid.)
+
+Other rules:
 - Be SPECIFIC to this niche. Avoid generic Filipino phrases that ANY Filipino would say.
 - Capture the WAY this group thinks and feels, not just topic words.
 - Include real-world specifics: places they go, tools they use, routines they follow, situations they're in.
@@ -52,10 +61,10 @@ Produce a categorized language pack for this exact group. Aim for ~30 entries TO
 
 Return this exact JSON shape:
 {
-  "everyday_phrases": ["casual Taglish phrases this group uses day-to-day, ~7-10 entries"],
-  "emotional_words": ["feeling/struggle words they reach for when describing this problem, ~6-8 entries"],
-  "world_references": ["specific places, tools, routines, situations from THEIR world, ~7-10 entries"],
-  "jargon": ["insider slang or niche terminology only this group would know, ~5-8 entries"]
+  "everyday_phrases": ["~7-10 entries, ENGLISH-PRIMARY with light Tagalog accents — phrases as they'd appear inside 80/20 Taglish content"],
+  "emotional_words": ["~6-8 feeling/struggle words — ~50/50 mix is fine since emotions hit harder in mother tongue"],
+  "world_references": ["~7-10 specific places, tools, routines from THEIR world — almost all English"],
+  "jargon": ["~5-8 insider/professional terms only this group would know — almost all English"]
 }`
 
 export async function generateMarketLanguage(project: ProjectContext): Promise<MarketLanguage> {
@@ -112,6 +121,8 @@ export function buildMarketLanguageHint(language: MarketLanguage | null | undefi
   return `
 
 MARKET LANGUAGE — these are the actual words and phrases your reader's exact niche uses every day. Weave them naturally into your writing where they fit. The reader should feel "this writer is in my world" — not because every phrase is forced in, but because the language doesn't sound generic. Reach for these BEFORE generic English equivalents.
+
+Keep the OVERALL writing register English-primary (~80% English / ~20% Tagalog). Don't let these phrases shift your output into deep Tagalog — they're warmth and grounding, not the main language. Emotional moments can lean a bit more Tagalog because feelings hit harder in mother tongue; world-references and jargon stay almost entirely English.
 
 ${sections.join('\n')}
 `
