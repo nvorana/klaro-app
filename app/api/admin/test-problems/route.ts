@@ -102,6 +102,29 @@ async function runPrompt<T>(prompt: string): Promise<{ items: T[]; elapsed_ms: n
   }
 }
 
+// Server-side re-rank — mirrors the production logic in app/api/generate/clarity.
+// Deterministic ordering from WTP + Ease badges so what the user sees stays
+// internally consistent (High+Easy can never rank below Medium+Moderate).
+function rerankByBadges(items: ProductionItem[]): ProductionItem[] {
+  const score = (item: ProductionItem): number => {
+    const wtp = (item.willingness_to_pay ?? '').toString().toLowerCase()
+    const ease = (item.ease_of_selling ?? '').toString().toLowerCase()
+    const wtpScore = wtp.startsWith('high') ? 3 : wtp.startsWith('low') ? 1 : 2
+    const easeScore = ease.startsWith('easy') ? 3 : ease.startsWith('hard') ? 1 : 2
+    return wtpScore * 10 + easeScore
+  }
+  return items
+    .map((item, originalIndex) => ({ item, originalIndex }))
+    .sort((a, b) => {
+      const diff = score(b.item) - score(a.item)
+      if (diff !== 0) return diff
+      const aRank = typeof a.item.rank === 'number' ? a.item.rank : a.originalIndex + 1
+      const bRank = typeof b.item.rank === 'number' ? b.item.rank : b.originalIndex + 1
+      return aRank - bRank
+    })
+    .map(({ item }, i) => ({ ...item, rank: i + 1 }))
+}
+
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -127,7 +150,7 @@ export async function POST(request: NextRequest) {
       success: true,
       target_market: target_market.trim(),
       production: {
-        items: prodResult.items,
+        items: rerankByBadges(prodResult.items),
         elapsed_ms: prodResult.elapsed_ms,
         prompt: productionPromptText,
       },

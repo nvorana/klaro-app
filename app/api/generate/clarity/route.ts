@@ -236,6 +236,42 @@ Return JSON: { "sentence": "..." }`
       }
     }
 
+    // ── Server-side re-rank for problems step ────────────────────────────────
+    // The AI fills willingness_to_pay + ease_of_selling badges and ALSO assigns
+    // a rank, but the two are independent decisions in the model's head — so
+    // High+Easy items sometimes ended up ranked below Medium+Moderate items.
+    // We deterministically re-rank from the badges so what the user sees is
+    // logically consistent: the displayed badges actually drive the order.
+    //   WTP weighted heavier than Ease since profitability is primarily about
+    //   revenue-per-customer (WTP), with selling ease as the secondary lever.
+    //   AI's original rank acts as a stable tiebreaker within score buckets.
+    if (step === 'problems' && Array.isArray(result)) {
+      type ProblemItem = {
+        rank?: number
+        willingness_to_pay?: string
+        ease_of_selling?: string
+        [key: string]: unknown
+      }
+      const score = (item: ProblemItem): number => {
+        const wtp = (item.willingness_to_pay ?? '').toString().toLowerCase()
+        const ease = (item.ease_of_selling ?? '').toString().toLowerCase()
+        const wtpScore = wtp.startsWith('high') ? 3 : wtp.startsWith('low') ? 1 : 2
+        const easeScore = ease.startsWith('easy') ? 3 : ease.startsWith('hard') ? 1 : 2
+        return wtpScore * 10 + easeScore
+      }
+      result = (result as ProblemItem[])
+        .map((item, originalIndex) => ({ item, originalIndex }))
+        .sort((a, b) => {
+          const diff = score(b.item) - score(a.item)
+          if (diff !== 0) return diff
+          // Tiebreaker — preserve AI's preference within equal-score buckets.
+          const aRank = typeof a.item.rank === 'number' ? a.item.rank : a.originalIndex + 1
+          const bRank = typeof b.item.rank === 'number' ? b.item.rank : b.originalIndex + 1
+          return aRank - bRank
+        })
+        .map(({ item }, i) => ({ ...item, rank: i + 1 }))
+    }
+
     return NextResponse.json({ data: result })
   } catch (error) {
     console.error('Clarity generation error:', error)
