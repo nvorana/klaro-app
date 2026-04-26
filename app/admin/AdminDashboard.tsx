@@ -606,6 +606,12 @@ export default function AdminDashboard({ students, coaches, adminName, cohortSum
             Language A/B
           </a>
           <a
+            href="/admin/test-problems"
+            className="text-[11px] font-bold text-[#F4B942] border border-[#F4B942]/40 px-3 py-1.5 rounded-lg hover:bg-[#F4B942]/10 transition-colors"
+          >
+            Problems A/B
+          </a>
+          <a
             href="/admin/test-module8"
             className="text-[11px] font-bold text-[#F4B942] border border-[#F4B942]/40 px-3 py-1.5 rounded-lg hover:bg-[#F4B942]/10 transition-colors"
           >
