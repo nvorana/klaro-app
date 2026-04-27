@@ -3,6 +3,7 @@ import { openai, AI_MODEL } from '@/lib/openai'
 import { findBannedWords, buildCorrectionPrompt } from '@/lib/bannedWords'
 import { buildVocabularyHint } from '@/lib/preferredVocabulary'
 import { getMarketLanguageHintForUser } from '@/lib/marketLanguage'
+import { editChapter, type ChapterShape } from '@/lib/ebookEditor'
 
 // ─── MASTER SYSTEM PROMPT ────────────────────────────────────────────────────
 
@@ -759,6 +760,30 @@ export async function POST(request: NextRequest) {
 
         if (chapterType === 'standard') {
           result = await generateStandardChapterMultiPass(project, bookTitle, chapter, allChapters, marketHint)
+
+          // ── Editor pass (standard chapters only, server-side) ────────────
+          // Tier 1 validators always run; Tier 2 + reviser only fire if Tier 1
+          // flags. Failures here never break the route — fall back to the
+          // original chapter. The full report is admin-only debug telemetry.
+          try {
+            const edited = await editChapter(result as unknown as ChapterShape, {
+              outline: {
+                title: chapter.title,
+                goal: chapter.goal,
+                quick_win_outcome: chapter.quick_win_outcome,
+              },
+            })
+            if (edited.report.reviser_ran && edited.report.reviser_succeeded) {
+              result = edited.chapter as unknown as ChapterDraft
+            }
+            if (edited.report.total_issues_found > 0) {
+              console.log(
+                `[ebook-agent] Editor: chapter ${chapter.number} — ${edited.report.total_issues_found} found, ${edited.report.total_issues_remaining} remaining, reviser ${edited.report.reviser_ran ? (edited.report.reviser_succeeded ? 'succeeded' : 'failed') : 'skipped'}`
+              )
+            }
+          } catch (editErr) {
+            console.error('[ebook-agent] editor pass threw, returning unedited chapter:', editErr)
+          }
         } else {
           result = await callOpenAI(
             singlePassChapterPrompt(project, bookTitle, chapter, allChapters),
