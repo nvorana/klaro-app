@@ -36,14 +36,24 @@ export async function POST(request: NextRequest) {
     const adminClient = createAdminClient()
 
     // For each student, append moduleNumber to their unlocked_modules array (no duplicates)
-    const updates = studentIds.map((id: string) =>
-      adminClient.rpc('unlock_module_for_student', {
-        p_student_id: id,
-        p_module_number: moduleNumber,
-      })
+    const results = await Promise.all(
+      studentIds.map((id: string) =>
+        adminClient.rpc('unlock_module_for_student', {
+          p_student_id: id,
+          p_module_number: moduleNumber,
+        })
+      )
     )
 
-    await Promise.all(updates)
+    // Surface any RPC failures (don't silently return success).
+    const failures = results.filter(r => r.error).map(r => r.error?.message)
+    if (failures.length > 0) {
+      console.error('[unlock-modules] RPC errors:', failures)
+      return NextResponse.json(
+        { error: 'unlock_failed', detail: failures[0], failures },
+        { status: 500 },
+      )
+    }
 
     return NextResponse.json({ success: true, updated: studentIds.length, moduleNumber })
   } catch (err) {

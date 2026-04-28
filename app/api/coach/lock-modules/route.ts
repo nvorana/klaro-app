@@ -36,14 +36,26 @@ export async function POST(request: NextRequest) {
     const adminClient = createAdminClient()
 
     // For each student, remove moduleNumber from their unlocked_modules array
-    const updates = studentIds.map((id: string) =>
-      adminClient.rpc('lock_module_for_student', {
-        p_student_id: id,
-        p_module_number: moduleNumber,
-      })
+    const results = await Promise.all(
+      studentIds.map((id: string) =>
+        adminClient.rpc('lock_module_for_student', {
+          p_student_id: id,
+          p_module_number: moduleNumber,
+        })
+      )
     )
 
-    await Promise.all(updates)
+    // Surface any RPC failures (previous version silently returned success
+    // even when the underlying function call errored — masked a missing-RPC
+    // bug for weeks. Don't repeat that.)
+    const failures = results.filter(r => r.error).map(r => r.error?.message)
+    if (failures.length > 0) {
+      console.error('[lock-modules] RPC errors:', failures)
+      return NextResponse.json(
+        { error: 'lock_failed', detail: failures[0], failures },
+        { status: 500 },
+      )
+    }
 
     return NextResponse.json({ success: true, updated: studentIds.length, moduleNumber })
   } catch (err) {

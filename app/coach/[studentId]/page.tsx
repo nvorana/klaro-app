@@ -71,14 +71,21 @@ export default function StudentDetail() {
     setLockLoading(moduleNum)
     const endpoint = currentlyUnlocked ? '/api/coach/lock-modules' : '/api/coach/unlock-modules'
     try {
-      await fetch(endpoint, {
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ studentIds: [studentId], moduleNumber: moduleNum }),
       })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        const detail = body.detail ?? body.error ?? `HTTP ${res.status}`
+        alert(`Failed to ${currentlyUnlocked ? 'lock' : 'unlock'} module ${moduleNum}: ${detail}`)
+        return
+      }
       await loadStudent()
     } catch (e) {
       console.error('Toggle lock error:', e)
+      alert(`Network error: ${e instanceof Error ? e.message : String(e)}`)
     } finally {
       setLockLoading(null)
     }
