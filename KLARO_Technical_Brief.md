@@ -1148,8 +1148,9 @@ Locked modules show a padlock icon in the sidebar.
 4. Run the Supabase SQL schema (Section 4) in the Supabase SQL editor
 5. Set the production domain in Supabase Auth → URL Configuration
 6. Configure Systeme.io webhooks to point to the production webhook URL:
-   - `https://yourdomain.com/api/webhooks/systeme`
-7. Test the webhook by manually adding the `KLARO-FULLPAY` tag to a test contact in Systeme.io and verifying access is granted
+   - `https://klaro.chillyonaryo.com/api/webhook/systeme?secret=klaro-webhook-2025`
+   - NOTE: path is singular `/api/webhook/` (the live handler that accepts multiple Systeme payload shapes). The plural `/api/webhooks/systeme` route also exists but is stricter — prefer the singular endpoint for Systeme integration.
+7. Test the webhook by manually adding the `Accel-Enrolled` tag to a test contact in Systeme.io and verifying access is granted (check `webhook_logs` table for the event)
 
 ---
 

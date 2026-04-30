@@ -55,17 +55,32 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/change-password', request.url))
   }
 
-  // ── 90-day access expiry check (students only) ──────────────
+  // ── 90-day access expiry check + orphan-tag claim (students only) ──────────
   const isOnExpiredPage = request.nextUrl.pathname.startsWith('/access-expired')
 
   if (user && isProtectedPage && !isOnExpiredPage) {
     const { data: profile } = await supabase
       .from('profiles')
-      .select('role, created_at, enrolled_at')
+      .select('role, access_level, created_at, enrolled_at')
       .eq('id', user.id)
       .maybeSingle()
 
     if (profile?.role === 'student') {
+      // Orphan-tag claim: if a Systeme.io tag fired before this user signed
+      // up, our handler logged a *_pending_signup_* row but couldn't update
+      // a profile that didn't exist. Now that the profile exists and we see
+      // it's still pending, retroactively apply the access. One-time per
+      // user — the function records a claimed_by_signup audit row to skip
+      // future calls.
+      if (profile.access_level === 'pending' && user.email) {
+        try {
+          const { claimPendingTagsForUser } = await import('@/lib/claimPendingTags')
+          await claimPendingTagsForUser(user.id, user.email)
+        } catch (err) {
+          console.error('[middleware] claim pending tags failed:', err)
+        }
+      }
+
       const startDate = profile.created_at ?? profile.enrolled_at
       if (startDate) {
         const expiryMs = new Date(startDate).getTime() + 90 * 24 * 60 * 60 * 1000
