@@ -9,6 +9,13 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse
   }
 
+  // Skip auth check for the auth callback — it handles its own session setup
+  // (the user arrives here unauthenticated, the route exchanges the PKCE code
+  // for a session, then redirects them on).
+  if (request.nextUrl.pathname.startsWith('/auth/callback')) {
+    return supabaseResponse
+  }
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
