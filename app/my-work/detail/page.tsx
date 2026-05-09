@@ -53,6 +53,11 @@ export default function MyWorkDetailPage() {
   const [emailSeq, setEmailSeq] = useState<EmailSeqData | null>(null)
   const [loading, setLoading] = useState(true)
   const [showAllChapters, setShowAllChapters] = useState(false)
+  // Once Module 3 is complete, the foundation (Modules 1-3) is sealed —
+  // hide all Edit→/Start→ buttons that route to /module/1|2|3 so students
+  // don't have a UI path to redo them. Middleware also blocks direct URL
+  // access for defense-in-depth.
+  const [foundationSealed, setFoundationSealed] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -60,17 +65,19 @@ export default function MyWorkDetailPage() {
       if (!session) { router.push('/login'); return }
 
       const uid = session.user.id
-      const [clarityRes, ebookRes, salesPageRes, emailRes] = await Promise.all([
+      const [clarityRes, ebookRes, salesPageRes, emailRes, m3Res] = await Promise.all([
         supabase.from('clarity_sentences').select('target_market, core_problem, unique_mechanism, full_sentence, created_at').eq('user_id', uid).single(),
         supabase.from('ebooks').select('id, title, outline, chapters, created_at').eq('user_id', uid).order('created_at', { ascending: false }).limit(1).single(),
         supabase.from('sales_pages').select('headline, hook, full_copy, created_at').eq('user_id', uid).single(),
         supabase.from('module_progress').select('created_at').eq('user_id', uid).eq('module_number', 4).eq('status', 'complete').maybeSingle(),
+        supabase.from('module_progress').select('completed_at').eq('user_id', uid).eq('module_number', 3).maybeSingle(),
       ])
 
       if (clarityRes.data) setClarity(clarityRes.data)
       if (ebookRes.data) setEbook(ebookRes.data)
       if (salesPageRes.data?.full_copy) setSalesPage(salesPageRes.data)
       if (emailRes.data) setEmailSeq(emailRes.data)
+      if (m3Res.data?.completed_at) setFoundationSealed(true)
       setLoading(false)
     }
     load()
@@ -169,9 +176,16 @@ export default function MyWorkDetailPage() {
                 <StatusDot done={!!clarity} num={1} />
                 <span className="text-white text-sm font-bold">Niche &amp; Clarity</span>
               </div>
-              <button onClick={() => router.push('/module/1')} className="text-yellow-400 text-xs font-semibold">
-                {clarity ? 'Edit →' : 'Start →'}
-              </button>
+              {foundationSealed ? (
+                <span className="flex items-center gap-1 text-gray-500 text-[11px] font-semibold">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  Sealed
+                </span>
+              ) : (
+                <button onClick={() => router.push('/module/1')} className="text-yellow-400 text-xs font-semibold">
+                  {clarity ? 'Edit →' : 'Start →'}
+                </button>
+              )}
             </div>
             {clarity ? (
               <div className="px-5 py-4">
@@ -199,9 +213,16 @@ export default function MyWorkDetailPage() {
                 <StatusDot done={!!ebook} num={2} />
                 <span className="text-white text-sm font-bold">E-Book</span>
               </div>
-              <button onClick={() => router.push('/module/2')} className="text-yellow-400 text-xs font-semibold">
-                {ebook ? 'Edit →' : 'Start →'}
-              </button>
+              {foundationSealed ? (
+                <span className="flex items-center gap-1 text-gray-500 text-[11px] font-semibold">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  Sealed
+                </span>
+              ) : (
+                <button onClick={() => router.push('/module/2')} className="text-yellow-400 text-xs font-semibold">
+                  {ebook ? 'Edit →' : 'Start →'}
+                </button>
+              )}
             </div>
             {ebook ? (
               <div className="px-5 py-4">
@@ -241,7 +262,12 @@ export default function MyWorkDetailPage() {
                 <StatusDot done={!!salesPage} num={3} />
                 <span className="text-white text-sm font-bold">Sales Page</span>
               </div>
-              {ebook && (
+              {foundationSealed ? (
+                <span className="flex items-center gap-1 text-gray-500 text-[11px] font-semibold">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  Sealed
+                </span>
+              ) : ebook && (
                 <button onClick={() => router.push('/module/3')} className="text-yellow-400 text-xs font-semibold">
                   {salesPage ? 'Edit →' : 'Start →'}
                 </button>
