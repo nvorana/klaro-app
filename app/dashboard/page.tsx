@@ -6,8 +6,14 @@ import SignOutButton from './SignOutButton'
 
 export const dynamic = 'force-dynamic'
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ locked?: string }>
+}) {
   const supabase = await createClient()
+  const params = await searchParams
+  const lockedModule = params.locked && /^[123]$/.test(params.locked) ? params.locked : null
 
   // ── Auth ─────────────────────────────────────────────────
   const { data: { user } } = await supabase.auth.getUser()
@@ -174,6 +180,20 @@ export default async function DashboardPage() {
           <SignOutButton />
         </div>
       </div>
+
+      {/* ── Lock notice (shown after redirect from a sealed Module 1/2/3) ── */}
+      {lockedModule && (
+        <div className="bg-amber-50 border-b border-amber-200 px-5 py-3 flex items-start gap-2.5">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#b45309" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0 mt-0.5">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
+          <div className="text-xs text-amber-900 leading-relaxed">
+            <span className="font-bold">Module {lockedModule} is sealed.</span>
+            {' '}Once you finished Module 3, your foundation (clarity sentence, ebook, offer) was locked in so the rest of your project stays consistent. To make changes, please reach out to your coach.
+          </div>
+        </div>
+      )}
 
       {/* ── Welcome section ────────────────────────────────── */}
       <div className="bg-[#1A1F36] px-5 pt-4 pb-7">
