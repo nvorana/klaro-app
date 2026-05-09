@@ -29,6 +29,12 @@ export async function POST(request: NextRequest) {
     await adminClient.from('module_outputs').delete().eq('user_id', studentId)
     await adminClient.from('clarity_sentences').delete().eq('user_id', studentId)
 
+    // Grant one more ebook attempt — bumps profiles.max_ebooks_allowed by 1.
+    // The completion counter (profiles.completed_ebooks_count) stays put;
+    // the cap simply rises to give them exactly one more slot. Multiple
+    // resets keep adding slots, one per reset.
+    await adminClient.rpc('grant_extra_ebook_slot', { p_user_id: studentId })
+
     return NextResponse.json({ success: true })
   } catch (err) {
     console.error('[reset-student]', err)

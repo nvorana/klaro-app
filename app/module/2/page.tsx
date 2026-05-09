@@ -329,6 +329,10 @@ export default function Module2Page() {
         user_id: session.user.id,
         title: selectedTitle.title,
         status: 'complete',
+        // Mark this ebook as fully completed for the lifetime cap counter.
+        // Only ebooks with completed_at IS NOT NULL count against
+        // profiles.max_ebooks_allowed.
+        completed_at: new Date().toISOString(),
         outline: {
           subtitle: selectedTitle.subtitle,
           title_options: titleOptions,
@@ -346,6 +350,11 @@ export default function Module2Page() {
         completed: true,
         completed_at: new Date().toISOString(),
       }, { onConflict: 'user_id,module_number' })
+
+      // Increment the lifetime ebook completion counter (cost-protection
+      // cap). One bump per save. Compared against profiles.max_ebooks_allowed
+      // by /api/generate/ebook-agent (stage=outline) on the next attempt.
+      await supabase.rpc('increment_completed_ebooks_count', { p_user_id: session.user.id })
 
       // Auto-unlock next module for AP students (no-op for other programs)
       fetch('/api/student/complete-module', {

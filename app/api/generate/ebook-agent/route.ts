@@ -4,6 +4,7 @@ import { findBannedWords, buildCorrectionPrompt } from '@/lib/bannedWords'
 import { buildVocabularyHint } from '@/lib/preferredVocabulary'
 import { getMarketLanguageHintForUser } from '@/lib/marketLanguage'
 import { editChapter, type ChapterShape } from '@/lib/ebookEditor'
+import { createClient } from '@/lib/supabase/server'
 
 // ─── MASTER SYSTEM PROMPT ────────────────────────────────────────────────────
 
@@ -734,6 +735,40 @@ export async function POST(request: NextRequest) {
     // Per-user niche language pack — appended to the system prompt so all
     // passes in this request speak the same niche bubble.
     const marketHint = await getMarketLanguageHintForUser()
+
+    // ── Lifetime ebook cap check (cost protection) ────────────────────────
+    // Refuse outline generation if the user has already completed their
+    // maximum ebooks. profiles.max_ebooks_allowed defaults to 2 at signup
+    // and is incremented by 1 on each coach reset (so reset always grants
+    // exactly 1 more attempt). Counts profiles.completed_ebooks_count,
+    // which is incremented on each Module 2 save (since the table itself
+    // uses delete+insert and can only ever hold 1 row).
+    if (stage === 'outline') {
+      const supabase = await createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('max_ebooks_allowed, completed_ebooks_count')
+          .eq('id', user.id)
+          .maybeSingle()
+        const p = profile as { max_ebooks_allowed?: number; completed_ebooks_count?: number } | null
+        const cap = p?.max_ebooks_allowed ?? 2
+        const completed = p?.completed_ebooks_count ?? 0
+        if (completed >= cap) {
+          console.warn(`[ebook-agent] User ${user.id} hit ebook cap (completed=${completed}, cap=${cap})`)
+          return NextResponse.json(
+            {
+              error: 'ebook_limit_reached',
+              completed,
+              cap,
+              message: `You've completed your maximum of ${cap} ebook${cap === 1 ? '' : 's'}. Reach out to your coach if you need a reset.`,
+            },
+            { status: 403 },
+          )
+        }
+      }
+    }
 
     switch (stage) {
 
