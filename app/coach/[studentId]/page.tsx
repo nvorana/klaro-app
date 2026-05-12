@@ -199,20 +199,32 @@ export default function StudentDetail() {
 
   async function submitReview(moduleNumber: number, status: 'approved' | 'needs_revision') {
     setReviewLoading(true)
-    await fetch('/api/coach/review', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        studentId,
-        moduleNumber,
-        status,
-        note: status === 'needs_revision' ? revisionNote : null,
-      }),
-    })
-    setReviewLoading(false)
-    setReviewingModule(null)
-    setRevisionNote('')
-    loadStudent() // Refresh to show updated review + unlocked module
+    try {
+      const res = await fetch('/api/coach/review', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          studentId,
+          moduleNumber,
+          status,
+          note: status === 'needs_revision' ? revisionNote : null,
+        }),
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        const detail = body.error ?? body.detail ?? `HTTP ${res.status}`
+        alert(`Could not save the review: ${detail}`)
+        return
+      }
+      setReviewingModule(null)
+      setRevisionNote('')
+      loadStudent() // Refresh to show updated review + unlocked module
+    } catch (e) {
+      console.error('submitReview error:', e)
+      alert(`Network error saving review: ${e instanceof Error ? e.message : String(e)}`)
+    } finally {
+      setReviewLoading(false)
+    }
   }
 
   async function saveNotes() {
