@@ -747,25 +747,32 @@ export async function POST(request: NextRequest) {
       const supabase = await createClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
-        const { data: profile } = await supabase
+        // Defensive: if the lifetime-cap migration hasn't been run, the
+        // SELECT will return an error and `profile` will be null. We let it
+        // pass (no enforcement) rather than 403 every user.
+        const { data: profile, error: capLookupErr } = await supabase
           .from('profiles')
           .select('max_ebooks_allowed, completed_ebooks_count')
           .eq('id', user.id)
           .maybeSingle()
-        const p = profile as { max_ebooks_allowed?: number; completed_ebooks_count?: number } | null
-        const cap = p?.max_ebooks_allowed ?? 2
-        const completed = p?.completed_ebooks_count ?? 0
-        if (completed >= cap) {
-          console.warn(`[ebook-agent] User ${user.id} hit ebook cap (completed=${completed}, cap=${cap})`)
-          return NextResponse.json(
-            {
-              error: 'ebook_limit_reached',
-              completed,
-              cap,
-              message: `You've completed your maximum of ${cap} ebook${cap === 1 ? '' : 's'}. Reach out to your coach if you need a reset.`,
-            },
-            { status: 403 },
-          )
+        if (capLookupErr) {
+          console.warn('[ebook-agent] cap lookup failed (migration may be missing):', capLookupErr.message)
+        } else {
+          const p = profile as { max_ebooks_allowed?: number; completed_ebooks_count?: number } | null
+          const cap = p?.max_ebooks_allowed ?? 2
+          const completed = p?.completed_ebooks_count ?? 0
+          if (completed >= cap) {
+            console.warn(`[ebook-agent] User ${user.id} hit ebook cap (completed=${completed}, cap=${cap})`)
+            return NextResponse.json(
+              {
+                error: 'ebook_limit_reached',
+                completed,
+                cap,
+                message: `You've completed your maximum of ${cap} ebook${cap === 1 ? '' : 's'}. Reach out to your coach if you need a reset.`,
+              },
+              { status: 403 },
+            )
+          }
         }
       }
     }

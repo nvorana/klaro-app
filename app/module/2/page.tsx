@@ -325,14 +325,13 @@ export default function Module2Page() {
       const selectedTitle = titleOptions[selectedTitleIndex]
 
       await supabase.from('ebooks').delete().eq('user_id', session.user.id)
-      const { error: insertError } = await supabase.from('ebooks').insert({
+      // Build the ebook row. We try with `completed_at` first (added by the
+      // ebook_lifetime_cap migration); if that column doesn't exist in this
+      // database yet, fall back to the legacy shape so the save still works.
+      const ebookRow: Record<string, unknown> = {
         user_id: session.user.id,
         title: selectedTitle.title,
         status: 'complete',
-        // Mark this ebook as fully completed for the lifetime cap counter.
-        // Only ebooks with completed_at IS NOT NULL count against
-        // profiles.max_ebooks_allowed.
-        completed_at: new Date().toISOString(),
         outline: {
           subtitle: selectedTitle.subtitle,
           title_options: titleOptions,
@@ -341,7 +340,18 @@ export default function Module2Page() {
           conclusion,
         },
         chapters: chapterDrafts,
-      })
+        completed_at: new Date().toISOString(),
+      }
+      let { error: insertError } = await supabase.from('ebooks').insert(ebookRow)
+      if (insertError && /completed_at/.test(insertError.message)) {
+        // Migration ebook_lifetime_cap.sql hasn't been run yet — drop the
+        // new column and retry. Save shouldn't break for users while the DBA
+        // gets around to running the migration.
+        console.warn('[module/2] completed_at column missing; retrying insert without it')
+        delete ebookRow.completed_at
+        const retry = await supabase.from('ebooks').insert(ebookRow)
+        insertError = retry.error
+      }
       if (insertError) throw insertError
 
       await supabase.from('module_progress').upsert({
@@ -351,10 +361,14 @@ export default function Module2Page() {
         completed_at: new Date().toISOString(),
       }, { onConflict: 'user_id,module_number' })
 
-      // Increment the lifetime ebook completion counter (cost-protection
-      // cap). One bump per save. Compared against profiles.max_ebooks_allowed
-      // by /api/generate/ebook-agent (stage=outline) on the next attempt.
-      await supabase.rpc('increment_completed_ebooks_count', { p_user_id: session.user.id })
+      // Increment the lifetime ebook completion counter (cost-protection cap).
+      // Wrapped — the RPC only exists if the lifetime-cap migration has
+      // been run. A missing RPC must NOT block the save flow.
+      try {
+        await supabase.rpc('increment_completed_ebooks_count', { p_user_id: session.user.id })
+      } catch (rpcErr) {
+        console.warn('[module/2] ebook count RPC failed (migration may be missing):', rpcErr)
+      }
 
       // Auto-unlock next module for AP students (no-op for other programs)
       fetch('/api/student/complete-module', {
