@@ -101,67 +101,9 @@ export default function StudentDetail() {
     setTimeout(() => setCopiedKey(null), 2000)
   }
 
-  async function downloadEbook() {
-    if (!outputs.ebook) return
-    setDownloading('ebook')
-    try {
-      const res = await fetch('/api/export/ebook', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: outputs.ebook.title,
-          target_market: outputs.clarity?.target_market || '',
-          outline: outputs.ebook.outline,
-          chapters: outputs.ebook.chapters,
-        }),
-      })
-      if (res.ok) {
-        const blob = await res.blob()
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `${outputs.ebook.title || 'ebook'}.docx`
-        a.click()
-        URL.revokeObjectURL(url)
-      }
-    } finally {
-      setDownloading(null)
-    }
-  }
-
-  async function downloadLeadMagnet() {
-    if (!outputs.leadMagnet) return
-    setDownloading('lead-magnet')
-    try {
-      const res = await fetch('/api/export/lead-magnet', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: outputs.leadMagnet.title,
-          format: outputs.leadMagnet.format,
-          hook: outputs.leadMagnet.hook,
-          introduction: outputs.leadMagnet.introduction,
-          main_content: outputs.leadMagnet.main_content,
-          quick_win: outputs.leadMagnet.quick_win,
-          bridge_to_ebook: outputs.leadMagnet.bridge_to_ebook,
-        }),
-      })
-      if (res.ok) {
-        const blob = await res.blob()
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `${outputs.leadMagnet.title || 'lead-magnet'}.docx`
-        a.click()
-        URL.revokeObjectURL(url)
-      }
-    } finally {
-      setDownloading(null)
-    }
-  }
-
   // Shared helper: POSTs to a /api/export/* endpoint, downloads the returned
-  // .docx blob. Used by sales-page, email-sequence, and content-posts buttons.
+  // .docx blob. Surfaces server / network errors via alert so the coach
+  // doesn't just see a silent spinner-and-nothing.
   async function downloadDocx(endpoint: string, body: Record<string, unknown>, filename: string, key: string) {
     setDownloading(key)
     try {
@@ -171,22 +113,74 @@ export default function StudentDetail() {
         body: JSON.stringify(body),
       })
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        alert(`Download failed: ${err.error ?? `HTTP ${res.status}`}`)
+        // Try to parse JSON error; fall back to raw text
+        let detail = `HTTP ${res.status}`
+        try {
+          const ct = res.headers.get('content-type') ?? ''
+          if (ct.includes('application/json')) {
+            const err = await res.json()
+            detail = err.error ?? err.detail ?? detail
+          } else {
+            const text = await res.text()
+            if (text) detail = text.slice(0, 200)
+          }
+        } catch { /* keep HTTP code fallback */ }
+        console.error(`[downloadDocx] ${endpoint} failed:`, detail)
+        alert(`Download failed: ${detail}`)
         return
       }
       const blob = await res.blob()
+      if (blob.size === 0) {
+        alert('Download failed: empty file returned')
+        return
+      }
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
       a.download = filename
+      document.body.appendChild(a)
       a.click()
+      document.body.removeChild(a)
       URL.revokeObjectURL(url)
     } catch (e) {
+      console.error(`[downloadDocx] ${endpoint} network error:`, e)
       alert(`Network error: ${e instanceof Error ? e.message : String(e)}`)
     } finally {
       setDownloading(null)
     }
+  }
+
+  async function downloadEbook() {
+    if (!outputs.ebook) return
+    await downloadDocx(
+      '/api/export/ebook',
+      {
+        title: outputs.ebook.title,
+        target_market: outputs.clarity?.target_market || '',
+        outline: outputs.ebook.outline,
+        chapters: outputs.ebook.chapters,
+      },
+      `${outputs.ebook.title || 'ebook'}.docx`,
+      'ebook',
+    )
+  }
+
+  async function downloadLeadMagnet() {
+    if (!outputs.leadMagnet) return
+    await downloadDocx(
+      '/api/export/lead-magnet',
+      {
+        title: outputs.leadMagnet.title,
+        format: outputs.leadMagnet.format,
+        hook: outputs.leadMagnet.hook,
+        introduction: outputs.leadMagnet.introduction,
+        main_content: outputs.leadMagnet.main_content,
+        quick_win: outputs.leadMagnet.quick_win,
+        bridge_to_ebook: outputs.leadMagnet.bridge_to_ebook,
+      },
+      `${outputs.leadMagnet.title || 'lead-magnet'}.docx`,
+      'lead-magnet',
+    )
   }
 
   async function downloadSalesPage() {
