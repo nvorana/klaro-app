@@ -160,6 +160,84 @@ export default function StudentDetail() {
     }
   }
 
+  // Shared helper: POSTs to a /api/export/* endpoint, downloads the returned
+  // .docx blob. Used by sales-page, email-sequence, and content-posts buttons.
+  async function downloadDocx(endpoint: string, body: Record<string, unknown>, filename: string, key: string) {
+    setDownloading(key)
+    try {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        alert(`Download failed: ${err.error ?? `HTTP ${res.status}`}`)
+        return
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (e) {
+      alert(`Network error: ${e instanceof Error ? e.message : String(e)}`)
+    } finally {
+      setDownloading(null)
+    }
+  }
+
+  async function downloadSalesPage() {
+    if (!outputs.salesPage) return
+    const ebookTitle = outputs.ebook?.title ?? 'sales-page'
+    await downloadDocx(
+      '/api/export/sales-page',
+      {
+        title: outputs.ebook?.title ? `${outputs.ebook.title} — Sales Page` : 'Sales Page',
+        headline: outputs.salesPage.headline,
+        full_copy: outputs.salesPage.full_copy,
+      },
+      `${ebookTitle.replace(/[^a-z0-9]/gi, '_').substring(0, 50)}_sales_page.docx`,
+      'sales-page',
+    )
+  }
+
+  async function downloadEmailSequence() {
+    if (!outputs.emailSeq) return
+    const emails = Array.isArray(outputs.emailSeq.emails) ? outputs.emailSeq.emails : []
+    if (emails.length === 0) {
+      alert('No email content to download.')
+      return
+    }
+    const ebookTitle = outputs.ebook?.title ?? 'email-sequence'
+    await downloadDocx(
+      '/api/export/email-sequence',
+      {
+        title: outputs.ebook?.title ? `${outputs.ebook.title} — Email Sequence` : '7-Day Email Sequence',
+        emails,
+      },
+      `${ebookTitle.replace(/[^a-z0-9]/gi, '_').substring(0, 50)}_emails.docx`,
+      'email-sequence',
+    )
+  }
+
+  async function downloadContentPosts() {
+    if (!outputs.posts) return
+    const ebookTitle = outputs.ebook?.title ?? 'fb-posts'
+    await downloadDocx(
+      '/api/export/content-posts',
+      {
+        title: outputs.ebook?.title ? `${outputs.ebook.title} — FB Posts` : 'Facebook Content Posts',
+        full_post: outputs.posts.full_post,
+        posts: outputs.posts.posts,
+      },
+      `${ebookTitle.replace(/[^a-z0-9]/gi, '_').substring(0, 50)}_fb_posts.docx`,
+      'content-posts',
+    )
+  }
+
   useEffect(() => {
     loadStudent()
   }, [studentId])
@@ -523,6 +601,16 @@ export default function StudentDetail() {
                             </div>
                           </div>
                         )}
+                        {outputs.salesPage.full_copy && (
+                          <button
+                            onClick={downloadSalesPage}
+                            disabled={downloading === 'sales-page'}
+                            className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold border border-[#F4B942]/40 text-[#F4B942] hover:bg-[#F4B942]/10 transition-colors disabled:opacity-50"
+                          >
+                            <Download size={12} />
+                            {downloading === 'sales-page' ? 'Downloading...' : 'Download Sales Page (.docx)'}
+                          </button>
+                        )}
                       </div>
                     )}
 
@@ -542,6 +630,16 @@ export default function StudentDetail() {
                           ))
                         ) : (
                           <p className="text-gray-500 text-xs">7 emails written (no content data)</p>
+                        )}
+                        {Array.isArray(outputs.emailSeq.emails) && outputs.emailSeq.emails.length > 0 && (
+                          <button
+                            onClick={downloadEmailSequence}
+                            disabled={downloading === 'email-sequence'}
+                            className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold border border-[#F4B942]/40 text-[#F4B942] hover:bg-[#F4B942]/10 transition-colors disabled:opacity-50"
+                          >
+                            <Download size={12} />
+                            {downloading === 'email-sequence' ? 'Downloading...' : 'Download Email Sequence (.docx)'}
+                          </button>
                         )}
                       </div>
                     )}
@@ -581,7 +679,7 @@ export default function StudentDetail() {
                     )}
 
                     {moduleNum === 7 && outputs.posts && (
-                      <div>
+                      <div className="space-y-3">
                         {outputs.posts.full_post ? (
                           <div>
                             <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wide mb-1">Facebook Posts</p>
@@ -594,6 +692,16 @@ export default function StudentDetail() {
                           </div>
                         ) : (
                           <p className="text-gray-500 text-xs">Posts generated (no content data)</p>
+                        )}
+                        {(outputs.posts.full_post || Array.isArray(outputs.posts.posts)) && (
+                          <button
+                            onClick={downloadContentPosts}
+                            disabled={downloading === 'content-posts'}
+                            className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold border border-[#F4B942]/40 text-[#F4B942] hover:bg-[#F4B942]/10 transition-colors disabled:opacity-50"
+                          >
+                            <Download size={12} />
+                            {downloading === 'content-posts' ? 'Downloading...' : 'Download FB Posts (.docx)'}
+                          </button>
                         )}
                       </div>
                     )}
