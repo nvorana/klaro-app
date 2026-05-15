@@ -71,6 +71,7 @@ export default function MyWorkDetailPage() {
   const [showAllChapters, setShowAllChapters] = useState(false)
   const [downloadingBonus, setDownloadingBonus] = useState<number | null>(null)
   const [expandedBonus, setExpandedBonus] = useState<number | null>(null)
+  const [generatingBonus, setGeneratingBonus] = useState<number | null>(null)
   // Once Module 3 is complete, the foundation (Modules 1-3) is sealed —
   // hide all Edit→/Start→ buttons that route to /module/1|2|3 so students
   // don't have a UI path to redo them. Middleware also blocks direct URL
@@ -127,6 +128,55 @@ export default function MyWorkDetailPage() {
   }
 
   const projectName = ebook?.title || clarity?.unique_mechanism || 'My Project'
+
+  // Generate the actual bonus content for a bonus that only has metadata.
+  // Used when a student finished Module 3 BEFORE the bonus-content feature
+  // shipped — they have name/format/value stored, but no content. Module 3
+  // is locked so they can't generate from there.
+  async function generateBonusContentMyWork(idx: number) {
+    if (!offer?.bonuses || !clarity) return
+    const b = offer.bonuses[idx]
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) { router.push('/login'); return }
+
+    setGeneratingBonus(idx)
+    try {
+      const genRes = await fetch('/api/generate/bonus-content', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bonus_name: b.bonus_name,
+          format: b.format,
+          description: b.description,
+          target_market: clarity.target_market,
+          problem: clarity.core_problem,
+          unique_mechanism: clarity.unique_mechanism,
+          ebook_title: ebook?.title ?? '',
+          objection_addressed: b.objection_addressed,
+        }),
+      })
+      if (!genRes.ok) {
+        const err = await genRes.json().catch(() => ({}))
+        alert(`Could not generate: ${err.detail ?? err.error ?? 'Unknown error'}`)
+        return
+      }
+      const { data } = await genRes.json()
+      // Persist: update the offer row's bonuses array in place
+      const newBonuses = offer.bonuses.map((x, i) => i === idx ? { ...x, content: data.content } : x)
+      const { error } = await supabase.from('offers').update({ bonuses: newBonuses }).eq('user_id', session.user.id)
+      if (error) {
+        alert(`Generated but failed to save: ${error.message}. Try again.`)
+        return
+      }
+      // Update local state + auto-expand the new content
+      setOffer({ ...offer, bonuses: newBonuses })
+      setExpandedBonus(idx)
+    } catch (e) {
+      alert(`Network error: ${e instanceof Error ? e.message : String(e)}`)
+    } finally {
+      setGeneratingBonus(null)
+    }
+  }
 
   // Where to go for the next step
   const nextStepRoute: Record<number, string> = { 1: '/module/1', 2: '/module/2', 3: '/module/3', 4: '/module/4' }
@@ -392,7 +442,18 @@ export default function MyWorkDetailPage() {
                           {expandedBonus === i ? 'Hide content' : `View content (${b.content!.length.toLocaleString()} chars)`}
                         </button>
                       ) : (
-                        <p className="mt-2 text-[10px] text-gray-600 italic">Content not generated yet</p>
+                        <div className="mt-2 flex items-center gap-3">
+                          <button
+                            onClick={() => generateBonusContentMyWork(i)}
+                            disabled={generatingBonus === i}
+                            className="text-[10px] font-bold text-yellow-400 hover:text-yellow-300 disabled:opacity-50"
+                          >
+                            {generatingBonus === i ? `Writing your ${(b.format ?? 'bonus').toLowerCase()}…` : '✦ Generate content'}
+                          </button>
+                          {generatingBonus !== i && (
+                            <span className="text-[10px] text-gray-600 italic">Not generated yet</span>
+                          )}
+                        </div>
                       )}
                       {hasContent && expandedBonus === i && (
                         <pre className="mt-2 text-[10px] text-gray-300 bg-gray-900 rounded p-2 max-h-48 overflow-y-auto whitespace-pre-wrap font-mono leading-relaxed">{b.content}</pre>
