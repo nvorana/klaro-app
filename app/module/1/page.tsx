@@ -66,6 +66,9 @@ const STEP_KEYS: Step[] = ['market', 'problem', 'solution', 'validate']
 // ── Sub-messages per loading context ─────────────────────────────────────────
 const SUB_MESSAGES: Record<string, string[]> = {
   'Finding the biggest problems for your market…': [
+    'Researching real conversations sa market mo…',
+    'Scanning Facebook groups, Reddit, at forums…',
+    'Pulling specific programs, agencies, at benefits relevant sa kanila…',
     'Looking for problems people will actually pay to fix…',
     'Filtering out ideas your tita would say "nice lang"…',
     'Finding where people are already spending money…',
