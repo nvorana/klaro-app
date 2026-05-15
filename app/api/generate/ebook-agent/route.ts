@@ -743,6 +743,32 @@ export async function POST(request: NextRequest) {
     // exactly 1 more attempt). Counts profiles.completed_ebooks_count,
     // which is incremented on each Module 2 save (since the table itself
     // uses delete+insert and can only ever hold 1 row).
+    // ── Lite workshop gate ────────────────────────────────────────────────
+    // Lite users can generate Stage 1 (outline) ONLY. Any later stage hits
+    // the paywall. They've seen their outline; chapters/intro/conclusion
+    // are the value behind the AP offer.
+    if (stage !== 'outline') {
+      const supabase = await createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const { data: gateProfile } = await supabase
+          .from('profiles')
+          .select('access_level')
+          .eq('id', user.id)
+          .maybeSingle()
+        if ((gateProfile as { access_level?: string } | null)?.access_level === 'lite_workshop') {
+          return NextResponse.json(
+            {
+              error: 'lite_workshop_paywall',
+              message: 'Chapter generation is unlocked with the Accelerator Program. Upgrade to continue.',
+              upgrade_url: '/upgrade',
+            },
+            { status: 402 },
+          )
+        }
+      }
+    }
+
     if (stage === 'outline') {
       const supabase = await createClient()
       const { data: { user } } = await supabase.auth.getUser()

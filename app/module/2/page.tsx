@@ -199,10 +199,16 @@ export default function Module2Page() {
         data,
       }),
     })
+    // Lite workshop paywall — server returns 402 when a lite user hits any
+    // stage past outline. Bounce them to the upgrade page.
+    if (res.status === 402) {
+      router.push('/upgrade')
+      throw new Error('lite_workshop_paywall')
+    }
     if (!res.ok) throw new Error('Agent request failed')
     const json = await res.json()
     return json.data
-  }, [clarity])
+  }, [clarity, router])
 
   // ─── Generate outline ──────────────────────────────────────────────────────
 

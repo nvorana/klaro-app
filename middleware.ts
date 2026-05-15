@@ -43,7 +43,8 @@ export async function middleware(request: NextRequest) {
     request.nextUrl.pathname.startsWith('/profile') ||
     request.nextUrl.pathname.startsWith('/progress') ||
     request.nextUrl.pathname.startsWith('/my-work') ||
-    request.nextUrl.pathname.startsWith('/admin')
+    request.nextUrl.pathname.startsWith('/admin') ||
+    request.nextUrl.pathname.startsWith('/upgrade')
 
   // Redirect unauthenticated users to login
   if (!user && isProtectedPage) {

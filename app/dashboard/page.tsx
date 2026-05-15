@@ -186,6 +186,27 @@ export default async function DashboardPage({
         </div>
       </div>
 
+      {/* Lite workshop banner — top of dashboard for free workshop users */}
+      {accessLevel === 'lite_workshop' && (
+        <div className="bg-[#F4B942] text-[#1A1F36] px-5 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1A1F36" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+            </svg>
+            <div className="text-xs leading-tight">
+              <p className="font-bold">KLARO Workshop Edition</p>
+              <p className="text-[10px] opacity-80">Module 1 + outline preview free. Unlock the rest below.</p>
+            </div>
+          </div>
+          <Link
+            href="/upgrade"
+            className="bg-[#1A1F36] text-[#F4B942] text-[11px] font-bold px-3 py-1.5 rounded-lg whitespace-nowrap"
+          >
+            Unlock →
+          </Link>
+        </div>
+      )}
+
       {/* ── Lock notice (shown after redirect from a sealed Module 1/2/3) ── */}
       {lockedModule && (
         <div className="bg-amber-50 border-b border-amber-200 px-5 py-3 flex items-start gap-2.5">
@@ -370,6 +391,31 @@ export default async function DashboardPage({
             </div>
           )
         })}
+
+        {/* ── Lite workshop upgrade CTA — under the module list ── */}
+        {accessLevel === 'lite_workshop' && (
+          <Link
+            href="/upgrade"
+            className="block bg-[#1A1F36] rounded-2xl p-5 mt-4 mb-3 border-2 border-[#F4B942] shadow-[0_4px_20px_rgba(244,185,66,0.25)] hover:scale-[1.01] transition-transform"
+          >
+            <p className="text-[10px] font-bold text-[#F4B942] uppercase tracking-widest mb-1.5">Ready to launch?</p>
+            <p className="text-white text-base font-bold leading-tight mb-2">
+              Unlock the full KLARO + one-on-one coaching with Coach Jon.
+            </p>
+            <p className="text-white/60 text-xs leading-relaxed mb-3">
+              Generate your full ebook, sales page, emails, bonuses, and FB content. 30 days of personal coaching included.
+            </p>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[#F4B942] text-xl font-bold leading-none">₱28,000</p>
+                <p className="text-white/40 text-[10px] mt-0.5">workshop pricing ends May 18</p>
+              </div>
+              <span className="bg-[#F4B942] text-[#1A1F36] text-xs font-bold px-4 py-2 rounded-lg">
+                I&apos;m in →
+              </span>
+            </div>
+          </Link>
+        )}
 
         {/* ── Module 8 card (beta) ───────────────────────────────── */}
         {(() => {

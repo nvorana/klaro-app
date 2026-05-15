@@ -1,11 +1,14 @@
 // Tier → max module number unlocked (immediate, no time-gating)
 export const TIER_MODULE_LIMITS: Record<string, number> = {
-  'tier1':       1,
-  'tier2':       4,
-  'tier3':       7,
-  'tier4':       7,
-  'full_access': 7,
-  'enrolled':    7, // legacy: treat as full for time-gated logic
+  'tier1':         1,
+  'tier2':         4,
+  'tier3':         7,
+  'tier4':         7,
+  'full_access':   7,
+  'enrolled':      7, // legacy: treat as full for time-gated logic
+  'lite_workshop': 1, // Workshop free tier — Module 1 (clarity) fully accessible,
+                      // Module 2 outline is allowed via a separate gate inside
+                      // the module page, chapter generation paywalled.
 }
 
 /**
