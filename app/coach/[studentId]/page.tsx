@@ -576,6 +576,51 @@ export default function StudentDetail() {
                         {outputs.offer.guarantee && (
                           <WorkField label="Guarantee" value={outputs.offer.guarantee} copyKey="o-guarantee" copiedKey={copiedKey} onCopy={copyField} multiline />
                         )}
+
+                        {/* Bonus stack — each bonus shows its content + a download link */}
+                        {Array.isArray(outputs.offer.bonuses) && outputs.offer.bonuses.length > 0 && (
+                          <div>
+                            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wide mb-2">Bonus Stack ({outputs.offer.bonuses.length})</p>
+                            <div className="space-y-2">
+                              {outputs.offer.bonuses.map((b: any, idx: number) => (
+                                <div key={idx} className="bg-gray-800 rounded-lg p-3">
+                                  <div className="flex items-start justify-between gap-2 mb-1">
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-[#F4B942] text-xs font-bold truncate">{b.bonus_name}</p>
+                                      <p className="text-gray-500 text-[10px]">{b.format} · ₱{(b.value_peso ?? 0).toLocaleString()}</p>
+                                    </div>
+                                    {b.content && (
+                                      <button
+                                        onClick={() => downloadDocx(
+                                          '/api/export/bonus',
+                                          { bonus_name: b.bonus_name, format: b.format, content: b.content, ebook_title: outputs.ebook?.title },
+                                          `${(b.bonus_name ?? 'bonus').replace(/[^a-z0-9]/gi, '_').substring(0, 50)}.docx`,
+                                          `bonus-${idx}`,
+                                        )}
+                                        disabled={downloading === `bonus-${idx}`}
+                                        className="flex items-center gap-1 text-[10px] font-bold text-[#F4B942] hover:bg-[#F4B942]/10 px-2 py-1 rounded transition-colors disabled:opacity-50"
+                                      >
+                                        <Download size={10} />
+                                        {downloading === `bonus-${idx}` ? '...' : '.docx'}
+                                      </button>
+                                    )}
+                                  </div>
+                                  {b.description && (
+                                    <p className="text-gray-400 text-[11px] mt-1">{b.description}</p>
+                                  )}
+                                  {b.content ? (
+                                    <details className="mt-2">
+                                      <summary className="text-[10px] text-gray-500 cursor-pointer hover:text-gray-300">View content ({b.content.length.toLocaleString()} chars)</summary>
+                                      <pre className="mt-1 text-[10px] text-gray-300 bg-gray-900 rounded p-2 max-h-48 overflow-y-auto whitespace-pre-wrap font-mono">{b.content}</pre>
+                                    </details>
+                                  ) : (
+                                    <p className="text-gray-600 text-[10px] italic mt-1">No content generated yet — student can generate from Module 3</p>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
 

@@ -30,6 +30,11 @@ interface Bonus {
   value_peso: number
   objection_addressed: string
   loading?: boolean
+  // Generated bonus content (the actual deliverable text — populated by
+  // /api/generate/bonus-content after the student has the bonus idea).
+  content?: string
+  contentLoading?: boolean
+  contentExpanded?: boolean
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -350,6 +355,78 @@ export default function Module3Page() {
       ))
     } catch {
       setBonuses(prev => prev.map((b, i) => i === idx ? { ...b, loading: false } : b))
+    }
+  }
+
+  // ── Bonus content generation + download ──────────────────────────────────
+  // Once a bonus has been scaffolded with name + format + description, this
+  // generates the ACTUAL deliverable text the student can hand to a buyer.
+
+  async function generateBonusContent(idx: number) {
+    if (!clarity) return
+    const b = bonuses[idx]
+    setBonuses(prev => prev.map((x, i) => i === idx ? { ...x, contentLoading: true } : x))
+    try {
+      const res = await fetch('/api/generate/bonus-content', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bonus_name: b.bonus_name,
+          format: b.format,
+          description: b.description,
+          target_market: clarity.target_market,
+          problem: clarity.core_problem,
+          unique_mechanism: clarity.unique_mechanism,
+          ebook_title: ebookTitle,
+          objection_addressed: b.objection_addressed,
+        }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        alert(`Could not generate bonus content: ${err.detail ?? err.error ?? 'Unknown error'}`)
+        setBonuses(prev => prev.map((x, i) => i === idx ? { ...x, contentLoading: false } : x))
+        return
+      }
+      const { data } = await res.json()
+      setBonuses(prev => prev.map((x, i) =>
+        i === idx ? { ...x, content: data.content, contentLoading: false, contentExpanded: true } : x
+      ))
+    } catch (e) {
+      alert(`Network error: ${e instanceof Error ? e.message : String(e)}`)
+      setBonuses(prev => prev.map((x, i) => i === idx ? { ...x, contentLoading: false } : x))
+    }
+  }
+
+  async function downloadBonus(idx: number) {
+    const b = bonuses[idx]
+    if (!b.content) return
+    try {
+      const res = await fetch('/api/export/bonus', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bonus_name: b.bonus_name,
+          format: b.format,
+          content: b.content,
+          ebook_title: ebookTitle,
+        }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        alert(`Download failed: ${err.detail ?? err.error ?? 'Unknown'}`)
+        return
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${b.bonus_name.replace(/[^a-z0-9]/gi, '_').substring(0, 50)}.docx`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch (e) {
+      alert(`Download error: ${e instanceof Error ? e.message : String(e)}`)
     }
   }
 
@@ -889,6 +966,64 @@ export default function Module3Page() {
                             style={{ border: '1px solid #e5e7eb' }}
                           />
                         </div>
+                      </div>
+
+                      {/* ── Bonus content (the actual deliverable) ── */}
+                      <div className="mt-4 pt-4 border-t border-gray-100">
+                        {!bonus.content && !bonus.contentLoading && (
+                          <button
+                            type="button"
+                            onClick={() => generateBonusContent(i)}
+                            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-bold bg-[#1A1F36] text-[#F4B942] hover:bg-[#2d3458] transition-colors"
+                          >
+                            ✦ Generate the actual bonus content
+                          </button>
+                        )}
+                        {bonus.contentLoading && (
+                          <div className="flex items-center gap-3 py-2">
+                            <div className="w-4 h-4 border-2 border-[#F4B942] border-t-transparent rounded-full animate-spin flex-shrink-0" />
+                            <p className="text-gray-500 text-xs">Writing your {bonus.format.toLowerCase()}…</p>
+                          </div>
+                        )}
+                        {bonus.content && !bonus.contentLoading && (
+                          <div>
+                            <div className="flex items-center justify-between mb-2">
+                              <p className="text-[10px] font-bold text-[#10B981] uppercase tracking-wide">✓ Content ready ({bonus.content.length.toLocaleString()} chars)</p>
+                              <div className="flex gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => setBonuses(prev => prev.map((b, idx) => idx === i ? { ...b, contentExpanded: !b.contentExpanded } : b))}
+                                  className="text-[11px] font-semibold text-gray-500 hover:text-[#1A1F36]"
+                                >
+                                  {bonus.contentExpanded ? 'Hide' : 'View / edit'}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => generateBonusContent(i)}
+                                  className="text-[11px] font-semibold text-gray-500 hover:text-[#F4B942]"
+                                >
+                                  Regenerate
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => downloadBonus(i)}
+                                  className="text-[11px] font-semibold text-[#F4B942]"
+                                >
+                                  Download .docx
+                                </button>
+                              </div>
+                            </div>
+                            {bonus.contentExpanded && (
+                              <textarea
+                                value={bonus.content}
+                                onChange={e => setBonuses(prev => prev.map((b, idx) => idx === i ? { ...b, content: e.target.value } : b))}
+                                rows={14}
+                                className="w-full px-3 py-2 rounded-lg text-xs font-mono text-[#1A1F36] bg-gray-50 leading-relaxed"
+                                style={{ border: '1px solid #e5e7eb' }}
+                              />
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
