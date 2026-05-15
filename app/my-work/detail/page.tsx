@@ -40,6 +40,21 @@ interface EmailSeqData {
   created_at: string
 }
 
+interface BonusEntry {
+  bonus_name?: string
+  description?: string
+  format?: string
+  value_peso?: number
+  objection_addressed?: string
+  content?: string
+}
+
+interface OfferData {
+  bonuses?: BonusEntry[]
+  selling_price?: number
+  total_value?: number
+}
+
 export default function MyWorkDetailPage() {
   const router = useRouter()
   const supabase = createBrowserClient(
@@ -51,8 +66,11 @@ export default function MyWorkDetailPage() {
   const [ebook, setEbook] = useState<EbookData | null>(null)
   const [salesPage, setSalesPage] = useState<SalesPageData | null>(null)
   const [emailSeq, setEmailSeq] = useState<EmailSeqData | null>(null)
+  const [offer, setOffer] = useState<OfferData | null>(null)
   const [loading, setLoading] = useState(true)
   const [showAllChapters, setShowAllChapters] = useState(false)
+  const [downloadingBonus, setDownloadingBonus] = useState<number | null>(null)
+  const [expandedBonus, setExpandedBonus] = useState<number | null>(null)
   // Once Module 3 is complete, the foundation (Modules 1-3) is sealed —
   // hide all Edit→/Start→ buttons that route to /module/1|2|3 so students
   // don't have a UI path to redo them. Middleware also blocks direct URL
@@ -65,12 +83,13 @@ export default function MyWorkDetailPage() {
       if (!session) { router.push('/login'); return }
 
       const uid = session.user.id
-      const [clarityRes, ebookRes, salesPageRes, emailRes, m3Res] = await Promise.all([
+      const [clarityRes, ebookRes, salesPageRes, emailRes, m3Res, offerRes] = await Promise.all([
         supabase.from('clarity_sentences').select('target_market, core_problem, unique_mechanism, full_sentence, created_at').eq('user_id', uid).single(),
         supabase.from('ebooks').select('id, title, outline, chapters, created_at').eq('user_id', uid).order('created_at', { ascending: false }).limit(1).single(),
         supabase.from('sales_pages').select('headline, hook, full_copy, created_at').eq('user_id', uid).single(),
         supabase.from('module_progress').select('created_at').eq('user_id', uid).eq('module_number', 4).eq('status', 'complete').maybeSingle(),
         supabase.from('module_progress').select('completed_at').eq('user_id', uid).eq('module_number', 3).maybeSingle(),
+        supabase.from('offers').select('bonuses, selling_price, total_value').eq('user_id', uid).order('created_at', { ascending: false }).limit(1).maybeSingle(),
       ])
 
       if (clarityRes.data) setClarity(clarityRes.data)
@@ -78,6 +97,7 @@ export default function MyWorkDetailPage() {
       if (salesPageRes.data?.full_copy) setSalesPage(salesPageRes.data)
       if (emailRes.data) setEmailSeq(emailRes.data)
       if (m3Res.data?.completed_at) setFoundationSealed(true)
+      if (offerRes.data) setOffer(offerRes.data)
       setLoading(false)
     }
     load()
@@ -295,6 +315,94 @@ export default function MyWorkDetailPage() {
               />
             )}
           </div>
+
+          {/* ── 3.5. Bonus Stack — always-available bonus access ─────────────
+              Lives outside Module 3 so students can still download their
+              bonuses after Module 3 is sealed (otherwise they'd be locked
+              out of their own deliverables). */}
+          {Array.isArray(offer?.bonuses) && offer.bonuses.length > 0 && (
+            <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+              <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-gray-800">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-full bg-yellow-500/20 flex items-center justify-center text-yellow-400 text-xs font-bold">★</div>
+                  <span className="text-white text-sm font-bold">Bonus Stack</span>
+                </div>
+                <span className="text-gray-500 text-[11px] font-semibold">{offer.bonuses.length} bonuses</span>
+              </div>
+              <div className="px-5 py-4 space-y-2">
+                {offer.bonuses.map((b, i) => {
+                  const hasContent = typeof b.content === 'string' && b.content.length > 0
+                  return (
+                    <div key={i} className="bg-gray-800/50 rounded-xl p-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-yellow-300 text-xs font-bold truncate">{b.bonus_name}</p>
+                          <p className="text-gray-500 text-[10px]">{b.format} · ₱{(b.value_peso ?? 0).toLocaleString()}</p>
+                          {b.description && (
+                            <p className="text-gray-400 text-[11px] mt-1">{b.description}</p>
+                          )}
+                        </div>
+                        {hasContent && (
+                          <button
+                            disabled={downloadingBonus === i}
+                            onClick={async () => {
+                              setDownloadingBonus(i)
+                              try {
+                                const res = await fetch('/api/export/bonus', {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({
+                                    bonus_name: b.bonus_name,
+                                    format: b.format,
+                                    content: b.content,
+                                    ebook_title: ebook?.title,
+                                  }),
+                                })
+                                if (!res.ok) {
+                                  const err = await res.json().catch(() => ({}))
+                                  alert(`Download failed: ${err.detail ?? err.error ?? 'Unknown'}`)
+                                  return
+                                }
+                                const blob = await res.blob()
+                                const url = URL.createObjectURL(blob)
+                                const a = document.createElement('a')
+                                a.href = url
+                                a.download = `${(b.bonus_name ?? 'bonus').replace(/[^a-z0-9]/gi, '_').substring(0, 50)}.docx`
+                                document.body.appendChild(a)
+                                a.click()
+                                document.body.removeChild(a)
+                                URL.revokeObjectURL(url)
+                              } catch (e) {
+                                alert(`Network error: ${e instanceof Error ? e.message : String(e)}`)
+                              } finally {
+                                setDownloadingBonus(null)
+                              }
+                            }}
+                            className="text-yellow-400 text-[11px] font-bold flex items-center gap-1 px-2 py-1 rounded hover:bg-yellow-500/10 transition-colors disabled:opacity-50 flex-shrink-0"
+                          >
+                            {downloadingBonus === i ? '…' : '.docx'}
+                          </button>
+                        )}
+                      </div>
+                      {hasContent ? (
+                        <button
+                          onClick={() => setExpandedBonus(expandedBonus === i ? null : i)}
+                          className="mt-2 text-[10px] text-gray-500 hover:text-gray-300"
+                        >
+                          {expandedBonus === i ? 'Hide content' : `View content (${b.content!.length.toLocaleString()} chars)`}
+                        </button>
+                      ) : (
+                        <p className="mt-2 text-[10px] text-gray-600 italic">Content not generated yet</p>
+                      )}
+                      {hasContent && expandedBonus === i && (
+                        <pre className="mt-2 text-[10px] text-gray-300 bg-gray-900 rounded p-2 max-h-48 overflow-y-auto whitespace-pre-wrap font-mono leading-relaxed">{b.content}</pre>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
 
           {/* ── 4. Email Sequence & Launch ─────────────────────────────────── */}
           <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
