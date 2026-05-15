@@ -614,7 +614,7 @@ export default function StudentDetail() {
                                       <pre className="mt-1 text-[10px] text-gray-300 bg-gray-900 rounded p-2 max-h-48 overflow-y-auto whitespace-pre-wrap font-mono">{b.content}</pre>
                                     </details>
                                   ) : (
-                                    <p className="text-gray-600 text-[10px] italic mt-1">No content generated yet — student can generate from Module 3</p>
+                                    <p className="text-gray-600 text-[10px] italic mt-1">No content generated yet — ask the student to open <span className="text-gray-400">My Work → this project</span> and click <span className="text-yellow-500">✦ Generate content</span> on this bonus.</p>
                                   )}
                                 </div>
                               ))}
