@@ -43,7 +43,10 @@ export default function SignupPage() {
         .eq('id', user.id)
         .single()
       const accessLevel = profile?.access_level ?? 'pending'
-      if (['full_access', 'enrolled', 'tier1', 'tier2', 'tier3'].includes(accessLevel)) {
+      if (['full_access', 'enrolled', 'tier1', 'tier2', 'tier3', 'lite_workshop'].includes(accessLevel)) {
+        // lite_workshop users go to dashboard like everyone else — the
+        // 'Access Not Yet Activated' screen below is for the legacy
+        // /signup → tag-pending flow only, not for workshop attendees.
         router.push('/dashboard')
         router.refresh()
       } else {

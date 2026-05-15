@@ -79,18 +79,36 @@ export default function FreeWorkshopSignup() {
     }
 
     if (data.user) {
-      // Create profile row with lite_workshop access — gives them Module 1
-      // immediately. Module 2 outline preview gated inside Module 2 page.
-      await supabase.from('profiles').upsert({
-        id: data.user.id,
-        email: email.trim().toLowerCase(),
-        full_name: fullName,
-        first_name: firstName.trim(),
-        last_name: lastName.trim(),
-        role: 'student',
-        access_level: 'lite_workshop',
-        enrolled_at: new Date().toISOString(),
-      }, { onConflict: 'id' })
+      // Ensure a session exists before calling the server-side setup. If
+      // email confirmation is off (default for this funnel), signUp returns
+      // an active session immediately. Otherwise we sign in here.
+      if (!data.session) {
+        const signIn = await supabase.auth.signInWithPassword({ email, password })
+        if (signIn.error) {
+          // Likely email confirmation is required — fall back gracefully.
+          setError('Account created. Please check your email to confirm before logging in.')
+          setLoading(false)
+          return
+        }
+      }
+
+      // Server-side setup. Uses the admin client to atomically write
+      // access_level='lite_workshop' (RLS may block client-side updates to
+      // that column, leaving the user stuck on pending → /signup bounce).
+      const setupRes = await fetch('/api/free/setup-profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+        }),
+      })
+      if (!setupRes.ok) {
+        const body = await setupRes.json().catch(() => ({}))
+        setError(body.detail ?? body.error ?? 'Could not finish setup. Please refresh.')
+        setLoading(false)
+        return
+      }
 
       router.push('/dashboard')
       router.refresh()
