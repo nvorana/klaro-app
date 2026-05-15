@@ -6,9 +6,9 @@ export const TIER_MODULE_LIMITS: Record<string, number> = {
   'tier4':         7,
   'full_access':   7,
   'enrolled':      7, // legacy: treat as full for time-gated logic
-  'lite_workshop': 1, // Workshop free tier — Module 1 (clarity) fully accessible,
-                      // Module 2 outline is allowed via a separate gate inside
-                      // the module page, chapter generation paywalled.
+  'lite_workshop': 2, // Workshop free tier — Module 1 fully + Module 2 outline
+                      // preview accessible. Chapter generation inside Module 2
+                      // is paywalled at the API level (returns 402 → /upgrade).
 }
 
 /**
@@ -86,8 +86,8 @@ export function isModuleUnlockedForStudent(
     return unlockedModules.includes(moduleNumber)
   }
 
-  // Tier-based fallback (tier1/2/3/4/full_access without program_type)
-  if (accessLevel && ['tier1', 'tier2', 'tier3', 'tier4', 'full_access'].includes(accessLevel)) {
+  // Tier-based fallback (tier1/2/3/4/full_access/lite_workshop without program_type)
+  if (accessLevel && ['tier1', 'tier2', 'tier3', 'tier4', 'full_access', 'lite_workshop'].includes(accessLevel)) {
     return isModuleUnlockedByTier(accessLevel, moduleNumber)
   }
 
