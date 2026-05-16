@@ -69,10 +69,13 @@ const SUB_MESSAGES: Record<string, string[]> = {
     'Researching real conversations sa market mo…',
     'Scanning Facebook groups, Reddit, at forums…',
     'Pulling specific programs, agencies, at benefits relevant sa kanila…',
+    'Writing the full narrative — bawat problema, may kwento…',
     'Looking for problems people will actually pay to fix…',
     'Filtering out ideas your tita would say "nice lang"…',
     'Finding where people are already spending money…',
+    'Pulling overheard quotes — what they actually say sa kapwa nila…',
     'Avoiding "passion projects" na walang buyers…',
+    'Structuring everything into clean cards…',
     'Locking in problems that hurt… (and pay)',
   ],
   'Coming up with unique solution names for you…': [

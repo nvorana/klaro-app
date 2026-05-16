@@ -88,12 +88,20 @@ export async function POST(request: NextRequest) {
     let prompt = ''
 
     if (step === 'problems') {
-      // Run web-search research in parallel with prompt assembly. ~5-10s call.
+      // ── Two-pass: narrative-then-extract ──────────────────────────────────
+      // Pass 1 generates open prose with full creative bandwidth (no JSON,
+      // no field schema, no length caps). This is what makes ChatGPT's manual
+      // workshop prompt produce vivid output — the model isn't splitting
+      // attention between content and structure.
+      // Pass 2 extracts the prose into the JSON our UI expects, with strict
+      // "preserve all specifics, add no new facts" rules.
+
       console.log(`[clarity] problems step — running niche research for "${target_market}"`)
       const research = await researchNiche(target_market)
       console.log(`[clarity] research returned ${research.length} chars`)
+
       const researchBlock = research
-        ? `RESEARCH CONTEXT — real facts pulled from the web about this exact niche. USE THESE in your output. Reference specific programs, groups, and behaviors named here. Do not invent figures that aren't in this block.
+        ? `RESEARCH CONTEXT — real facts pulled from the web about this exact niche. USE THESE. Reference specific programs, groups, salary tiers, and behaviors named here.
 
 <research>
 ${research}
@@ -102,59 +110,136 @@ ${research}
 `
         : ''
 
-      prompt = `${researchBlock}You are a senior direct-response strategist who has studied this exact Filipino niche deeply: "${target_market}"
+      // ── PASS 1: Narrative (workshop-style open prose) ───────────────────
+      // Mirrors the manual ChatGPT workshop prompt that produces vivid output.
+      // Word choice tuned: "problems and frustrations" (emotional pair),
+      // "why they'd like to solve immediately" (motivation story, not consequence).
+      const narrativePrompt = `${researchBlock}I'd like to create an e-book that helps ${target_market}.
 
-NOTE: The student's input may include a problem description mixed into the market (e.g. "OFWs who struggle to save money"). If so, extract the core market group and use any mentioned problem as ONE of the options — but still identify the full range of the top 10 most urgent and marketable problems for this market.
+Help me find the biggest and most urgent problems that this market has — the ones with the highest demand for solutions. Provide the top 10 specific and detailed problems and frustrations they face. Arrange them in order of urgency and demand for a solution.
 
-Identify the top 10 ACHES this market lives with RIGHT NOW — the kind of problems where people are already losing sleep, spending money, searching online, joining Facebook groups, or buying courses to fix.
+For each of the 10, write a detailed insight that covers:
+- The frustration itself, described the way someone in this market would actually describe it (pain, not topic — never a how-to)
+- WHY they'd like to solve this problem immediately — the internal pull, not just the consequence. What's eating them about it right now?
+- Specific evidence of demand — named Facebook groups, courses, agencies, programs, products, or behaviors people in THIS niche are already doing about it. Use real names from the research context above.
+- One sentence this person would actually say out loud to a peer inside their world — overheard, not staged. Use real terms (agency names, ranks, benefit names) when relevant.
 
-CRITICAL FRAMING — read carefully:
-- A "problem" is a PAIN, not a TOPIC. ❌ "How to Budget Your Salary Wisely" is a chapter title. ✓ "Sahod hindi sumasapat kahit dalawang trabaho" is a pain. Never frame the problem as a how-to or a solution.
-- Be specific to THIS niche. Name real agencies, benefits, ranks, situations, programs, salary tiers, or groups that exist inside this market's actual world. If you would write the same line for "Filipino professionals" in general, you haven't gone deep enough — rewrite.
-- Concrete > generic. "Naghahanap ng info online" is generic. "Nagpapalitan ng GSIS MPL Flex computation sa private Viber group" is concrete.
+Write in dense, vivid prose. NO bullets, NO numbered fields, NO labels — just narrative. About 100-150 words per problem. Be specific. Name names. Quote what people say.
 
-For each of the 10 problems, fill out:
-1. "problem" — the ACHE itself, written as a real Filipino pain in one short line (mostly English with natural Taglish if useful). Do NOT phrase it as a how-to or a solution.
-2. "urgency" — 2 to 3 sentences. Must include at least ONE concrete reference: a benefit name (GSIS, SSS, Pag-IBIG MP2, PhilHealth, MPL), an agency (CSC, DBM, COA), a salary grade or amount, a specific situation, or a named life event. Generic consequences are not allowed.
-3. "proof_of_demand" — 2 to 3 sentences. Must name something specific people in THIS niche are already doing about this: a Facebook group name pattern, a specific course or seminar, a Shopee/Lazada product type, a Viber/Telegram group behavior, a sari-sari piece of word-of-mouth. "Marami nang nag-search online" is BANNED — be specific.
-4. "willingness_to_pay" — Low / Medium / High
-5. "ease_of_selling" — Easy / Moderate / Hard
-6. "common_phrases" — ONE sentence this person would actually say out loud to a co-worker or friend INSIDE this niche. Use real names of agencies, ranks, benefits, or situations if relevant. It should sound like overheard talk, not a generated quote. Generic "Paano ba mag-budget?" is BANNED.
+CRITICAL:
+- Pain, never topic. ❌ "How to Budget Your Salary Wisely" ✓ "Sahod hindi sumasapat kahit may pay adjustment".
+- Specific to THIS niche only. If a line would read the same for "Filipino professionals" in general, rewrite with niche-specific references.
+- Do NOT invent peso figures or statistics. Only use numbers from the research context.
+- Natural Taglish — ~70% English, ~30% Tagalog at the word level. Tagalog in emotional beats. Avoid deep/literary Tagalog ("nahihirapan", "kakulangan", "pangangailangan").
+${BANNED_WORDS_RULE}
 
-Prioritize problems that are:
-* Painful and immediate
-* Emotionally charged
-* Tied to money, health, family, career, or status
-* Solvable through a short, practical e-book
+${PROBLEM_EXEMPLAR}
 
-Rank all 10 problems based on profitability and likelihood to convert into sales.
+Write the narrative now — 10 problems, ranked #1 = most urgent and most likely to pay for a solution.`
 
-Return a JSON object with this EXACT structure — the key must be "items":
+      console.log(`[clarity] running narrative pass`)
+      const narrativeRes = await openai.chat.completions.create({
+        model: AI_MODEL,
+        messages: [{ role: 'user', content: narrativePrompt }],
+        temperature: 0.8, // Higher temp on narrative pass — we want creative depth
+      })
+      const narrative = narrativeRes.choices[0].message.content || ''
+      console.log(`[clarity] narrative returned ${narrative.length} chars`)
+
+      // ── PASS 2: Extract narrative into JSON ─────────────────────────────
+      // Pure structuring pass. Strict instructions to preserve specifics and
+      // add NO new content. Low temperature for deterministic extraction.
+      const extractPrompt = `Below is a narrative analysis of the top 10 problems for "${target_market}". Your job is to extract it into structured JSON for a product UI.
+
+<narrative>
+${narrative}
+</narrative>
+
+Extract into this EXACT JSON shape — the key must be "items":
 {
   "items": [
     {
       "rank": 1,
-      "problem": "Pain statement (not a how-to)",
-      "urgency": "2-3 sentences with at least one concrete reference (agency, benefit, salary tier, situation).",
-      "proof_of_demand": "2-3 sentences naming what people in this exact niche are already doing — specific groups, courses, products, or word-of-mouth.",
-      "willingness_to_pay": "High",
-      "ease_of_selling": "Easy",
-      "common_phrases": "One overheard-sounding sentence this person would say to a peer inside their world, with niche-specific words."
+      "problem": "The pain statement in one short line (pain, not topic). Pull directly from the narrative — preserve any Taglish or specific terms used.",
+      "urgency": "2-3 sentences pulled from the narrative explaining why they want to solve it now. Preserve all named programs, agencies, salary tiers, situations.",
+      "proof_of_demand": "2-3 sentences pulled from the narrative naming what they're already doing about it — specific groups, courses, products, behaviors.",
+      "willingness_to_pay": "Low | Medium | High",
+      "ease_of_selling": "Easy | Moderate | Hard",
+      "common_phrases": "The one overheard-quote sentence from the narrative. Preserve it word-for-word if possible."
     }
   ]
 }
 
-Return exactly 10 items, ranked #1 = most profitable/likely to convert.
+EXTRACTION RULES — strict:
+1. Use ONLY content from the narrative. Do NOT invent new facts, agencies, numbers, or quotes. If the narrative didn't mention it, don't add it.
+2. Preserve all specifics — named agencies, FB groups, salary tiers, benefit names, programs, brand names. Do not generalize.
+3. Preserve the Taglish phrasing from the narrative. Do NOT translate to English.
+4. Order should match the narrative's ranking (#1 = most urgent / highest demand).
+5. Return exactly 10 items.
+6. Assign willingness_to_pay and ease_of_selling based on the narrative's signal — high if emotionally urgent + tied to money/health/career; easy if the problem fits a short practical ebook.
+${BANNED_WORDS_RULE}`
 
-LANGUAGE RULES — follow strictly:
-1. "problem" field is the headline. Mostly English, marketable, punchy. Tagalog is OK if it lands harder (e.g. "Sahod hindi sumasapat").
-2. "urgency" and "proof_of_demand" — natural conversational Taglish with concrete niche references baked in. Aim for ~70% English / ~30% Tagalog at the word level. Tagalog appears in emotional beats and reactions, not as the carrying language.
-3. "common_phrases" — sounds like a real Filipino in this niche talking out loud. Use names of agencies/ranks/benefits if relevant.
-4. NEVER use deep/literary Tagalog (e.g. "nahihirapan", "kakulangan", "pangangailangan", "nakatuon"). Use everyday words.
-5. Do NOT invent fake statistics or fake peso figures. If you reference a real one, only use figures that are publicly well-known or appear in the RESEARCH CONTEXT above. Otherwise reference the AGENCY or PROGRAM by name without making up numbers.
-${BANNED_WORDS_RULE}
+      console.log(`[clarity] running extraction pass`)
+      const extractRes = await openai.chat.completions.create({
+        model: AI_MODEL,
+        messages: [{ role: 'user', content: extractPrompt }],
+        response_format: { type: 'json_object' },
+        temperature: 0.3, // Low temp — we want faithful extraction, not creativity
+      })
+      let content = extractRes.choices[0].message.content || '{}'
 
-${PROBLEM_EXEMPLAR}`
+      // ── Banned word scan on extracted JSON ──────────────────────────────
+      const bannedFound = findBannedWords(content)
+      if (bannedFound.length > 0) {
+        console.warn(`[clarity] Banned words found: ${bannedFound.join(', ')} — running auto-correction`)
+        const correctionRes = await openai.chat.completions.create({
+          model: AI_MODEL,
+          messages: [
+            { role: 'user', content: extractPrompt },
+            { role: 'assistant', content: content },
+            { role: 'user', content: buildCorrectionPrompt(content, bannedFound) },
+          ],
+          response_format: { type: 'json_object' },
+          temperature: 0.3,
+        })
+        content = correctionRes.choices[0].message.content || content
+      }
+
+      // ── Parse + server-side re-rank ─────────────────────────────────────
+      const parsed = JSON.parse(content) as Record<string, unknown>
+      let items: unknown[] = Array.isArray(parsed.items) ? parsed.items : []
+      if (items.length === 0) {
+        // Defensive: try any other array key in case extractor used a different name
+        for (const v of Object.values(parsed)) {
+          if (Array.isArray(v)) { items = v; break }
+        }
+      }
+
+      type ProblemItem = {
+        rank?: number
+        willingness_to_pay?: string
+        ease_of_selling?: string
+        [key: string]: unknown
+      }
+      const score = (item: ProblemItem): number => {
+        const wtp = (item.willingness_to_pay ?? '').toString().toLowerCase()
+        const ease = (item.ease_of_selling ?? '').toString().toLowerCase()
+        const wtpScore = wtp.startsWith('high') ? 3 : wtp.startsWith('low') ? 1 : 2
+        const easeScore = ease.startsWith('easy') ? 3 : ease.startsWith('hard') ? 1 : 2
+        return wtpScore * 10 + easeScore
+      }
+      const reranked = (items as ProblemItem[])
+        .map((item, originalIndex) => ({ item, originalIndex }))
+        .sort((a, b) => {
+          const diff = score(b.item) - score(a.item)
+          if (diff !== 0) return diff
+          const aRank = typeof a.item.rank === 'number' ? a.item.rank : a.originalIndex + 1
+          const bRank = typeof b.item.rank === 'number' ? b.item.rank : b.originalIndex + 1
+          return aRank - bRank
+        })
+        .map(({ item }, i) => ({ ...item, rank: i + 1 }))
+
+      return NextResponse.json({ data: reranked })
     }
 
     if (step === 'mechanisms') {
