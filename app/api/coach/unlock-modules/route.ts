@@ -35,6 +35,13 @@ export async function POST(request: NextRequest) {
 
     const adminClient = createAdminClient()
 
+    // Set audit context so the profile_audit_log trigger knows WHO did this
+    // and from WHERE. Set once for this connection, then run all unlocks.
+    await adminClient.rpc('set_audit_context', {
+      p_user: user.id,
+      p_source: 'coach_unlock_api',
+    })
+
     // For each student, append moduleNumber to their unlocked_modules array (no duplicates)
     const results = await Promise.all(
       studentIds.map((id: string) =>

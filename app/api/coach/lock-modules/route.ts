@@ -35,6 +35,12 @@ export async function POST(request: NextRequest) {
 
     const adminClient = createAdminClient()
 
+    // Audit context — see profile_audit_log trigger.
+    await adminClient.rpc('set_audit_context', {
+      p_user: user.id,
+      p_source: 'coach_lock_api',
+    })
+
     // For each student, remove moduleNumber from their unlocked_modules array
     const results = await Promise.all(
       studentIds.map((id: string) =>

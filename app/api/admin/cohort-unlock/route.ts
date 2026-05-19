@@ -36,6 +36,12 @@ export async function POST(request: NextRequest) {
   const sortedUnique = Array.from(new Set(modules)).sort((a, b) => a - b)
 
   const admin = createAdminClient()
+
+  await admin.rpc('set_audit_context', {
+    p_user: user.id,
+    p_source: 'cohort_unlock',
+  })
+
   const { data: updated, error } = await admin
     .from('profiles')
     .update({ unlocked_modules: sortedUnique, updated_at: new Date().toISOString() })

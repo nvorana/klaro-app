@@ -87,6 +87,13 @@ export async function POST(request: NextRequest) {
 
     const supabase = createAdminClient()
 
+    // Audit context — every profile write in this handler is attributed to
+    // the Systeme.io webhook. See profile_audit_log trigger.
+    await supabase.rpc('set_audit_context', {
+      p_user: null,
+      p_source: 'webhook_systeme',
+    })
+
     // ── 3. Extract email + tag (handles multiple Systeme.io formats) ──
     const email = (
       (payload.contact as Record<string, unknown>)?.email ??

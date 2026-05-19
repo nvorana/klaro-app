@@ -236,6 +236,11 @@ export async function POST(request: NextRequest) {
   for (const r of results) {
     try {
       if (r.recommended_action === 'activate' && r.recommended_payload) {
+        // Audit context — see profile_audit_log trigger.
+        await admin.rpc('set_audit_context', {
+          p_user: user.id,
+          p_source: 'sweep_pending',
+        })
         const { error } = await admin
           .from('profiles')
           .update(r.recommended_payload)

@@ -46,6 +46,12 @@ export async function POST(request: NextRequest) {
     // Build the cumulative module array [1, 2, ..., upToModule]
     const moduleArray = Array.from({ length: upToModule }, (_, i) => i + 1)
 
+    // Audit context — see profile_audit_log trigger.
+    await adminClient.rpc('set_audit_context', {
+      p_user: user.id,
+      p_source: 'batch_unlock',
+    })
+
     // Update all students: set unlocked_modules to [1..upToModule]
     // We use array_agg via a direct update rather than RPC so it's one operation per student.
     // For students who already have MORE modules unlocked, we take the union to never regress.

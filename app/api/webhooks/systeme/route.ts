@@ -56,6 +56,12 @@ export async function POST(request: NextRequest) {
     const payload = await request.json()
     const supabase = createAdminClient()
 
+    // Audit context — see profile_audit_log trigger.
+    await supabase.rpc('set_audit_context', {
+      p_user: null,
+      p_source: 'webhook_systeme',
+    })
+
     const email      = payload?.contact?.email as string | undefined
     const tagName    = payload?.tag?.name     as string | undefined
     const eventType  = payload?.event_type    as string | undefined

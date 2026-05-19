@@ -155,6 +155,12 @@ export async function claimPendingTagsForUser(
   updates.access_suspended = false
   updates.updated_at = new Date().toISOString()
 
+  // Audit context — orphan claim is a system action, no human actor.
+  await supabase.rpc('set_audit_context', {
+    p_user: null,
+    p_source: 'claim_pending',
+  })
+
   const { error } = await supabase
     .from('profiles')
     .update(updates)
