@@ -35,18 +35,15 @@ export async function POST(request: NextRequest) {
 
     const adminClient = createAdminClient()
 
-    // Audit context — see profile_audit_log trigger.
-    await adminClient.rpc('set_audit_context', {
-      p_user: user.id,
-      p_source: 'coach_lock_api',
-    })
-
-    // For each student, remove moduleNumber from their unlocked_modules array
+    // Pass actor + source INTO the RPC so audit context lives in the same
+    // transaction as the UPDATE (PgBouncer pooling breaks the two-call pattern).
     const results = await Promise.all(
       studentIds.map((id: string) =>
         adminClient.rpc('lock_module_for_student', {
           p_student_id: id,
           p_module_number: moduleNumber,
+          p_actor: user.id,
+          p_source: 'coach_lock_api',
         })
       )
     )
