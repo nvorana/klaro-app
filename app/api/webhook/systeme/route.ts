@@ -149,8 +149,11 @@ export async function POST(request: NextRequest) {
     }
 
     const topis = detectTopisTag(tagName)
-    const isAdded   = eventType.includes('added') || eventType === 'contact.tag_added'
-    const isRemoved = eventType.includes('removed') || eventType === 'contact.tag_removed'
+    // Case-insensitive matching — Systeme.io has sent both 'contact.tag.added'
+    // and uppercase variants in the past; this future-proofs us against either.
+    const lowerEventType = (eventType ?? '').toLowerCase()
+    const isAdded   = lowerEventType.includes('added')
+    const isRemoved = lowerEventType.includes('removed')
 
     // ── TOPIS-Student (handles "TOPIS | Student", "TOPIS 77 Student", etc.) ──
     if (topis.isStudent && isAdded) {
