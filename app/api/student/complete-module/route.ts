@@ -5,12 +5,22 @@ import { createAdminClient } from '@/lib/supabase/admin'
 // POST /api/student/complete-module
 // Body: { moduleNumber: number }
 // Called by module pages after a student saves/completes a module.
-// Auto-unlocks the next module for Accelerator Program students so they
-// can continuously progress without waiting for coach approval.
+//
+// POLICY: Accelerator Program students do NOT auto-unlock the next module.
+// Coach Edgar must manually unlock via /api/coach/unlock-modules. This is
+// true for both partial-pay (enrolled) and fully-paid (full_access) AP
+// students — payment status does not change the unlock policy.
+//
+// History: This endpoint previously auto-unlocked the next module for AP
+// students. That violated the program's pacing model — partial-pay students
+// could rush through all 7 modules without paying their installments, and
+// even fully-paid students bypassed Coach Edgar's progression decisions.
+// As of 2026-06-12, AP students are explicitly excluded from auto-unlock.
 //
 // No-op for:
+// - Accelerator (paced by coach) — see policy above
 // - TOPIS students (modules unlock weekly via time-based logic)
-// - Tier/full_access students (modules unlock by tier limit)
+// - Tier/full_access non-AP students (modules unlock by tier limit)
 
 export async function POST(request: NextRequest) {
   try {
@@ -31,10 +41,10 @@ export async function POST(request: NextRequest) {
 
     const admin = createAdminClient()
 
-    // Get student's program type + current unlocked_modules
+    // Get student's program type to enforce per-program unlock policy
     const { data: profile } = await admin
       .from('profiles')
-      .select('program_type, unlocked_modules')
+      .select('program_type')
       .eq('id', user.id)
       .maybeSingle()
 
@@ -42,33 +52,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Profile not found' }, { status: 404 })
     }
 
-    // Only auto-unlock for AP students. Other tiers use different logic.
-    if (profile.program_type !== 'accelerator') {
-      return NextResponse.json({ success: true, unlocked: null, reason: 'not_ap' })
-    }
-
-    const nextModule = moduleNumber + 1
-    const currentUnlocked: number[] = profile.unlocked_modules ?? []
-
-    // Already unlocked — no-op
-    if (currentUnlocked.includes(nextModule)) {
-      return NextResponse.json({ success: true, unlocked: nextModule, alreadyUnlocked: true })
-    }
-
-    const { error: updateErr } = await admin
-      .from('profiles')
-      .update({
-        unlocked_modules: [...currentUnlocked, nextModule].sort((a, b) => a - b),
-        updated_at: new Date().toISOString(),
+    // ── AP: NO auto-unlock. Coach must call /api/coach/unlock-modules. ──
+    if (profile.program_type === 'accelerator') {
+      return NextResponse.json({
+        success: true,
+        unlocked: null,
+        reason: 'ap_requires_coach_unlock',
       })
-      .eq('id', user.id)
-
-    if (updateErr) {
-      console.error('[complete-module] Update error:', updateErr)
-      return NextResponse.json({ error: 'Update failed' }, { status: 500 })
     }
 
-    return NextResponse.json({ success: true, unlocked: nextModule })
+    // ── Non-AP: also no-op here. TOPIS uses time-drip + cohort batch
+    //    unlocks. Tier/legacy students have access_level-based gating.
+    //    Module completion progression is purely informational for them. ──
+    return NextResponse.json({
+      success: true,
+      unlocked: null,
+      reason: 'no_auto_unlock_for_program',
+      program_type: profile.program_type,
+    })
   } catch (err) {
     console.error('[complete-module]', err)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
