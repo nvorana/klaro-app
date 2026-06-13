@@ -36,21 +36,39 @@ function isTestAccount(email: string): boolean {
   return TEST_ACCOUNT_PATTERNS.some(p => p.test(email))
 }
 
+// Systeme.io's contacts API intermittently returns empty results for
+// contacts that actually exist (caught real-world: Mary Angelica Bonifacio,
+// Lady Sharonne Cruz, Milky Joy Camat, et al — each had Accel-Enrolled
+// tagged for 17-24 days but the single-shot lookup kept returning empty,
+// so they sat stuck on `pending`).
+//
+// Retry up to 3 times with exponential backoff before treating "empty"
+// as truth. Only return [] (no tags) after all 3 attempts agree on empty.
 async function fetchSystemeTags(email: string): Promise<string[] | null> {
   const apiKey = process.env.SYSTEME_API_KEY
   if (!apiKey) return null
-  try {
-    const res = await fetch(`${SYSTEME_API_BASE}/contacts?email=${encodeURIComponent(email)}`, {
-      headers: { 'X-API-Key': apiKey, accept: 'application/json' },
-    })
-    if (!res.ok) return null
-    const data = await res.json()
-    if (!data.items || data.items.length === 0) return []
-    const tags = (data.items[0].tags ?? []) as Array<{ name: string }>
-    return tags.map(t => t.name)
-  } catch {
-    return null
+  const delays = [0, 800, 2400]
+  let lastSuccessfulResult: string[] | null = null
+  for (let attempt = 0; attempt < delays.length; attempt++) {
+    if (delays[attempt] > 0) await new Promise(r => setTimeout(r, delays[attempt]))
+    try {
+      const res = await fetch(`${SYSTEME_API_BASE}/contacts?email=${encodeURIComponent(email)}`, {
+        headers: { 'X-API-Key': apiKey, accept: 'application/json' },
+      })
+      if (!res.ok) continue
+      const data = await res.json()
+      if (data.items && data.items.length > 0) {
+        const tags = (data.items[0].tags ?? []) as Array<{ name: string }>
+        return tags.map(t => t.name)
+      }
+      // Empty result — record it but keep retrying. A consistent empty
+      // across all 3 attempts gives us higher confidence it's truly empty.
+      lastSuccessfulResult = []
+    } catch {
+      // Network error — retry.
+    }
   }
+  return lastSuccessfulResult  // null if all attempts errored, [] if all empty
 }
 
 interface DiagnoseResult {
