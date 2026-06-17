@@ -102,18 +102,7 @@ export async function sendWelcomeEmail(ctx: WelcomeEmailContext): Promise<Welcom
 
 // ── Templates ────────────────────────────────────────────────────────────────
 
-function programLine(programType?: string | null, accessLevel?: string): string {
-  if (programType === 'accelerator') {
-    return accessLevel === 'full_access'
-      ? "You're enrolled in the Accelerator Program (fully paid)."
-      : "You're enrolled in the Accelerator Program."
-  }
-  if (programType === 'topis') return "You're enrolled in TOPIS."
-  if (accessLevel === 'lite_workshop') return "You're on the KLARO Workshop Edition (free)."
-  return "Your KLARO access is active."
-}
-
-function buildHtml({ firstName, accessLevel, programType }: { firstName: string; accessLevel: string; programType?: string | null }): string {
+function buildHtml({ firstName }: { firstName: string; accessLevel: string; programType?: string | null }): string {
   return `
 <!DOCTYPE html>
 <html>
@@ -139,10 +128,6 @@ function buildHtml({ firstName, accessLevel, programType }: { firstName: string;
         <!-- Body -->
         <tr><td style="padding:32px;">
 
-          <p style="font-size:16px;line-height:1.6;margin:0 0 16px;color:#1F2937;">
-            ${programLine(programType, accessLevel)}
-          </p>
-
           <p style="font-size:16px;line-height:1.6;margin:0 0 24px;color:#1F2937;">
             Your dashboard is ready. <strong>Module 1 — The Clarity Builder</strong> is unlocked and waiting. This is where you decide who your ebook is for, what problem you solve, and what makes your solution different — the foundation everything else builds on.
           </p>
@@ -160,13 +145,13 @@ function buildHtml({ firstName, accessLevel, programType }: { firstName: string;
           <ol style="font-size:14px;line-height:1.7;color:#1F2937;margin:0 0 24px 20px;padding:0;">
             <li>Log in with the email you signed up with: <span style="font-family:monospace;color:#666;">your email</span></li>
             <li>Spend 15–20 minutes on Module 1 — your Clarity Sentence</li>
-            <li>Coach Edgar will reach out within 1–3 days to start coaching</li>
+            <li>Your Coach will reach out within 1–3 days to start coaching</li>
           </ol>
 
           <!-- Reassurance box -->
           <div style="background:#F8F9FA;border-radius:12px;padding:20px;margin:0 0 24px;border-left:3px solid #F4B942;">
             <p style="font-size:13px;line-height:1.6;margin:0;color:#1F2937;">
-              <strong>One quick note:</strong> Modules 3-7 unlock as Coach Edgar guides you through each step — this is intentional. We pace the program to your progress so you build real momentum, not just clicks.
+              <strong>One quick note:</strong> Modules 3-7 unlock as your Coach guides you through each step — this is intentional. We pace the program to your progress so you build real momentum, not just clicks.
             </p>
           </div>
 
@@ -191,11 +176,9 @@ function buildHtml({ firstName, accessLevel, programType }: { firstName: string;
 `.trim()
 }
 
-function buildText({ firstName, accessLevel, programType }: { firstName: string; accessLevel: string; programType?: string | null }): string {
+function buildText({ firstName }: { firstName: string; accessLevel: string; programType?: string | null }): string {
   return `
 Welcome to KLARO, ${firstName}.
-
-${programLine(programType, accessLevel)}
 
 Your dashboard is ready. Module 1 — The Clarity Builder — is unlocked and waiting.
 This is where you decide who your ebook is for, what problem you solve, and what
@@ -206,9 +189,9 @@ LOG IN HERE: ${LOGIN_URL}
 What happens next:
   1. Log in with the email you signed up with
   2. Spend 15-20 minutes on Module 1 — your Clarity Sentence
-  3. Coach Edgar will reach out within 1-3 days to start coaching
+  3. Your Coach will reach out within 1-3 days to start coaching
 
-One quick note: Modules 3-7 unlock as Coach Edgar guides you through each step.
+One quick note: Modules 3-7 unlock as your Coach guides you through each step.
 We pace the program to your progress so you build real momentum.
 
 Stuck? Reply to this email or write to ${SUPPORT_EMAIL}.
