@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { sendWelcomeEmail } from '@/lib/email/sendWelcomeEmail'
 
 // ── /api/cron/sweep-pending ──────────────────────────────────────────────────
 //
@@ -228,6 +229,14 @@ async function handle(request: NextRequest) {
       } else {
         results.push({ email, name: p.full_name, status: d.status, action: 'activated' })
         activated++
+        // Welcome email — idempotent, fires only once per profile
+        await sendWelcomeEmail({
+          profileId: p.id,
+          email,
+          fullName: p.full_name,
+          accessLevel: (d.payload.access_level as string) ?? 'enrolled',
+          programType: (d.payload.program_type as string | undefined),
+        })
       }
     } else {
       results.push({ email, name: p.full_name, status: d.status, action: 'skip' })
