@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { sendPreSignupWelcome } from '@/lib/email/sendPreSignupWelcome'
 
 // ─── Systeme.io Webhook Handler (LIVE endpoint) ─────────────────────────────
 //
@@ -116,6 +117,15 @@ export async function POST(request: NextRequest) {
       'contact.tag_added'  // Default to tag_added if not specified
     ) as string
 
+    // Extract first name from Systeme.io payload (multiple shapes possible).
+    // Used only for the pre-signup welcome email personalization.
+    function extractFirstName(): string | null {
+      const fromData = ((payload.data as Record<string, unknown>)?.contact as Record<string, unknown>)?.fields as Record<string, unknown> | undefined
+      const fromContact = (payload.contact as Record<string, unknown>)?.fields as Record<string, unknown> | undefined
+      const first = (fromData?.first_name ?? fromContact?.first_name ?? payload.first_name) as string | undefined
+      return first?.trim() || null
+    }
+
     // Always log every incoming webhook
     await supabase.from('webhook_logs').insert({
       payload,
@@ -173,6 +183,8 @@ export async function POST(request: NextRequest) {
       } else {
         await logAction('topis_enrolled_pending_signup')
         console.log(`[Webhook] TOPIS tag received but no account yet: ${email}`)
+        // Fire pre-signup welcome — idempotent (skipped if already sent)
+        await sendPreSignupWelcome({ email, firstName: extractFirstName() })
       }
       return NextResponse.json({ success: true, action: 'topis_enrolled' })
     }
@@ -201,6 +213,8 @@ export async function POST(request: NextRequest) {
         console.log(`[Webhook] Accelerator enrolled: ${email} (unlocked modules 1, 2)`)
       } else {
         await logAction('accelerator_enrolled_pending_signup')
+        // Fire pre-signup welcome — idempotent (skipped if already sent)
+        await sendPreSignupWelcome({ email, firstName: extractFirstName() })
       }
       return NextResponse.json({ success: true, action: 'accelerator_enrolled' })
     }
@@ -284,6 +298,8 @@ export async function POST(request: NextRequest) {
         await logAction(`tier_access_granted_${tierLevel}`)
       } else {
         await logAction(`tier_access_pending_signup_${tierLevel}`)
+        // Fire pre-signup welcome — idempotent (skipped if already sent)
+        await sendPreSignupWelcome({ email, firstName: extractFirstName() })
       }
       return NextResponse.json({ success: true })
     }
@@ -309,6 +325,8 @@ export async function POST(request: NextRequest) {
           await logAction('access_granted')
         } else {
           await logAction('access_granted_pending_signup')
+          // Fire pre-signup welcome — idempotent (skipped if already sent)
+          await sendPreSignupWelcome({ email, firstName: extractFirstName() })
         }
       }
       if (isRemoved) {
