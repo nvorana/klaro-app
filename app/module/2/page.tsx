@@ -113,6 +113,10 @@ export default function Module2Page() {
   // Review
   const [expandedChapter, setExpandedChapter] = useState<number | null>(null)
   const [showStartOverWarning, setShowStartOverWarning] = useState(false)
+  // Foundation sealed once Module 3 is completed. In that state, "Start over"
+  // (which destroys the ebook) is hidden — changing the ebook would silently
+  // invalidate downstream modules.
+  const [foundationSealed, setFoundationSealed] = useState(false)
 
   // Author
   const [authorName, setAuthorName] = useState('')
@@ -148,6 +152,15 @@ export default function Module2Page() {
 
       if (!clarityRow) { router.push('/module/1'); return }
       setClarity(clarityRow)
+
+      // Check if foundation is sealed (Module 3 completed → hide Start over)
+      const { data: m3Progress } = await supabase
+        .from('module_progress')
+        .select('completed_at')
+        .eq('user_id', session.user.id)
+        .eq('module_number', 3)
+        .maybeSingle()
+      if (m3Progress?.completed_at) setFoundationSealed(true)
 
       // Check if student already has a saved ebook for THIS clarity project.
       // We only resume an existing ebook if it was created AFTER the current
@@ -1020,12 +1033,19 @@ export default function Module2Page() {
             >
               {saving ? '⏳ Saving...' : 'Save & Mark Complete →'}
             </button>
-            <button
-              onClick={() => setShowStartOverWarning(true)}
-              className="w-full text-gray-400 text-sm py-2 underline underline-offset-2 hover:text-red-500 transition-colors"
-            >
-              Start over with a new e-book
-            </button>
+            {!foundationSealed && (
+              <button
+                onClick={() => setShowStartOverWarning(true)}
+                className="w-full text-gray-400 text-sm py-2 underline underline-offset-2 hover:text-red-500 transition-colors"
+              >
+                Start over with a new e-book
+              </button>
+            )}
+            {foundationSealed && (
+              <p className="w-full text-center text-xs text-gray-400 py-2">
+                🔒 This module is sealed — ask your coach to reset if you need to redo it.
+              </p>
+            )}
           </div>
         </div>
       )}

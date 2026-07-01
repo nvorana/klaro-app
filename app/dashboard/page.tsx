@@ -341,39 +341,30 @@ export default async function DashboardPage({
                       Pending Review
                     </span>
                   )}
-                  {/* Modules 1-3 are sealed once Module 3 is done — hide all
-                      action buttons (View/Start) and show a Sealed badge. */}
-                  {foundationSealed && moduleNum <= 3 ? (
-                    <span className="flex items-center gap-1 bg-gray-100 text-gray-500 text-xs font-bold px-3 py-2 rounded-xl">
-                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                      </svg>
-                      Sealed
-                    </span>
-                  ) : (
-                    <>
-                      {isCompleted && (
-                        <Link href={`/module/${moduleNum}`}>
-                          <span className="flex items-center gap-1 bg-green-50 text-[#10B981] text-xs font-bold px-3 py-2 rounded-xl">
-                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
-                            </svg>
-                            View
-                          </span>
-                        </Link>
-                      )}
-                      {!isCompleted && unlocked && (
-                        <Link href={`/module/${moduleNum}`}>
-                          <span className="flex items-center gap-1 bg-[#F4B942] text-[#1A1F36] text-xs font-bold px-3 py-2 rounded-xl">
-                            Start
-                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#1A1F36" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                              <polyline points="9 18 15 12 9 6"/>
-                            </svg>
-                          </span>
-                        </Link>
-                      )}
-                    </>
+                  {/* Completed modules always show a View link. Modules 1-3
+                      remain viewable after Module 3 completion — the module
+                      page renders a read-only completion view showing the
+                      saved output. Regenerate/edit affordances inside the
+                      module pages are already gated on downstream progress. */}
+                  {isCompleted && (
+                    <Link href={`/module/${moduleNum}`}>
+                      <span className="flex items-center gap-1 bg-green-50 text-[#10B981] text-xs font-bold px-3 py-2 rounded-xl">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+                        </svg>
+                        View
+                      </span>
+                    </Link>
+                  )}
+                  {!isCompleted && unlocked && (
+                    <Link href={`/module/${moduleNum}`}>
+                      <span className="flex items-center gap-1 bg-[#F4B942] text-[#1A1F36] text-xs font-bold px-3 py-2 rounded-xl">
+                        Start
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#1A1F36" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="9 18 15 12 9 6"/>
+                        </svg>
+                      </span>
+                    </Link>
                   )}
                   {!unlocked && accessLevel === 'lite_workshop' && (
                     <Link href="/upgrade" className="flex flex-col items-center gap-1 w-20 group">

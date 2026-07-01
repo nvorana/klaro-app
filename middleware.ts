@@ -97,27 +97,13 @@ export async function middleware(request: NextRequest) {
         }
       }
 
-      // ── Modules 1–3 hard lock once Module 3 is completed ────────────────
-      // Once a student finishes Module 3, the foundation (clarity, ebook,
-      // offer) is sealed. Going back and changing Module 1 would silently
-      // invalidate the ebook and offer that depend on it. We redirect any
-      // attempt to re-enter Modules 1, 2, or 3 to the dashboard with a
-      // notice. Coach can still reset via /api/coach/reset-student if a
+      // Modules 1–3 remain viewable after Module 3 completion (read-only).
+      // The module pages themselves render a completion view showing the
+      // saved output, and their internal "regenerate/start over" affordances
+      // are already gated on whether downstream modules have started —
+      // preventing accidental foundation changes.
+      // Coach can still fully reset via /api/coach/reset-student if a
       // legitimate redo is needed.
-      const moduleMatch = request.nextUrl.pathname.match(/^\/module\/([123])(?:\/|$)/)
-      if (moduleMatch) {
-        const { data: m3 } = await supabase
-          .from('module_progress')
-          .select('completed_at')
-          .eq('user_id', user.id)
-          .eq('module_number', 3)
-          .maybeSingle()
-        if (m3?.completed_at) {
-          const dest = new URL('/dashboard', request.url)
-          dest.searchParams.set('locked', moduleMatch[1])
-          return NextResponse.redirect(dest)
-        }
-      }
     }
   }
 
