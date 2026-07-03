@@ -15,6 +15,7 @@
 // a no-op.
 
 import { createAdminClient } from './supabase/admin'
+import { isPostCutoffAPProfile } from './apKlaroPolicy'
 
 const EDGAR_COACH_ID = 'e5d6cc0d-ae70-4e58-967b-f61a957eb442'
 
@@ -68,7 +69,7 @@ export async function claimPendingTagsForUser(
   // ── Snapshot current profile (so we don't downgrade access) ────────────────
   const { data: profile } = await supabase
     .from('profiles')
-    .select('id, access_level, program_type, unlocked_modules, coach_id, enrolled_at, cohort_batch')
+    .select('id, access_level, program_type, unlocked_modules, coach_id, enrolled_at, cohort_batch, created_at')
     .eq('id', userId)
     .maybeSingle()
 
@@ -118,6 +119,15 @@ export async function claimPendingTagsForUser(
     bestRank = rank
 
     if (action === 'accelerator_enrolled_pending_signup') {
+      // POLICY (July 1, 2026): new AP students no longer receive KLARO
+      // access. Skip AP treatment for post-cutoff profiles. Grandfathered
+      // profiles (created before cutoff) continue to be activated normally.
+      if (isPostCutoffAPProfile(profile.created_at as string | null)) {
+        result.skipped_actions.push(`${action}_blocked_by_policy`)
+        // Don't apply AP treatment. Continue to see if a stronger (non-AP)
+        // action exists in the remaining logs (rare but possible).
+        continue
+      }
       updates.program_type = 'accelerator'
       updates.access_level = 'enrolled'
       updates.coach_id = EDGAR_COACH_ID

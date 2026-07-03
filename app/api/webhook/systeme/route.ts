@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendPreSignupWelcome } from '@/lib/email/sendPreSignupWelcome'
+import { isPostCutoffAPProfile, isPostCutoffAPNow } from '@/lib/apKlaroPolicy'
 
 // ─── Systeme.io Webhook Handler (LIVE endpoint) ─────────────────────────────
 //
@@ -143,7 +144,7 @@ export async function POST(request: NextRequest) {
     async function getProfile() {
       const { data } = await supabase
         .from('profiles')
-        .select('id, enrolled_at, access_level, unlocked_modules')
+        .select('id, enrolled_at, access_level, unlocked_modules, created_at')
         .eq('email', email as string)
         .maybeSingle()
       return data
@@ -192,8 +193,18 @@ export async function POST(request: NextRequest) {
     // ── Accel-Enrolled (handles "Accel-Enrolled", "Accelerator Program", etc.) ──
     if (isAccelTag(tagName) && isAdded) {
       const profile = await getProfile()
+
+      // POLICY (July 1, 2026): new AP students no longer receive KLARO
+      // access. Grandfather existing profiles created before the cutoff.
+      // See lib/apKlaroPolicy.ts for the cutoff constant + revert path.
       if (profile) {
-        // AP students get modules 1 and 2 unlocked by default
+        if (isPostCutoffAPProfile(profile.created_at as string | null)) {
+          await logAction('accelerator_enrolled_blocked_by_policy')
+          console.log(`[Webhook] Accel-Enrolled blocked by July 1 policy — profile ${email} created ${profile.created_at}`)
+          return NextResponse.json({ success: true, action: 'accelerator_enrolled_blocked_by_policy' })
+        }
+
+        // Grandfathered — pre-cutoff AP student keeps normal activation.
         const currentUnlocked: number[] = (profile as { unlocked_modules?: number[] }).unlocked_modules ?? []
         const mergedUnlocked = Array.from(new Set([...currentUnlocked, 1, 2])).sort((a, b) => a - b)
 
@@ -212,9 +223,15 @@ export async function POST(request: NextRequest) {
         await logAction('accelerator_enrolled')
         console.log(`[Webhook] Accelerator enrolled: ${email} (unlocked modules 1, 2)`)
       } else {
-        await logAction('accelerator_enrolled_pending_signup')
-        // Fire pre-signup welcome — idempotent (skipped if already sent)
-        await sendPreSignupWelcome({ email, firstName: extractFirstName() })
+        // No profile yet — under the July 1 policy, we no longer send the
+        // "set up your KLARO account" pre-signup welcome to new AP contacts.
+        if (isPostCutoffAPNow()) {
+          await logAction('accelerator_enrolled_pending_signup_blocked_by_policy')
+          console.log(`[Webhook] Accel-Enrolled pending signup blocked by July 1 policy: ${email}`)
+        } else {
+          await logAction('accelerator_enrolled_pending_signup')
+          await sendPreSignupWelcome({ email, firstName: extractFirstName() })
+        }
       }
       return NextResponse.json({ success: true, action: 'accelerator_enrolled' })
     }

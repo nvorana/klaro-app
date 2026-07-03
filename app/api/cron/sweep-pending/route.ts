@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendWelcomeEmail } from '@/lib/email/sendWelcomeEmail'
+import { isPostCutoffAPProfile } from '@/lib/apKlaroPolicy'
 
 // ── /api/cron/sweep-pending ──────────────────────────────────────────────────
 //
@@ -215,6 +216,15 @@ async function handle(request: NextRequest) {
     const d = diagnose(tags)
 
     if (d.action === 'activate' && d.payload) {
+      // POLICY (July 1, 2026): new AP students no longer receive KLARO
+      // access. Skip activation for post-cutoff AP-diagnosed profiles.
+      // TOPIS + tier customers are unaffected.
+      const isAP = d.payload.program_type === 'accelerator'
+      if (isAP && isPostCutoffAPProfile(p.created_at)) {
+        results.push({ email, name: p.full_name, status: d.status, action: 'skip_ap_policy' })
+        continue
+      }
+
       // Re-set audit context just before each write to maximize the chance the
       // session var survives PgBouncer pooling (cheap; same connection within
       // the function invocation).

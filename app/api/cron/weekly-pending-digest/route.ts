@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendWelcomeEmail } from '@/lib/email/sendWelcomeEmail'
+import { isPostCutoffAPProfile } from '@/lib/apKlaroPolicy'
 
 // ── /api/cron/weekly-pending-digest ──────────────────────────────────────────
 //
@@ -254,6 +255,12 @@ async function handle(request: NextRequest) {
     const d = diagnose(tags)
 
     if (d.action === 'activate' && d.payload) {
+      // POLICY (July 1, 2026): skip AP activations for post-cutoff profiles.
+      const isAP = d.payload.program_type === 'accelerator'
+      if (isAP && isPostCutoffAPProfile(p.created_at)) {
+        stuck.push({ email, name: p.full_name, daysPending, finalStatus: 'skip_ap_policy' })
+        continue
+      }
       await admin.rpc('set_audit_context', { p_user: null, p_source: 'cron_weekly_digest' })
       const { error } = await admin.from('profiles').update(d.payload).eq('id', p.id)
       if (!error) {
