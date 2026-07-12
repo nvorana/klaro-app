@@ -68,13 +68,14 @@ Return ONLY a valid JSON object:
 Product: "${ebook_title}"
 Who it's for: ${target_market}
 Transformation: ${transformation}
-Total value of everything included: ₱${total_value}
-Selling price: ₱${selling_price}
+Total value of everything included: PHP ${total_value}
+Selling price: PHP ${selling_price}
 
 Write ONE short, punchy price justification sentence — 2 to 3 sentences max.
 Make the selling price feel like an obvious no-brainer compared to the total value.
 Reference the transformation or the cost of NOT solving this problem.
 Warm, direct, Filipino-friendly tone. No hype.
+Write all prices as "PHP X,XXX" — never use the peso sign symbol.
 
 Return ONLY a valid JSON object:
 { "justification": "Your price justification here" }`
@@ -88,6 +89,9 @@ Return ONLY a valid JSON object:
       })
 
       const result = JSON.parse(completion.choices[0].message.content || '{}')
+      if (result.justification) {
+        result.justification = result.justification.replace(/₱/g, 'PHP ')
+      }
       return NextResponse.json({ data: result })
     }
 
@@ -96,7 +100,7 @@ Return ONLY a valid JSON object:
       const { target_market, problem, ebook_title, transformation, bonuses, selling_price, total_value, guarantee } = body
 
       const bonusList = (bonuses as { bonus_name: string; description: string; format: string; value_peso: number }[])
-        .map(b => `- ${b.bonus_name} (${b.format}) — ₱${b.value_peso.toLocaleString()} value`)
+        .map(b => `- ${b.bonus_name} (${b.format}) — PHP ${b.value_peso.toLocaleString()} value`)
         .join('\n')
 
       const prompt = `You are an offer strategist for Filipino digital product sellers.${marketHint} Write a complete Irresistible Offer Statement.
@@ -107,8 +111,8 @@ For: ${target_market} who struggle with ${problem}
 Transformation: ${transformation}
 Bonuses:
 ${bonusList}
-Total value: ₱${total_value.toLocaleString()}
-Selling price: ₱${selling_price}
+Total value: PHP ${total_value.toLocaleString()}
+Selling price: PHP ${selling_price}
 Guarantee: ${guarantee}
 
 Write the Irresistible Offer Statement as 3 short paragraphs:
@@ -120,6 +124,7 @@ Paragraph 2 — THE STACK: Present everything they get (ebook + bonuses) with th
 Paragraph 3 — THE SAFETY NET: State the guarantee in a warm, confident way. End with one sentence that removes all risk and makes saying yes feel effortless.
 
 Tone: Warm, direct, confident. Conversational but professional. Filipino-audience friendly. No hype words. No em dashes.
+Write all prices as "PHP X,XXX" — never use the peso sign symbol (₱).
 
 Return ONLY a valid JSON object:
 { "offer_statement": "Full 3-paragraph offer statement here" }`
@@ -133,6 +138,10 @@ Return ONLY a valid JSON object:
       })
 
       const result = JSON.parse(completion.choices[0].message.content || '{}')
+      // Sanitize: replace peso sign with PHP to prevent font rendering issues on some devices
+      if (result.offer_statement) {
+        result.offer_statement = result.offer_statement.replace(/₱/g, 'PHP ')
+      }
       return NextResponse.json({ data: result })
     }
 
