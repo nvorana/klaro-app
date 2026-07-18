@@ -7,6 +7,14 @@
     {
       "path": "/api/cron/weekly-pending-digest",
       "schedule": "0 22 * * 0"
+    },
+    {
+      "path": "/api/cron/notify-drip-unlocks",
+      "schedule": "0 1 * * *"
+    },
+    {
+      "path": "/api/cron/nudge-inactive",
+      "schedule": "0 2 * * 2,5"
     }
   ]
 }

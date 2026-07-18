@@ -62,6 +62,13 @@ export interface ModuleUnlockedContext {
   firstName?: string | null
   fullName?: string | null
   moduleNumber: number
+  /**
+   * Who/what unlocked the module — controls one line of copy:
+   *   'coach' (default): "Your coach just opened Module N ..."
+   *   'drip':            "Module N ... just opened for you this week"
+   * Used by /api/cron/notify-drip-unlocks for TOPIS weekly drip unlocks.
+   */
+  source?: 'coach' | 'drip'
 }
 
 export interface ModuleUnlockedResult {
@@ -86,9 +93,10 @@ export async function sendModuleUnlockedEmail(ctx: ModuleUnlockedContext): Promi
   }
 
   const firstName = (ctx.firstName?.trim() || ctx.fullName?.split(' ')[0] || 'there').slice(0, 60)
+  const source = ctx.source ?? 'coach'
   const subject = `Module ${ctx.moduleNumber} unlocked — ${meta.title}`
-  const html = buildHtml({ firstName, moduleNumber: ctx.moduleNumber, meta })
-  const text = buildText({ firstName, moduleNumber: ctx.moduleNumber, meta })
+  const html = buildHtml({ firstName, moduleNumber: ctx.moduleNumber, meta, source })
+  const text = buildText({ firstName, moduleNumber: ctx.moduleNumber, meta, source })
 
   try {
     const res = await fetch('https://api.resend.com/emails', {
@@ -121,7 +129,21 @@ function escapeHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;')
 }
 
-function buildHtml({ firstName, moduleNumber, meta }: { firstName: string; moduleNumber: number; meta: typeof MODULE_META[number] }): string {
+function openerHtml(source: 'coach' | 'drip', moduleNumber: number, meta: typeof MODULE_META[number]): string {
+  const moduleName = `<strong>Module ${moduleNumber} — ${escapeHtml(meta.title)}</strong>`
+  return source === 'drip'
+    ? `${moduleName} just opened for you this week. Here's what's inside:`
+    : `Your coach just opened ${moduleName} for you. Here's what's inside:`
+}
+
+function openerText(source: 'coach' | 'drip', moduleNumber: number, meta: typeof MODULE_META[number]): string {
+  const moduleName = `Module ${moduleNumber} — ${meta.title}`
+  return source === 'drip'
+    ? `${moduleName} just opened for you this week.`
+    : `Your coach just opened ${moduleName} — for you.`
+}
+
+function buildHtml({ firstName, moduleNumber, meta, source }: { firstName: string; moduleNumber: number; meta: typeof MODULE_META[number]; source: 'coach' | 'drip' }): string {
   return `<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>Module ${moduleNumber} unlocked</title></head>
 <body style="margin:0;padding:0;background:#F8F9FA;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;color:#1A1F36;">
@@ -139,7 +161,7 @@ function buildHtml({ firstName, moduleNumber, meta }: { firstName: string; modul
 
           <p style="font-size:16px;line-height:1.6;margin:0 0 16px;color:#1F2937;">Hi ${escapeHtml(firstName)},</p>
 
-          <p style="font-size:16px;line-height:1.6;margin:0 0 24px;color:#1F2937;">Your coach just opened <strong>Module ${moduleNumber} — ${escapeHtml(meta.title)}</strong> for you. Here's what's inside:</p>
+          <p style="font-size:16px;line-height:1.6;margin:0 0 24px;color:#1F2937;">${openerHtml(source, moduleNumber, meta)}</p>
 
           <div style="background:#F8F9FA;border-radius:12px;padding:20px;margin:0 0 24px;border-left:3px solid #F4B942;">
             <p style="font-size:14px;line-height:1.6;margin:0 0 12px;color:#1F2937;">${escapeHtml(meta.blurb)}</p>
@@ -169,10 +191,10 @@ function buildHtml({ firstName, moduleNumber, meta }: { firstName: string; modul
 </body></html>`
 }
 
-function buildText({ firstName, moduleNumber, meta }: { firstName: string; moduleNumber: number; meta: typeof MODULE_META[number] }): string {
+function buildText({ firstName, moduleNumber, meta, source }: { firstName: string; moduleNumber: number; meta: typeof MODULE_META[number]; source: 'coach' | 'drip' }): string {
   return `Hi ${firstName},
 
-Your coach just opened Module ${moduleNumber} — ${meta.title} — for you.
+${openerText(source, moduleNumber, meta)}
 
 Here's what's inside:
 ${meta.blurb}
