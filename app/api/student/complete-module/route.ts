@@ -6,6 +6,13 @@ import { createAdminClient } from '@/lib/supabase/admin'
 // Body: { moduleNumber: number }
 // Called by module pages after a student saves/completes a module.
 //
+// This route is the SINGLE canonical writer for module_progress completion
+// rows. Module pages must NOT upsert module_progress directly — they call
+// this endpoint instead. Canonical shape:
+//   { user_id, module_number, status: 'complete', completed_at, updated_at }
+// with onConflict 'user_id,module_number' (no space — the spaced variant
+// used by the old client-side upserts could fail conflict resolution).
+//
 // POLICY: Accelerator Program students do NOT auto-unlock the next module.
 // Coach Edgar must manually unlock via /api/coach/unlock-modules. This is
 // true for both partial-pay (enrolled) and fully-paid (full_access) AP
@@ -30,16 +37,36 @@ export async function POST(request: NextRequest) {
 
     const { moduleNumber } = await request.json()
 
-    if (!moduleNumber || moduleNumber < 1 || moduleNumber > 7) {
+    if (!moduleNumber || moduleNumber < 1 || moduleNumber > 8) {
       return NextResponse.json({ error: 'Invalid module number' }, { status: 400 })
+    }
+
+    const admin = createAdminClient()
+
+    // ── Canonical module_progress completion write ──────────────────────
+    const now = new Date().toISOString()
+    const { error: progressErr } = await admin
+      .from('module_progress')
+      .upsert(
+        {
+          user_id: user.id,
+          module_number: moduleNumber,
+          status: 'complete',
+          completed_at: now,
+          updated_at: now,
+        },
+        { onConflict: 'user_id,module_number' }
+      )
+
+    if (progressErr) {
+      console.error('[complete-module] module_progress upsert failed:', progressErr)
+      return NextResponse.json({ error: 'Failed to record module completion' }, { status: 500 })
     }
 
     // If last module, nothing to unlock
     if (moduleNumber >= 7) {
       return NextResponse.json({ success: true, unlocked: null })
     }
-
-    const admin = createAdminClient()
 
     // Get student's program type to enforce per-program unlock policy
     const { data: profile } = await admin

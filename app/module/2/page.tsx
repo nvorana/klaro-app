@@ -373,13 +373,6 @@ export default function Module2Page() {
       }
       if (insertError) throw insertError
 
-      await supabase.from('module_progress').upsert({
-        user_id: session.user.id,
-        module_number: 2,
-        completed: true,
-        completed_at: new Date().toISOString(),
-      }, { onConflict: 'user_id,module_number' })
-
       // Increment the lifetime ebook completion counter (cost-protection cap).
       // Wrapped — the RPC only exists if the lifetime-cap migration has
       // been run. A missing RPC must NOT block the save flow.
@@ -389,8 +382,9 @@ export default function Module2Page() {
         console.warn('[module/2] ebook count RPC failed (migration may be missing):', rpcErr)
       }
 
-      // Auto-unlock next module for AP students (no-op for other programs)
-      fetch('/api/student/complete-module', {
+      // Record completion server-side (canonical module_progress writer)
+      // + auto-unlock next module for AP students (no-op for other programs)
+      await fetch('/api/student/complete-module', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ moduleNumber: 2 }),

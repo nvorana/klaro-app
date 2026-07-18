@@ -431,13 +431,9 @@ export default function Module6Page() {
       })
       if (lmErr) throw lmErr
 
-      await supabase.from('module_progress').upsert(
-        { user_id: user.id, module_number: 6, status: 'complete', completed_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-        { onConflict: 'user_id, module_number' }
-      )
-
-      // Auto-unlock next module for AP students (no-op for other programs)
-      fetch('/api/student/complete-module', {
+      // Record completion server-side (canonical module_progress writer)
+      // + auto-unlock next module for AP students (no-op for other programs)
+      await fetch('/api/student/complete-module', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ moduleNumber: 6 }),

@@ -405,18 +405,9 @@ export default function Module1Page() {
       // backfill in that module will generate it on the fly. Same end result.
       fetch('/api/generate/market-language', { method: 'POST' }).catch(() => {})
 
-      await supabase.from('module_progress').upsert(
-        {
-          user_id: user.id,
-          module_number: 1,
-          unlocked_at: new Date().toISOString(),
-          completed_at: new Date().toISOString(),
-        },
-        { onConflict: 'user_id,module_number' }
-      )
-
-      // Auto-unlock next module for AP students (no-op for other programs)
-      fetch('/api/student/complete-module', {
+      // Record completion server-side (canonical module_progress writer)
+      // + auto-unlock next module for AP students (no-op for other programs)
+      await fetch('/api/student/complete-module', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ moduleNumber: 1 }),

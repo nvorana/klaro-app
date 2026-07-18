@@ -521,8 +521,9 @@ export default function Module3Page() {
 
       if (insertErr) throw insertErr
 
-      // Auto-unlock next module for AP students (no-op for other programs)
-      fetch('/api/student/complete-module', {
+      // Record completion server-side (canonical module_progress writer)
+      // + auto-unlock next module for AP students (no-op for other programs)
+      await fetch('/api/student/complete-module', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ moduleNumber: 3 }),
