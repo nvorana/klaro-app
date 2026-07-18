@@ -26,9 +26,9 @@ function getPaceStatus(enrolledAt: string | null, completedCount: number): {
 
   const diff = completedCount - expectedDone
 
-  if (completedCount === 6) return { label: 'Program Complete 🎉', sublabel: 'You\'ve finished all 6 modules. Amazing work!', color: '#34d399', bg: '#064e3b', border: '#10B981' }
+  if (completedCount === 7) return { label: 'Program Complete 🎉', sublabel: 'You\'ve finished all 7 modules. Amazing work!', color: '#34d399', bg: '#064e3b', border: '#10B981' }
   if (diff > 0) return { label: `${diff} Module${diff > 1 ? 's' : ''} Ahead`, sublabel: 'You\'re moving faster than the program schedule. Keep it up!', color: '#F4B942', bg: '#1c1500', border: '#F4B942' }
-  if (diff === 0) return { label: 'Right on Track', sublabel: 'You\'re keeping up perfectly with the 8-week schedule.', color: '#34d399', bg: '#064e3b', border: '#10B981' }
+  if (diff === 0) return { label: 'Right on Track', sublabel: 'You\'re keeping up perfectly with the weekly schedule.', color: '#34d399', bg: '#064e3b', border: '#10B981' }
   if (diff === -1) return { label: 'Slightly Behind', sublabel: 'One module to catch up. You\'ve got this — keep going.', color: '#F59E0B', bg: '#1c0a00', border: '#92400E' }
   return { label: 'Behind Schedule', sublabel: `${Math.abs(diff)} modules to catch up. Set aside time this week.`, color: '#f87171', bg: '#1a0000', border: '#7f1d1d' }
 }
@@ -45,22 +45,22 @@ function getMilestones(completedCount: number, enrolledAt: string | null, module
     {
       id: 'halfway',
       label: 'Halfway There',
-      desc: 'Completed 3 of 6 modules',
-      earned: completedCount >= 3,
+      desc: 'Completed 4 of 7 modules',
+      earned: completedCount >= 4,
       icon: '⚡',
     },
     {
       id: 'almost',
       label: 'Almost There',
-      desc: 'Completed 5 of 6 modules',
-      earned: completedCount >= 5,
+      desc: 'Completed 6 of 7 modules',
+      earned: completedCount >= 6,
       icon: '🔥',
     },
     {
       id: 'complete',
       label: 'Mission Complete',
-      desc: 'Finished all 6 modules',
-      earned: completedCount === 6,
+      desc: 'Finished all 7 modules',
+      earned: completedCount === 7,
       icon: '🏆',
     },
     {
@@ -103,6 +103,7 @@ export default async function ProgressPage() {
     { data: profile },
     { data: clarity },
     { data: ebook },
+    { data: offer },
     { data: salesPage },
     { data: emailSeq },
     { data: leadMagnet },
@@ -111,7 +112,8 @@ export default async function ProgressPage() {
   ] = await Promise.all([
     supabase.from('profiles').select('full_name, enrolled_at').eq('id', user.id).maybeSingle(),
     supabase.from('clarity_sentences').select('target_market, core_problem, unique_mechanism, full_sentence').eq('user_id', user.id).maybeSingle(),
-    supabase.from('ebooks').select('title').eq('user_id', user.id).maybeSingle(),
+    supabase.from('ebooks').select('title').eq('user_id', user.id).eq('status', 'complete').maybeSingle(),
+    supabase.from('offers').select('offer_statement, ebook_title, selling_price').eq('user_id', user.id).maybeSingle(),
     supabase.from('sales_pages').select('headline, published_url').eq('user_id', user.id).maybeSingle(),
     supabase.from('email_sequences').select('id').eq('user_id', user.id).maybeSingle(),
     supabase.from('lead_magnets').select('title, format').eq('user_id', user.id).maybeSingle(),
@@ -119,9 +121,10 @@ export default async function ProgressPage() {
     supabase.from('module_progress').select('module_number, completed_at, status').eq('user_id', user.id),
   ])
 
-  const completed = [!!clarity, !!ebook, !!salesPage, !!emailSeq, !!leadMagnet, !!(postsCount && postsCount > 0)]
+  // Same asset-table completion checks the dashboard uses (7 real modules)
+  const completed = [!!clarity, !!ebook, !!offer, !!salesPage, !!emailSeq, !!leadMagnet, !!(postsCount && postsCount > 0)]
   const completedCount = completed.filter(Boolean).length
-  const progressPercent = Math.round((completedCount / 6) * 100)
+  const progressPercent = Math.round((completedCount / 7) * 100)
   const enrolledAt = profile?.enrolled_at as string | null
 
   const pace = getPaceStatus(enrolledAt, completedCount)
@@ -165,9 +168,35 @@ export default async function ProgressPage() {
     },
     {
       num: 3,
-      title: 'The Offer & Sales Page Builder',
-      done: !!salesPage,
+      title: 'The Irresistible Offer Builder',
+      done: !!offer,
       completedAt: getCompletedAt(3),
+      output: offer ? (
+        <div>
+          {offer.offer_statement ? (
+            <>
+              <p className="text-xs text-gray-500 uppercase tracking-wide font-bold mb-1">Your Offer</p>
+              <p className="text-sm text-gray-300 leading-relaxed">{offer.offer_statement}</p>
+            </>
+          ) : (
+            <>
+              <p className="text-xs text-gray-500 uppercase tracking-wide font-bold mb-1">Your Offer</p>
+              <p className="text-sm text-white font-semibold leading-snug">{offer.ebook_title}</p>
+            </>
+          )}
+          {!!offer.selling_price && (
+            <span className="inline-block mt-2 text-[10px] font-bold px-2.5 py-1 rounded-full" style={{ background: '#1c1500', color: '#F4B942' }}>
+              PHP {offer.selling_price}
+            </span>
+          )}
+        </div>
+      ) : null,
+    },
+    {
+      num: 4,
+      title: 'The Sales Page Builder',
+      done: !!salesPage,
+      completedAt: getCompletedAt(4),
       output: salesPage ? (
         <div>
           {salesPage.headline && (
@@ -191,10 +220,10 @@ export default async function ProgressPage() {
       ) : null,
     },
     {
-      num: 4,
+      num: 5,
       title: 'The 7-Day Email Sequence',
       done: !!emailSeq,
-      completedAt: getCompletedAt(4),
+      completedAt: getCompletedAt(5),
       output: emailSeq ? (
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-lg flex-shrink-0" style={{ background: '#1c1500', color: '#F4B942' }}>
@@ -208,10 +237,10 @@ export default async function ProgressPage() {
       ) : null,
     },
     {
-      num: 5,
+      num: 6,
       title: 'The Lead Magnet Builder',
       done: !!leadMagnet,
-      completedAt: getCompletedAt(5),
+      completedAt: getCompletedAt(6),
       output: leadMagnet ? (
         <div>
           <p className="text-xs text-gray-500 uppercase tracking-wide font-bold mb-1">Your Lead Magnet</p>
@@ -223,10 +252,10 @@ export default async function ProgressPage() {
       ) : null,
     },
     {
-      num: 6,
+      num: 7,
       title: 'The Facebook Content Engine',
       done: !!(postsCount && postsCount > 0),
-      completedAt: getCompletedAt(6),
+      completedAt: getCompletedAt(7),
       output: postsCount && postsCount > 0 ? (
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-lg flex-shrink-0" style={{ background: '#1c1500', color: '#F4B942' }}>
@@ -258,7 +287,7 @@ export default async function ProgressPage() {
         <div className="bg-gray-900 rounded-2xl p-4 mb-4" style={{ border: '1px solid #374151' }}>
           <div className="flex items-end justify-between mb-3">
             <div>
-              <p className="text-white font-bold text-2xl">{completedCount}<span className="text-gray-500 text-base font-normal">/6</span></p>
+              <p className="text-white font-bold text-2xl">{completedCount}<span className="text-gray-500 text-base font-normal">/7</span></p>
               <p className="text-gray-400 text-xs mt-0.5">Modules completed</p>
             </div>
             <p className="text-[#F4B942] font-black text-3xl">{progressPercent}%</p>

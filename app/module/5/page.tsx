@@ -76,7 +76,7 @@ const MailIcon = ({ selling }: { selling?: boolean }) => (
   </svg>
 )
 
-export default function Module4Page() {
+export default function Module5Page() {
   const router = useRouter()
   const [showConfetti, setShowConfetti] = useState(false)
   const [step, setStep] = useState<Step>('url')
@@ -285,19 +285,9 @@ export default function Module4Page() {
       })
       if (seqErr) throw seqErr
 
-      await supabase.from('module_progress').upsert(
-        {
-          user_id: user.id,
-          module_number: 5,
-          status: 'complete',
-          completed_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: 'user_id, module_number' }
-      )
-
-      // Auto-unlock next module for AP students (no-op for other programs)
-      fetch('/api/student/complete-module', {
+      // Record completion server-side (canonical module_progress writer)
+      // + auto-unlock next module for AP students (no-op for other programs)
+      await fetch('/api/student/complete-module', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ moduleNumber: 5 }),
@@ -395,10 +385,10 @@ export default function Module4Page() {
         <div className="max-w-[430px] md:max-w-3xl mx-auto px-4 pt-6 pb-32">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: '#F4B942' }}>
-              <span className="font-bold text-white text-sm">4</span>
+              <span className="font-bold text-white text-sm">5</span>
             </div>
             <div>
-              <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Module 4</p>
+              <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Module 5</p>
               <h1 className="text-base font-bold text-[#1A1F36]">7-Day Email Sequence</h1>
             </div>
           </div>
@@ -408,7 +398,7 @@ export default function Module4Page() {
               <span className="text-white"><CheckIcon /></span>
             </div>
             <div>
-              <p className="font-bold text-emerald-700">Module 4 Complete!</p>
+              <p className="font-bold text-emerald-700">Module 5 Complete!</p>
               <p className="text-sm text-emerald-700 mt-0.5">Your 7-day email sequence is saved.</p>
             </div>
           </div>
@@ -499,7 +489,7 @@ export default function Module4Page() {
             <span style={{ color: '#1A1F36' }}><BackIcon /></span>
           </button>
           <div>
-            <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Module 4</p>
+            <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Module 5</p>
             <h1 className="text-base font-bold text-[#1A1F36]">7-Day Email Sequence</h1>
           </div>
         </div>
@@ -818,48 +808,47 @@ export default function Module4Page() {
       </div>
 
       {/* ── Fixed Bottom Action Bar ──────────────────────────── */}
-      {step !== 'complete' && (
-        <div
-          className="fixed bottom-0 bg-white px-4 py-4"
-          style={{
-            borderTop: '1px solid #e5e7eb',
-            width: '100%',
-            maxWidth: '430px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-          }}
-        >
-          {step === 'url' && (
-            <button
-              onClick={handleGenerateEmails}
-              className="w-full py-4 rounded-xl font-bold text-base"
-              style={{ background: '#F4B942', color: '#1A1F36' }}
-            >
-              Write My 7 Emails
-            </button>
-          )}
+      {/* step === 'complete' early-returns above, so no guard needed here */}
+      <div
+        className="fixed bottom-0 bg-white px-4 py-4"
+        style={{
+          borderTop: '1px solid #e5e7eb',
+          width: '100%',
+          maxWidth: '430px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+        }}
+      >
+        {step === 'url' && (
+          <button
+            onClick={handleGenerateEmails}
+            className="w-full py-4 rounded-xl font-bold text-base"
+            style={{ background: '#F4B942', color: '#1A1F36' }}
+          >
+            Write My 7 Emails
+          </button>
+        )}
 
-          {step === 'emails' && generatingEmails && (
-            <div
-              className="w-full py-4 rounded-xl font-bold text-base flex items-center justify-center gap-2 opacity-60"
-              style={{ background: '#F3F4F6', color: '#9CA3AF', border: '1px solid #e5e7eb' }}
-            >
-              <div className="w-4 h-4 border-2 border-gray-500 border-t-transparent rounded-full animate-spin" />
-              Writing Day {writingDay || 1} of 7…
-            </div>
-          )}
+        {step === 'emails' && generatingEmails && (
+          <div
+            className="w-full py-4 rounded-xl font-bold text-base flex items-center justify-center gap-2 opacity-60"
+            style={{ background: '#F3F4F6', color: '#9CA3AF', border: '1px solid #e5e7eb' }}
+          >
+            <div className="w-4 h-4 border-2 border-gray-500 border-t-transparent rounded-full animate-spin" />
+            Writing Day {writingDay || 1} of 7…
+          </div>
+        )}
 
-          {step === 'emails' && !generatingEmails && emails.length > 0 && (
-            <button
-              onClick={handleMarkComplete}
-              className="w-full py-4 rounded-xl font-bold text-base"
-              style={{ background: '#F4B942', color: '#1A1F36' }}
-            >
-              Save &amp; Complete Module 4
-            </button>
-          )}
-        </div>
-      )}
+        {step === 'emails' && !generatingEmails && emails.length > 0 && (
+          <button
+            onClick={handleMarkComplete}
+            className="w-full py-4 rounded-xl font-bold text-base"
+            style={{ background: '#F4B942', color: '#1A1F36' }}
+          >
+            Save &amp; Complete Module 5
+          </button>
+        )}
+      </div>
     </div>
     </>
   )

@@ -18,6 +18,10 @@ interface Post {
   full_post: string
 }
 
+interface SavedPost extends Post {
+  created_at: string
+}
+
 interface ClarityData {
   target_market: string
   core_problem: string
@@ -82,7 +86,7 @@ const PlusIcon = () => (
   </svg>
 )
 
-export default function Module6Page() {
+export default function Module7Page() {
   const router = useRouter()
   const [showConfetti, setShowConfetti] = useState(false)
   const [step, setStep] = useState<Step>('settings')
@@ -100,8 +104,8 @@ export default function Module6Page() {
 
   // Posts step
   const [generating, setGenerating] = useState(false)
-  const [posts, setPosts] = useState<Post[]>([])
-  const [savedPosts, setSavedPosts] = useState<Post[]>([]) // accumulates across sessions
+  const [posts, setPosts] = useState<Post[]>([]) // current unsaved batch
+  const [savedPosts, setSavedPosts] = useState<SavedPost[]>([]) // full library, newest first
   const [regeneratingIndex, setRegeneratingIndex] = useState<number | null>(null)
   const [copiedLabel, setCopiedLabel] = useState<string | null>(null)
   const [expandedIndex, setExpandedIndex] = useState<number | null>(0)
@@ -145,24 +149,24 @@ export default function Module6Page() {
       if (!clarityData) { router.push('/module/1'); return }
       setClarity(clarityData)
 
-      // Load any previously saved posts
+      // Load the full saved-post library, newest first
       const { data: postsData } = await supabase
         .from('content_posts')
-        .select('hook, value_content, cta, full_post')
+        .select('hook, value_content, cta, full_post, created_at')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
-        .limit(30)
 
       if (postsData && postsData.length > 0) {
-        const restored: Post[] = postsData.map(p => ({
+        const restored: SavedPost[] = postsData.map(p => ({
           hook: p.hook || '',
           value: p.value_content || '',
           cta: p.cta || '',
           full_post: p.full_post || '',
+          created_at: p.created_at || '',
         }))
         setSavedPosts(restored)
-        setPosts(restored)
-        setStep('posts')
+        // Module already has saved posts — show the complete screen + library
+        setStep('complete')
       }
 
       setClarityLoading(false)
@@ -255,7 +259,9 @@ export default function Module6Page() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
-      // Insert each post
+      // APPEND the new batch — never delete previous posts. The library
+      // accumulates; created_at (same timestamp per batch) groups batches.
+      const batchCreatedAt = new Date().toISOString()
       const rows = posts.map(p => ({
         user_id: user.id,
         post_type: selectedType,
@@ -263,23 +269,26 @@ export default function Module6Page() {
         value_content: p.value,
         cta: p.cta,
         full_post: p.full_post,
-        created_at: new Date().toISOString(),
+        created_at: batchCreatedAt,
       }))
 
-      // Delete old posts first (upsert not available without unique key)
-      await supabase.from('content_posts').delete().eq('user_id', user.id)
-      await supabase.from('content_posts').insert(rows)
+      const { error: insertErr } = await supabase.from('content_posts').insert(rows)
+      if (insertErr) throw insertErr
 
-      await supabase.from('module_progress').upsert(
-        {
-          user_id: user.id,
-          module_number: 7,
-          status: 'complete',
-          completed_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: 'user_id, module_number' }
-      )
+      // Record completion server-side (canonical module_progress writer)
+      // + auto-unlock next module for AP students (no-op for other programs)
+      await fetch('/api/student/complete-module', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ moduleNumber: 7 }),
+      }).catch(() => {})
+
+      // Prepend the new batch to the library (newest first)
+      setSavedPosts(prev => [
+        ...posts.map(p => ({ ...p, created_at: batchCreatedAt })),
+        ...prev,
+      ])
+      setPosts([])
 
       setShowConfetti(true)
       setStep('complete')
@@ -366,6 +375,17 @@ export default function Module6Page() {
 
   // ── Complete Screen ──────────────────────────────────────────
   if (step === 'complete') {
+    // Group the library by save date (savedPosts is already newest first)
+    const postGroups: { date: string; items: SavedPost[] }[] = []
+    for (const p of savedPosts) {
+      const date = p.created_at
+        ? new Date(p.created_at).toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' })
+        : 'Earlier'
+      const last = postGroups[postGroups.length - 1]
+      if (last && last.date === date) last.items.push(p)
+      else postGroups.push({ date, items: [p] })
+    }
+
     return (
       <>
         <GoldConfetti trigger={showConfetti} onDone={() => setShowConfetti(false)} />
@@ -373,10 +393,10 @@ export default function Module6Page() {
         <div className="max-w-[430px] md:max-w-3xl mx-auto px-4 pt-6 pb-32">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: '#F4B942' }}>
-              <span className="font-bold text-[#1A1F36] text-sm">6</span>
+              <span className="font-bold text-[#1A1F36] text-sm">7</span>
             </div>
             <div>
-              <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Module 6</p>
+              <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Module 7</p>
               <h1 className="text-base font-bold text-[#1A1F36]">Facebook Content Engine</h1>
             </div>
           </div>
@@ -386,7 +406,7 @@ export default function Module6Page() {
               <span className="text-white"><CheckIcon /></span>
             </div>
             <div>
-              <p className="font-bold text-emerald-700">Module 6 Complete!</p>
+              <p className="font-bold text-emerald-700">Module 7 Complete!</p>
               <p className="text-sm text-emerald-700 mt-0.5">Your Facebook posts are saved and ready to publish.</p>
             </div>
           </div>
@@ -397,9 +417,46 @@ export default function Module6Page() {
           {/* Post count summary */}
           <div className="bg-white rounded-xl p-4 mb-4 border border-gray-100">
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Saved Posts</p>
-            <p className="text-2xl font-bold text-[#1A1F36]">{posts.length}</p>
+            <p className="text-2xl font-bold text-[#1A1F36]">{savedPosts.length}</p>
             <p className="text-sm text-gray-500">Facebook posts ready to publish</p>
           </div>
+
+          {/* Generate more posts — appends to the library, never wipes it */}
+          <button
+            onClick={() => { setPosts([]); setStep('settings') }}
+            className="w-full py-3 rounded-xl font-semibold text-sm mb-4 flex items-center justify-center gap-2"
+            style={{ background: 'white', color: '#6B7280', border: '2px solid #e5e7eb' }}
+          >
+            <PlusIcon />
+            Generate More Posts
+          </button>
+
+          {/* Saved Posts library — grouped by date, newest first */}
+          {postGroups.map((group, gi) => (
+            <div key={group.date} className="mb-4">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{group.date}</p>
+              <div className="space-y-2">
+                {group.items.map((post, i) => {
+                  const label = `saved-${gi}-${i}`
+                  return (
+                    <div key={label} className="bg-white rounded-xl p-4 border border-gray-100">
+                      <div className="flex items-start justify-between gap-3 mb-2">
+                        <p className="text-sm font-medium text-[#1A1F36] leading-snug flex-1 min-w-0">{post.hook}</p>
+                        <button
+                          onClick={() => copyToClipboard(post.full_post, label)}
+                          className="flex items-center gap-1 text-xs text-gray-500 hover:text-[#1A1F36] flex-shrink-0"
+                        >
+                          <CopyIcon />
+                          <span>{copiedLabel === label ? 'Copied!' : 'Copy'}</span>
+                        </button>
+                      </div>
+                      <p className="text-xs text-gray-500 leading-relaxed whitespace-pre-wrap line-clamp-4">{post.full_post}</p>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
 
           {/* All done card */}
           <div className="rounded-xl p-5 mb-4" style={{ background: '#1A1F36' }}>
@@ -445,7 +502,7 @@ export default function Module6Page() {
             <span style={{ color: '#1A1F36' }}><BackIcon /></span>
           </button>
           <div>
-            <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Module 6</p>
+            <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Module 7</p>
             <h1 className="text-base font-bold text-[#1A1F36]">Facebook Content Engine</h1>
           </div>
         </div>
@@ -665,48 +722,47 @@ export default function Module6Page() {
       </div>
 
       {/* ── Fixed Bottom Action Bar ──────────────────────────── */}
-      {step !== 'complete' && (
-        <div
-          className="fixed bottom-0 bg-white px-4 py-4"
-          style={{
-            borderTop: '1px solid #e5e7eb',
-            width: '100%',
-            maxWidth: '430px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-          }}
-        >
-          {step === 'settings' && (
-            <button
-              onClick={handleGenerate}
-              className="w-full py-4 rounded-xl font-bold text-base"
-              style={{ background: '#F4B942', color: '#1A1F36' }}
-            >
-              Generate {selectedCount} {POST_TYPES.find(t => t.key === selectedType)?.label}s
-            </button>
-          )}
+      {/* step === 'complete' early-returns above, so no guard needed here */}
+      <div
+        className="fixed bottom-0 bg-white px-4 py-4"
+        style={{
+          borderTop: '1px solid #e5e7eb',
+          width: '100%',
+          maxWidth: '430px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+        }}
+      >
+        {step === 'settings' && (
+          <button
+            onClick={handleGenerate}
+            className="w-full py-4 rounded-xl font-bold text-base"
+            style={{ background: '#F4B942', color: '#1A1F36' }}
+          >
+            Generate {selectedCount} {POST_TYPES.find(t => t.key === selectedType)?.label}s
+          </button>
+        )}
 
-          {step === 'posts' && generating && (
-            <div
-              className="w-full py-4 rounded-xl font-bold text-base flex items-center justify-center gap-2 opacity-60"
-              style={{ background: '#F3F4F6', color: '#9CA3AF' }}
-            >
-              <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
-              Writing your posts…
-            </div>
-          )}
+        {step === 'posts' && generating && (
+          <div
+            className="w-full py-4 rounded-xl font-bold text-base flex items-center justify-center gap-2 opacity-60"
+            style={{ background: '#F3F4F6', color: '#9CA3AF' }}
+          >
+            <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+            Writing your posts…
+          </div>
+        )}
 
-          {step === 'posts' && !generating && posts.length > 0 && (
-            <button
-              onClick={handleMarkComplete}
-              className="w-full py-4 rounded-xl font-bold text-base"
-              style={{ background: '#F4B942', color: '#1A1F36' }}
-            >
-              Save &amp; Complete Module 6
-            </button>
-          )}
-        </div>
-      )}
+        {step === 'posts' && !generating && posts.length > 0 && (
+          <button
+            onClick={handleMarkComplete}
+            className="w-full py-4 rounded-xl font-bold text-base"
+            style={{ background: '#F4B942', color: '#1A1F36' }}
+          >
+            Save &amp; Complete Module 7
+          </button>
+        )}
+      </div>
     </div>
     </>
   )
