@@ -1,3 +1,8 @@
+// NOT SCHEDULED (2026-07-18): the team sends payment reminders manually, so
+// this cron has no vercel.json entry. The route is kept functional — it can
+// be triggered manually with ?secret=<CRON_SECRET>, or re-scheduled later by
+// adding it back to vercel.json. The dashboard countdown banner stays live.
+
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendPaymentReminder } from '@/lib/email/sendPaymentReminder'

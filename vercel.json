@@ -15,10 +15,6 @@
     {
       "path": "/api/cron/nudge-inactive",
       "schedule": "0 2 * * 2,5"
-    },
-    {
-      "path": "/api/cron/notify-payment-due",
-      "schedule": "0 1 * * *"
     }
   ]
 }
