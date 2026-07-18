@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { openai, AI_MODEL } from '@/lib/openai'
 import { getMarketLanguageHintForUser } from '@/lib/marketLanguage'
+import { requireUser } from '@/lib/apiAuth'
 
 // POST /api/generate/content-posts
 // Body: { target_market, problem, mechanism, post_type, count }
@@ -9,6 +10,9 @@ import { getMarketLanguageHintForUser } from '@/lib/marketLanguage'
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireUser()
+    if (!auth.ok) return auth.response
+
     const { target_market, problem, mechanism, post_type, count } = await request.json()
 
     const postTypeDescriptions: Record<string, string> = {

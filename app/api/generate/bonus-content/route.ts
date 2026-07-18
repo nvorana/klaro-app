@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { openai, AI_MODEL } from '@/lib/openai'
 import { getMarketLanguageHintForUser } from '@/lib/marketLanguage'
 import { findBannedWords, buildCorrectionPrompt } from '@/lib/bannedWords'
+import { requireUser } from '@/lib/apiAuth'
 
 // POST /api/generate/bonus-content
 // Body: { bonus_name, format, description, target_market, problem,
@@ -260,6 +261,9 @@ Always return valid JSON only. No markdown fences, no explanations outside JSON.
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireUser()
+    if (!auth.ok) return auth.response
+
     const body = await request.json()
     const {
       bonus_name,

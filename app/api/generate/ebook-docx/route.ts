@@ -12,6 +12,7 @@ import {
   BorderStyle,
   PageBreak,
 } from 'docx'
+import { requireUser } from '@/lib/apiAuth'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -465,6 +466,9 @@ function buildDocument(ebook: EbookData): Document {
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireUser()
+    if (!auth.ok) return auth.response
+
     const ebook = await request.json() as EbookData
 
     if (!ebook.title || !ebook.chapters?.length) {

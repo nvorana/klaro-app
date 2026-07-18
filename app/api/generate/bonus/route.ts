@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { openai, AI_MODEL } from '@/lib/openai'
 import { getMarketLanguageHintForUser } from '@/lib/marketLanguage'
+import { requireUser } from '@/lib/apiAuth'
 
 // POST /api/generate/bonus
 // Body: { ebook_title, target_market, problem, objection }
@@ -8,6 +9,9 @@ import { getMarketLanguageHintForUser } from '@/lib/marketLanguage'
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireUser()
+    if (!auth.ok) return auth.response
+
     const { ebook_title, target_market, problem, objection } = await request.json()
 
     if (!ebook_title || !target_market || !problem || !objection) {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { openai, AI_MODEL } from '@/lib/openai'
+import { requireUser } from '@/lib/apiAuth'
 
 // POST /api/generate/validate
 // Body: { target_market: string, problem: string, mechanism: string }
@@ -7,6 +8,9 @@ import { openai, AI_MODEL } from '@/lib/openai'
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireUser()
+    if (!auth.ok) return auth.response
+
     const { target_market, problem, mechanism } = await request.json()
 
     const clarity_sentence = `I help ${target_market} who struggle with ${problem} through ${mechanism}`

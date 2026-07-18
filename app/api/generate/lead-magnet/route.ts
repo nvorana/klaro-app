@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { openai, AI_MODEL } from '@/lib/openai'
 import { getMarketLanguageHintForUser } from '@/lib/marketLanguage'
+import { requireUser } from '@/lib/apiAuth'
 
 export const maxDuration = 60
 
@@ -154,6 +155,9 @@ Return ONLY valid JSON:
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireUser()
+    if (!auth.ok) return auth.response
+
     const {
       target_market, problem, mechanism, ebook_title, format, section,
       // Idea context

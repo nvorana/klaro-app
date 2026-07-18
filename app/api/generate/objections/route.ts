@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { openai, AI_MODEL } from '@/lib/openai'
 import { getMarketLanguageHintForUser } from '@/lib/marketLanguage'
+import { requireUser } from '@/lib/apiAuth'
 
 // POST /api/generate/objections
 // Body: { target_market: string, problem: string, mechanism: string, ebook_title: string }
@@ -8,6 +9,9 @@ import { getMarketLanguageHintForUser } from '@/lib/marketLanguage'
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireUser()
+    if (!auth.ok) return auth.response
+
     const { target_market, problem, mechanism, ebook_title } = await request.json()
     const marketHint = await getMarketLanguageHintForUser()
 

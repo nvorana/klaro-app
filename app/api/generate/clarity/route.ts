@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { openai, AI_MODEL } from '@/lib/openai'
 import { findBannedWords, buildCorrectionPrompt } from '@/lib/bannedWords'
+import { requireUser } from '@/lib/apiAuth'
 
 // POST /api/generate/clarity
 // Body: { target_market: string, step: 'problems' | 'mechanisms', problem?: string }
@@ -76,6 +77,9 @@ Write in market-native language — practical, conversational, like a knowledgea
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireUser()
+    if (!auth.ok) return auth.response
+
     const { target_market, step, problem, current_solution } = await request.json()
 
     if (!target_market || !step) {

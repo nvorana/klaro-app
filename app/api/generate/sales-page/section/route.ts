@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { openai, AI_MODEL } from '@/lib/openai'
 import { getMarketLanguageHintForUser } from '@/lib/marketLanguage'
+import { requireUser } from '@/lib/apiAuth'
 
 export const maxDuration = 60
 
@@ -292,6 +293,9 @@ Return plain text. Keep the exact structure above.
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireUser()
+    if (!auth.ok) return auth.response
+
     const body = await request.json()
     const { section, target_market, problem, mechanism, ebook_title, bonuses, total_value, selling_price, guarantee } = body
 

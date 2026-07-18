@@ -4,8 +4,12 @@ import { NextResponse, type NextRequest } from 'next/server'
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
 
-  // Skip auth check for webhook endpoint
-  if (request.nextUrl.pathname.startsWith('/api/webhooks')) {
+  // Skip auth check for the Systeme.io webhook endpoint (it verifies its own
+  // ?secret= param) and cron endpoints (they verify CRON_SECRET).
+  if (
+    request.nextUrl.pathname.startsWith('/api/webhook/') ||
+    request.nextUrl.pathname.startsWith('/api/cron/')
+  ) {
     return supabaseResponse
   }
 
@@ -69,7 +73,7 @@ export async function middleware(request: NextRequest) {
   if (user && isProtectedPage && !isOnExpiredPage) {
     const { data: profile } = await supabase
       .from('profiles')
-      .select('role, access_level, created_at, enrolled_at')
+      .select('role, access_level, access_expires_at, created_at, enrolled_at')
       .eq('id', user.id)
       .maybeSingle()
 
@@ -89,12 +93,12 @@ export async function middleware(request: NextRequest) {
         }
       }
 
-      const startDate = profile.created_at ?? profile.enrolled_at
-      if (startDate) {
-        const expiryMs = new Date(startDate).getTime() + 90 * 24 * 60 * 60 * 1000
-        if (Date.now() > expiryMs) {
-          return NextResponse.redirect(new URL('/access-expired', request.url))
-        }
+      // Expiry: explicit access_expires_at wins; otherwise the legacy 90-day
+      // formula. Extensions are granted by writing access_expires_at
+      // (scripts/extend-access.mjs).
+      const { isAccessExpired } = await import('@/lib/accessExpiry')
+      if (isAccessExpired(profile)) {
+        return NextResponse.redirect(new URL('/access-expired', request.url))
       }
 
       // Modules 1–3 remain viewable after Module 3 completion (read-only).
