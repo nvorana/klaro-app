@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
     { data: posts },
     { data: reviews },
   ] = await Promise.all([
-    admin.from('profiles').select('id, full_name, first_name, last_name, email, enrolled_at, last_active_at, coach_notes, dfy_flagged, access_level, phone, created_at, program_type, unlocked_modules').eq('id', studentId).maybeSingle(),
+    admin.from('profiles').select('id, full_name, first_name, last_name, email, enrolled_at, last_active_at, coach_notes, dfy_flagged, access_level, phone, created_at, access_expires_at, program_type, unlocked_modules').eq('id', studentId).maybeSingle(),
     admin.from('clarity_sentences').select('*').eq('user_id', studentId).order('created_at', { ascending: false }).limit(1),
     admin.from('ebooks').select('*').eq('user_id', studentId).eq('status', 'complete').order('created_at', { ascending: false }).limit(1),
     admin.from('offers').select('*').eq('user_id', studentId).order('created_at', { ascending: false }).limit(1),

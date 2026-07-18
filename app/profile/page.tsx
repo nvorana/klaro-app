@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
 import Link from 'next/link'
+import { getAccessExpiry, daysUntilExpiry } from '@/lib/accessExpiry'
 
 interface ProfileData {
   first_name: string
@@ -13,6 +14,7 @@ interface ProfileData {
   access_level: string
   enrolled_at: string | null
   created_at: string | null
+  access_expires_at: string | null
 }
 
 const CheckIcon = () => (
@@ -47,7 +49,7 @@ export default function ProfilePage() {
 
       const { data } = await supabase
         .from('profiles')
-        .select('first_name, last_name, phone, access_level, enrolled_at, full_name, created_at')
+        .select('first_name, last_name, phone, access_level, enrolled_at, full_name, created_at, access_expires_at')
         .eq('id', user.id)
         .single()
 
@@ -59,6 +61,7 @@ export default function ProfilePage() {
         access_level: data?.access_level || 'pending',
         enrolled_at: data?.enrolled_at || null,
         created_at: data?.created_at || null,
+        access_expires_at: data?.access_expires_at || null,
       }
 
       setProfile(profileData)
@@ -134,10 +137,9 @@ export default function ProfilePage() {
 
         {/* Access badge */}
         {(() => {
-          const startDate = profile?.created_at ?? profile?.enrolled_at
-          const expiryMs = startDate ? new Date(startDate).getTime() + 90 * 24 * 60 * 60 * 1000 : null
-          const daysLeft = expiryMs ? Math.ceil((expiryMs - Date.now()) / 86400000) : null
-          const expiresOn = expiryMs ? new Date(expiryMs).toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' }) : null
+          const expiryDate = profile ? getAccessExpiry(profile) : null
+          const daysLeft = profile ? daysUntilExpiry(profile) : null
+          const expiresOn = expiryDate ? expiryDate.toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' }) : null
           const expired = daysLeft !== null && daysLeft <= 0
           const urgentColor = expired ? '#f87171' : daysLeft !== null && daysLeft <= 14 ? '#fb923c' : '#F4B942'
 

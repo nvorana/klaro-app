@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { getAccessExpiry, isAccessExpired } from '@/lib/accessExpiry'
 import SignOutButton from '../dashboard/SignOutButton'
 
 export default async function AccessExpiredPage() {
@@ -10,15 +11,17 @@ export default async function AccessExpiredPage() {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('full_name, created_at, enrolled_at')
+    .select('full_name, access_expires_at, created_at, enrolled_at')
     .eq('id', user.id)
     .maybeSingle()
 
+  // If access was extended (or never expired), don't strand them here.
+  if (profile && !isAccessExpired(profile)) redirect('/dashboard')
+
   const firstName = profile?.full_name?.split(' ')[0] || 'there'
-  const startDate = profile?.created_at ?? profile?.enrolled_at
-  const expiresOn = startDate
-    ? new Date(new Date(startDate).getTime() + 90 * 24 * 60 * 60 * 1000)
-        .toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' })
+  const expiryDate = profile ? getAccessExpiry(profile) : null
+  const expiresOn = expiryDate
+    ? expiryDate.toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' })
     : null
 
   return (
@@ -52,9 +55,10 @@ export default async function AccessExpiredPage() {
         </h1>
 
         <p className="text-gray-500 text-sm leading-relaxed mb-6 max-w-xs">
-          Hi {firstName}, your 90-day TOPIS access period
+          Hi {firstName}, your KLARO access period
           {expiresOn ? ` ended on ${expiresOn}` : ' has ended'}.
-          To continue using KLARO, please reach out to our support team.
+          Need more time? You can request an extension &mdash; just message us
+          and we&apos;ll sort it out.
         </p>
 
         {/* Saved work reassurance card */}
@@ -73,10 +77,10 @@ export default async function AccessExpiredPage() {
 
         {/* Contact support */}
         <a
-          href="mailto:jon@negosyouniversity.com"
-          className="w-full bg-[#1A1F36] text-white font-bold py-3.5 rounded-xl text-sm hover:bg-[#2d3458] active:scale-[0.98] transition-all text-center block mb-4"
+          href={`mailto:jon@negosyouniversity.com?subject=${encodeURIComponent('KLARO access extension request')}&body=${encodeURIComponent(`Hi! My KLARO access has expired and I'd like to request an extension.\n\nName: ${profile?.full_name ?? ''}\nEmail: ${user.email ?? ''}`)}`}
+          className="w-full bg-[#F4B942] text-[#1A1F36] font-bold py-3.5 rounded-xl text-sm hover:bg-[#e0a832] active:scale-[0.98] transition-all text-center block mb-4"
         >
-          Contact Support
+          Request an Extension
         </a>
 
         <p className="text-gray-400 text-xs">

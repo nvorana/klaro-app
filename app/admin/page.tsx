@@ -31,7 +31,7 @@ export default async function AdminPage() {
   // ── Fetch all students ──────────────────────────────────────────────────────
   const { data: students } = await adminClient
     .from('profiles')
-    .select('id, full_name, first_name, email, program_type, cohort_batch, access_level, access_suspended, unlocked_modules, enrolled_at, last_active_at, created_at')
+    .select('id, full_name, first_name, email, program_type, cohort_batch, access_level, access_suspended, unlocked_modules, enrolled_at, last_active_at, created_at, access_expires_at')
     .eq('role', 'student')
     .order('cohort_batch', { ascending: false })
 
@@ -91,6 +91,7 @@ export default async function AdminPage() {
     enrolledAt:       s.enrolled_at as string | null,
     lastActiveAt:     s.last_active_at as string | null,
     createdAt:        s.created_at as string | null,
+    accessExpiresAt:  s.access_expires_at as string | null,
     completions:      [
       hasClarity(s.id),
       hasEbook(s.id),

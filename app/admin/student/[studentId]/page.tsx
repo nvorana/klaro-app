@@ -7,6 +7,7 @@ import {
   ArrowLeft, Target, BookOpen, DollarSign, FileText, Mail, Gift, Megaphone,
   CheckCircle2, Download, Copy, Check, Phone, Clock, ChevronDown, ChevronUp,
 } from 'lucide-react'
+import { daysUntilExpiry } from '@/lib/accessExpiry'
 
 export const dynamic = 'force-dynamic'
 
@@ -139,9 +140,8 @@ export default function AdminStudentDetail() {
   const name = student.full_name || student.first_name || 'Student'
   const days = daysSince(student.last_active_at ?? student.enrolled_at)
 
-  // 90-day expiry
-  const startDate = student.created_at ?? student.enrolled_at
-  const daysLeft = startDate ? Math.ceil((new Date(startDate).getTime() + 90 * 24 * 60 * 60 * 1000 - Date.now()) / 86400000) : null
+  // Access expiry (explicit access_expires_at, else legacy 90-day formula)
+  const daysLeft = daysUntilExpiry(student)
   const expired = daysLeft !== null && daysLeft <= 0
 
   // Module completions (7 modules)

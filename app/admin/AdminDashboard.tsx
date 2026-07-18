@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { getAccessExpiry } from '@/lib/accessExpiry'
 import CohortUnlockPanel from './CohortUnlockPanel'
 import PendingSweepPanel from './PendingSweepPanel'
 
@@ -20,6 +21,7 @@ interface Student {
   enrolledAt: string | null
   lastActiveAt: string | null
   createdAt: string | null
+  accessExpiresAt: string | null
   completions: boolean[]
 }
 
@@ -60,11 +62,14 @@ function daysSince(dateStr: string | null): number {
 }
 
 function accessExpiry(s: Student): { daysLeft: number; expiresOn: string; expired: boolean } {
-  const startDate = s.createdAt ?? s.enrolledAt
-  if (!startDate) return { daysLeft: 90, expiresOn: '—', expired: false }
-  const expiryMs = new Date(startDate).getTime() + 90 * 24 * 60 * 60 * 1000
-  const daysLeft = Math.ceil((expiryMs - Date.now()) / 86400000)
-  const expiresOn = new Date(expiryMs).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })
+  const expiryDate = getAccessExpiry({
+    access_expires_at: s.accessExpiresAt,
+    created_at: s.createdAt,
+    enrolled_at: s.enrolledAt,
+  })
+  if (!expiryDate) return { daysLeft: 90, expiresOn: '—', expired: false }
+  const daysLeft = Math.ceil((expiryDate.getTime() - Date.now()) / 86400000)
+  const expiresOn = expiryDate.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })
   return { daysLeft, expiresOn, expired: daysLeft <= 0 }
 }
 
