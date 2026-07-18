@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { MODULE_INFO, isModuleUnlockedForStudent, getDaysUntilUnlock } from '@/lib/modules'
+import { daysUntilDue } from '@/lib/paymentSchedule'
 import SignOutButton from './SignOutButton'
 import BottomNav from '@/components/BottomNav'
 
@@ -23,7 +24,7 @@ export default async function DashboardPage({
   // ── Profile ───────────────────────────────────────────────
   const { data: profile } = await supabase
     .from('profiles')
-    .select('full_name, access_level, enrolled_at, unlocked_modules, access_suspended, created_at, program_type, role, module8_beta')
+    .select('full_name, access_level, enrolled_at, unlocked_modules, access_suspended, created_at, program_type, role, module8_beta, installments_paid, next_payment_due_at')
     .eq('id', user.id)
     .maybeSingle()
 
@@ -35,6 +36,16 @@ export default async function DashboardPage({
   const accessLevel = profile.access_level as string
   const unlockedModules = profile.unlocked_modules as number[] | null
   const programType = profile.program_type as string | null
+
+  // ── Upcoming installment (friendly reminder banner) ───────
+  const nextPaymentDueAt = profile.next_payment_due_at as string | null
+  const paymentDaysLeft = nextPaymentDueAt ? daysUntilDue(nextPaymentDueAt) : null
+  const showPaymentDueBanner =
+    accessLevel === 'enrolled' && paymentDaysLeft !== null && paymentDaysLeft <= 7
+  const installmentLabel = ((profile.installments_paid as number | null) ?? 1) >= 2 ? '3rd payment' : '2nd payment'
+  const paymentDueLabel = nextPaymentDueAt
+    ? new Date(nextPaymentDueAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', timeZone: 'Asia/Manila' })
+    : ''
 
   // ── Module completion ─────────────────────────────────────
   const [
@@ -250,6 +261,32 @@ export default async function DashboardPage({
           <span className="text-white/40 text-[11px]">{progressPercent}%</span>
         </div>
       </div>
+
+      {/* ── Installment due banner (enrolled, due within 7 days) ── */}
+      {showPaymentDueBanner && paymentDaysLeft !== null && (
+        <div className="mx-4 mt-4 bg-amber-50 rounded-2xl px-4 py-3 flex items-start gap-3 border" style={{ borderColor: '#F4B942' }}>
+          <svg className="flex-shrink-0 mt-0.5" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F4B942" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+            <line x1="16" y1="2" x2="16" y2="6"/>
+            <line x1="8" y1="2" x2="8" y2="6"/>
+            <line x1="3" y1="10" x2="21" y2="10"/>
+          </svg>
+          <p className="text-xs leading-relaxed" style={{ color: '#1A1F36' }}>
+            {paymentDaysLeft > 1 && (
+              <>Your <span className="font-bold">{installmentLabel}</span> is due in {paymentDaysLeft} days ({paymentDueLabel}). Settling early keeps your access tuloy-tuloy.</>
+            )}
+            {paymentDaysLeft === 1 && (
+              <>Your <span className="font-bold">{installmentLabel}</span> is due tomorrow ({paymentDueLabel}). Settling early keeps your access tuloy-tuloy.</>
+            )}
+            {paymentDaysLeft === 0 && (
+              <>Your <span className="font-bold">{installmentLabel}</span> is due today ({paymentDueLabel}). Settling it today keeps your access tuloy-tuloy.</>
+            )}
+            {paymentDaysLeft < 0 && (
+              <>Your <span className="font-bold">{installmentLabel}</span> was due {paymentDueLabel}. Please settle it to keep your access active.</>
+            )}
+          </p>
+        </div>
+      )}
 
       {/* ── Payment reminder (enrolled only) ───────────────── */}
       {profile.access_level === 'enrolled' && (

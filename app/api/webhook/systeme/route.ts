@@ -88,14 +88,23 @@ function isDelinquencyTag(tagName: string): boolean {
 
 // ── AP payment tags ──────────────────────────────────────────────────────────
 // Accel-Full-Payment / AP | PAYMENT | FULLY_PAID → upgrade to full_access.
-// AP | PAYMENT | PAY_n (an installment settled) → lift any suspension.
+// AP | PAYMENT | PAY_n (an installment settled) → lift any suspension and
+// advance the installment schedule (AP plan = 2 payments, 30 days apart).
 function detectApPaymentTag(tagName: string) {
   const t = normalizeTag(tagName)
+  const inst = t.match(/^AP-PAYMENT-PAY-(\d+)$/i)
   return {
     isFullPaid:
       /^Accel-Full-Payment(-\d+)?$/i.test(t) || /^AP-PAYMENT-FULLY-PAID$/i.test(t),
-    isInstallment: /^AP-PAYMENT-PAY-\d+$/i.test(t),
+    installmentNum: inst ? parseInt(inst[1], 10) : null,
   }
+}
+
+// TOPIS | 77 | PAYMENT | PAY_n → installment settled (TOPIS plan = 3 payments).
+function detectTopisInstallment(tagName: string): number | null {
+  const t = normalizeTag(tagName)
+  const m = t.match(/^TOPIS-\d+-PAYMENT-PAY-(\d+)$/i) || t.match(/^TOPIS-PAYMENT-PAY-(\d+)$/i)
+  return m ? parseInt(m[1], 10) : null
 }
 
 export async function POST(request: NextRequest) {
@@ -292,11 +301,15 @@ export async function POST(request: NextRequest) {
     if (topis.is2ndPay && isAdded) {
       const profile = await getProfile()
       if (profile) {
+        const { nextDueDate } = await import('@/lib/paymentSchedule')
+        const due2 = nextDueDate('topis', profile.enrolled_at, 2)
         await supabase
           .from('profiles')
           .update({
             access_suspended: false,
             cohort_batch:     topis.batchNumber ?? undefined,
+            installments_paid: 2,
+            next_payment_due_at: due2 ? due2.toISOString() : null,
             updated_at:       new Date().toISOString(),
           })
           .eq('id', profile.id)
@@ -318,6 +331,8 @@ export async function POST(request: NextRequest) {
             access_suspended:       false,
             cohort_batch:           topis.batchNumber ?? undefined,
             full_access_granted_at: new Date().toISOString(),
+            installments_paid:      3,
+            next_payment_due_at:    null,
             updated_at:             new Date().toISOString(),
           })
           .eq('id', profile.id)
@@ -365,6 +380,8 @@ export async function POST(request: NextRequest) {
             access_suspended:       false,
             enrolled_at:            profile.enrolled_at || new Date().toISOString(),
             full_access_granted_at: new Date().toISOString(),
+            installments_paid:      2,
+            next_payment_due_at:    null,
             updated_at:             new Date().toISOString(),
           })
           .eq('id', profile.id)
@@ -378,19 +395,47 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true })
     }
 
-    // AP | PAYMENT | PAY_n → an installment was settled; lift any hold.
-    if (apPay.isInstallment && isAdded) {
+    // AP | PAYMENT | PAY_n → an installment was settled; lift any hold and
+    // advance the schedule (AP plan: 2 payments, next due = enrolled + 30d×n).
+    if (apPay.installmentNum !== null && isAdded) {
       const profile = await getProfile()
       if (profile) {
-        if (profile.access_suspended) {
-          await supabase
-            .from('profiles')
-            .update({ access_suspended: false, updated_at: new Date().toISOString() })
-            .eq('id', profile.id)
-          await logAction('access_restored_installment_paid')
-        } else {
-          await logAction('installment_paid_noop')
-        }
+        const { nextDueDate } = await import('@/lib/paymentSchedule')
+        const paid = apPay.installmentNum
+        const due = nextDueDate('accelerator', profile.enrolled_at, paid)
+        await supabase
+          .from('profiles')
+          .update({
+            access_suspended: false,
+            installments_paid: paid,
+            next_payment_due_at: due ? due.toISOString() : null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', profile.id)
+        await logAction(`installment_paid_ap_${paid}`)
+      } else {
+        await logAction('installment_paid_pending_signup')
+      }
+      return NextResponse.json({ success: true })
+    }
+
+    // TOPIS | [N] | PAYMENT | PAY_n → installment settled (TOPIS plan: 3).
+    const topisInstallment = detectTopisInstallment(tagName)
+    if (topisInstallment !== null && isAdded) {
+      const profile = await getProfile()
+      if (profile) {
+        const { nextDueDate } = await import('@/lib/paymentSchedule')
+        const due = nextDueDate('topis', profile.enrolled_at, topisInstallment)
+        await supabase
+          .from('profiles')
+          .update({
+            access_suspended: false,
+            installments_paid: topisInstallment,
+            next_payment_due_at: due ? due.toISOString() : null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', profile.id)
+        await logAction(`installment_paid_topis_${topisInstallment}`)
       } else {
         await logAction('installment_paid_pending_signup')
       }
