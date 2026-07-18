@@ -260,6 +260,60 @@ async function handle(request: NextRequest) {
 
   console.log(`[cron-sweep-pending] scanned=${pending.length} activated=${activated} skipped=${skippedLead + skippedTest + skippedNotInSysteme} errors=${errors}`)
 
+  // ── Pass 2: AP payment-state sync for already-enrolled students ────────────
+  // Webhooks can miss events (manual tag-adds in the Systeme.io UI don't
+  // fire). This pass reconciles: enrolled AP students who are FULLY_PAID in
+  // Systeme get upgraded to full_access; ones tagged overdue/unsettled get
+  // suspended. Restores are NOT done here (webhook pay-settled/tag-removed
+  // events or admin toggle handle those) so a manual admin suspension is
+  // never silently undone by the cron.
+  const apSync: Array<{ email: string; action: string }> = []
+  const { data: apEnrolled } = await admin
+    .from('profiles')
+    .select('id, email, full_name, access_suspended')
+    .eq('program_type', 'accelerator')
+    .eq('access_level', 'enrolled')
+
+  const isDelinquent = (tags: string[]) =>
+    tags.some(t =>
+      /^AP \| PAYMENT \| OVERDUE$/i.test(t.trim()) ||
+      /^Unsettled - AP$/i.test(t.trim()) ||
+      /^Accel-Unsettled-\d+$/i.test(t.trim())
+    )
+  const isApFullyPaid = (tags: string[]) =>
+    tags.some(t => /accel.full.payment/i.test(t) || /ap \| payment \| fully_paid/i.test(t))
+
+  for (const p of apEnrolled ?? []) {
+    const email = p.email ?? ''
+    if (!email || isTestAccount(email)) continue
+    const tags = await fetchSystemeTags(email)
+    if (tags === null || tags.length === 0) continue  // lookup failed / not found — leave alone
+
+    if (isApFullyPaid(tags)) {
+      await admin.rpc('set_audit_context', { p_user: null, p_source: 'cron_sweep_pending' })
+      const { error } = await admin
+        .from('profiles')
+        .update({
+          access_level: 'full_access',
+          access_suspended: false,
+          full_access_granted_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', p.id)
+      apSync.push({ email, action: error ? `upgrade_error: ${error.message}` : 'upgraded_full_access' })
+    } else if (isDelinquent(tags) && !p.access_suspended) {
+      await admin.rpc('set_audit_context', { p_user: null, p_source: 'cron_sweep_pending' })
+      const { error } = await admin
+        .from('profiles')
+        .update({ access_suspended: true, updated_at: new Date().toISOString() })
+        .eq('id', p.id)
+      apSync.push({ email, action: error ? `suspend_error: ${error.message}` : 'suspended_overdue' })
+    }
+    await new Promise(r => setTimeout(r, 150))
+  }
+
+  if (apSync.length > 0) console.log(`[cron-sweep-pending] ap_sync: ${JSON.stringify(apSync)}`)
+
   return NextResponse.json({
     ok: true,
     ran_at: new Date().toISOString(),
@@ -268,5 +322,6 @@ async function handle(request: NextRequest) {
     skipped: { leads: skippedLead, tests: skippedTest, not_in_systeme: skippedNotInSysteme },
     errors,
     results,
+    ap_sync: apSync,
   })
 }

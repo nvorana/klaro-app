@@ -17,6 +17,11 @@ import { isPostCutoffAPProfile, isPostCutoffAPNow } from '@/lib/apKlaroPolicy'
 //   TOPIS-[N]-2nd-Pay-Settled  → restore access
 //   TOPIS-[N]-Full-Payment     → full access
 //   Accel-Enrolled             → enroll in Accelerator Program
+//   Accel-Full-Payment / AP | PAYMENT | FULLY_PAID → AP full access
+//   AP | PAYMENT | PAY_n       → installment settled, lift suspension
+//   AP|TOPIS overdue/unsettled family → suspend on add, restore on remove
+//     (AP | PAYMENT | OVERDUE, Unsettled - AP, Accel-Unsettled-[N],
+//      TOPIS | PAYMENT | OVERDUE, TOPIS [N] Overdue)
 //   Klaro-tier1/tier2/tier3    → set tier access
 //   KLARO-FULLPAY              → full_access (legacy)
 //   KLARO-ENROLLED             → enrolled (legacy)
@@ -61,6 +66,36 @@ function detectTopisTag(tagName: string) {
 function isAccelTag(tagName: string): boolean {
   const t = normalizeTag(tagName)
   return /^Accel-Enrolled$/i.test(t) || /^Accelerator-Enrolled$/i.test(t) || /^Accelerator-Program$/i.test(t)
+}
+
+// ── Payment-delinquency tag family ───────────────────────────────────────────
+// "Overdue" and "Unsettled" are synonyms across two generations of Systeme.io
+// tag naming; Systeme applies both families to the same missed-installment
+// event. We treat any of them as one status. Deliberately excluded:
+// "Unsettled - Business Advisor" (separate BA product — never gates KLARO
+// on its own; delinquent-BA students also carry Unsettled - AP when their
+// AP is behind).
+function isDelinquencyTag(tagName: string): boolean {
+  const t = normalizeTag(tagName)
+  return (
+    /^AP-PAYMENT-OVERDUE$/i.test(t) ||        // AP | PAYMENT | OVERDUE
+    /^Unsettled-AP$/i.test(t) ||              // Unsettled - AP
+    /^Accel-Unsettled-\d+$/i.test(t) ||       // Accel-Unsettled-29 (cohort form)
+    /^TOPIS-PAYMENT-OVERDUE$/i.test(t) ||     // TOPIS | PAYMENT | OVERDUE
+    /^TOPIS-\d+-Overdue$/i.test(t)            // TOPIS 78 Overdue (space form)
+  )
+}
+
+// ── AP payment tags ──────────────────────────────────────────────────────────
+// Accel-Full-Payment / AP | PAYMENT | FULLY_PAID → upgrade to full_access.
+// AP | PAYMENT | PAY_n (an installment settled) → lift any suspension.
+function detectApPaymentTag(tagName: string) {
+  const t = normalizeTag(tagName)
+  return {
+    isFullPaid:
+      /^Accel-Full-Payment(-\d+)?$/i.test(t) || /^AP-PAYMENT-FULLY-PAID$/i.test(t),
+    isInstallment: /^AP-PAYMENT-PAY-\d+$/i.test(t),
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -144,7 +179,7 @@ export async function POST(request: NextRequest) {
     async function getProfile() {
       const { data } = await supabase
         .from('profiles')
-        .select('id, enrolled_at, access_level, unlocked_modules, created_at')
+        .select('id, enrolled_at, access_level, unlocked_modules, created_at, access_suspended, coach_id')
         .eq('email', email as string)
         .maybeSingle()
       return data
@@ -289,6 +324,75 @@ export async function POST(request: NextRequest) {
         await logAction('access_restored_full_payment')
       } else {
         await logAction('full_payment_pending_signup')
+      }
+      return NextResponse.json({ success: true })
+    }
+
+    // ── Overdue / Unsettled (AP + TOPIS, all naming generations) ──
+    // Tag added → suspend (payment hold screen + API 403).
+    // Tag removed → restore.
+    if (isDelinquencyTag(tagName)) {
+      const profile = await getProfile()
+      if (profile) {
+        await supabase
+          .from('profiles')
+          .update({
+            access_suspended: isAdded,
+            updated_at:       new Date().toISOString(),
+          })
+          .eq('id', profile.id)
+        await logAction(isAdded ? 'access_suspended_overdue' : 'access_restored_overdue_removed')
+      } else {
+        await logAction(isAdded ? 'suspend_overdue_pending_signup' : 'restore_overdue_pending_signup')
+      }
+      return NextResponse.json({ success: true })
+    }
+
+    // ── AP payment tags ──────────────────────────────────────────
+    const apPay = detectApPaymentTag(tagName)
+
+    // Accel-Full-Payment / AP | PAYMENT | FULLY_PAID → full access.
+    // (Previously unhandled — fully-paid AP students stayed on 'enrolled'.)
+    if (apPay.isFullPaid && isAdded) {
+      const profile = await getProfile()
+      if (profile) {
+        await supabase
+          .from('profiles')
+          .update({
+            access_level:           'full_access',
+            program_type:           'accelerator',
+            coach_id:               profile.coach_id ?? EDGAR_COACH_ID,
+            access_suspended:       false,
+            enrolled_at:            profile.enrolled_at || new Date().toISOString(),
+            full_access_granted_at: new Date().toISOString(),
+            updated_at:             new Date().toISOString(),
+          })
+          .eq('id', profile.id)
+        await logAction('accelerator_full_access_granted')
+      } else {
+        // No KLARO profile. July 1 policy: new AP students don't get KLARO,
+        // so just log — the orphan-claim path deliberately won't pick this up
+        // for post-cutoff signups.
+        await logAction('accelerator_full_payment_pending_signup')
+      }
+      return NextResponse.json({ success: true })
+    }
+
+    // AP | PAYMENT | PAY_n → an installment was settled; lift any hold.
+    if (apPay.isInstallment && isAdded) {
+      const profile = await getProfile()
+      if (profile) {
+        if (profile.access_suspended) {
+          await supabase
+            .from('profiles')
+            .update({ access_suspended: false, updated_at: new Date().toISOString() })
+            .eq('id', profile.id)
+          await logAction('access_restored_installment_paid')
+        } else {
+          await logAction('installment_paid_noop')
+        }
+      } else {
+        await logAction('installment_paid_pending_signup')
       }
       return NextResponse.json({ success: true })
     }

@@ -73,7 +73,7 @@ export async function middleware(request: NextRequest) {
   if (user && isProtectedPage && !isOnExpiredPage) {
     const { data: profile } = await supabase
       .from('profiles')
-      .select('role, access_level, access_expires_at, created_at, enrolled_at')
+      .select('role, access_level, access_suspended, access_expires_at, created_at, enrolled_at')
       .eq('id', user.id)
       .maybeSingle()
 
@@ -91,6 +91,16 @@ export async function middleware(request: NextRequest) {
         } catch (err) {
           console.error('[middleware] claim pending tags failed:', err)
         }
+      }
+
+      // Payment hold: suspended students only see the dashboard, which
+      // renders the settle-your-balance hold screen. Deep links to module
+      // pages (or any other protected page) bounce back there.
+      if (
+        profile.access_suspended &&
+        !request.nextUrl.pathname.startsWith('/dashboard')
+      ) {
+        return NextResponse.redirect(new URL('/dashboard', request.url))
       }
 
       // Expiry: explicit access_expires_at wins; otherwise the legacy 90-day
