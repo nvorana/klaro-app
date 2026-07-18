@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
-import Link from 'next/link'
 import { getAccessExpiry, daysUntilExpiry } from '@/lib/accessExpiry'
+import BottomNav from '@/components/BottomNav'
 
 interface ProfileData {
   first_name: string
@@ -109,19 +109,19 @@ export default function ProfilePage() {
     router.refresh()
   }
 
-  const inputClass = "w-full bg-gray-950 text-white text-sm px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#F4B942]"
+  const inputClass = "w-full bg-white text-[#1F2937] text-sm px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#F4B942]"
   const labelClass = "block text-[10px] font-bold text-gray-500 uppercase tracking-wide mb-1.5"
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+      <div className="min-h-screen bg-[#F8F9FA] flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-[#F4B942] border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 max-w-[430px] md:max-w-3xl mx-auto flex flex-col">
+    <div className="min-h-screen bg-[#F8F9FA] max-w-[430px] md:max-w-3xl mx-auto flex flex-col">
       <div className="px-4 pt-6 pb-32 flex-1">
 
         {/* Header */}
@@ -130,8 +130,8 @@ export default function ProfilePage() {
             {firstName ? firstName[0].toUpperCase() : '?'}
           </div>
           <div>
-            <h1 className="text-white font-bold text-lg leading-tight">{firstName} {lastName}</h1>
-            <p className="text-gray-400 text-xs">{profile?.email}</p>
+            <h1 className="text-[#1A1F36] font-bold text-lg leading-tight">{firstName} {lastName}</h1>
+            <p className="text-gray-500 text-xs">{profile?.email}</p>
           </div>
         </div>
 
@@ -141,12 +141,13 @@ export default function ProfilePage() {
           const daysLeft = profile ? daysUntilExpiry(profile) : null
           const expiresOn = expiryDate ? expiryDate.toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' }) : null
           const expired = daysLeft !== null && daysLeft <= 0
-          const urgentColor = expired ? '#f87171' : daysLeft !== null && daysLeft <= 14 ? '#fb923c' : '#F4B942'
+          const urgentColor = expired ? '#DC2626' : daysLeft !== null && daysLeft <= 14 ? '#EA580C' : '#B45309'
+          const borderColor = expired ? '#FECACA' : daysLeft !== null && daysLeft <= 14 ? '#FED7AA' : '#F4B942'
 
           return (
             <div
               className="rounded-xl px-4 py-3 mb-6"
-              style={{ background: '#1c1500', border: `1px solid ${urgentColor}` }}
+              style={{ background: '#FFFBEB', border: `1px solid ${borderColor}` }}
             >
               <div className="flex items-center gap-3 mb-2">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={urgentColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -161,12 +162,12 @@ export default function ProfilePage() {
               {daysLeft !== null && expiresOn && (
                 <>
                   <div className="flex justify-between items-center mb-1.5">
-                    <span className="text-[11px] text-gray-400">
+                    <span className="text-[11px] text-gray-600">
                       {expired ? 'Access expired' : `${daysLeft} day${daysLeft === 1 ? '' : 's'} remaining`}
                     </span>
                     <span className="text-[11px] text-gray-500">ends {expiresOn}</span>
                   </div>
-                  <div className="h-1.5 rounded-full overflow-hidden" style={{ background: '#2d2000' }}>
+                  <div className="h-1.5 rounded-full overflow-hidden" style={{ background: '#FDE68A' }}>
                     <div
                       className="h-full rounded-full transition-all"
                       style={{
@@ -182,7 +183,7 @@ export default function ProfilePage() {
         })()}
 
         {/* Personal Info */}
-        <div className="bg-gray-900 rounded-2xl p-4 mb-4" style={{ border: '1px solid #374151' }}>
+        <div className="bg-white border border-gray-100 shadow-sm rounded-2xl p-4 mb-4">
           <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wide mb-4">Personal Information</p>
 
           <div className="flex gap-3 mb-4">
@@ -193,7 +194,6 @@ export default function ProfilePage() {
                 value={firstName}
                 onChange={e => setFirstName(e.target.value)}
                 className={inputClass}
-                style={{ border: '1px solid #374151' }}
               />
             </div>
             <div className="flex-1">
@@ -203,24 +203,20 @@ export default function ProfilePage() {
                 value={lastName}
                 onChange={e => setLastName(e.target.value)}
                 className={inputClass}
-                style={{ border: '1px solid #374151' }}
               />
             </div>
           </div>
 
           <div className="mb-4">
             <label className={labelClass}>Email Address</label>
-            <div
-              className="w-full px-4 py-3 rounded-xl text-sm text-gray-500 flex items-center gap-2"
-              style={{ background: '#111827', border: '1px solid #374151' }}
-            >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <div className="w-full px-4 py-3 rounded-xl text-sm text-gray-500 flex items-center gap-2 bg-gray-50 border border-gray-200">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
                 <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
               </svg>
               {profile?.email}
             </div>
-            <p className="text-[10px] text-gray-600 mt-1 pl-1">Email cannot be changed here. Contact support.</p>
+            <p className="text-[10px] text-gray-400 mt-1 pl-1">Email cannot be changed here. Contact support.</p>
           </div>
 
           <div>
@@ -231,14 +227,13 @@ export default function ProfilePage() {
               onChange={e => setPhone(e.target.value)}
               placeholder="+63 912 345 6789"
               className={inputClass}
-              style={{ border: '1px solid #374151' }}
             />
           </div>
         </div>
 
         {/* Error */}
         {error && (
-          <div className="text-red-400 text-sm rounded-xl px-4 py-3 mb-4" style={{ background: '#1a0000', border: '1px solid #7f1d1d' }}>
+          <div className="text-red-600 text-sm rounded-xl px-4 py-3 mb-4 bg-red-50 border border-red-200">
             {error}
           </div>
         )}
@@ -249,8 +244,8 @@ export default function ProfilePage() {
           disabled={saving}
           className="w-full py-4 rounded-xl font-bold text-sm mb-3 flex items-center justify-center gap-2 transition-all"
           style={{
-            background: saved ? '#064e3b' : '#F4B942',
-            color: saved ? '#34d399' : '#1A1F36',
+            background: saved ? '#ECFDF5' : '#F4B942',
+            color: saved ? '#059669' : '#1A1F36',
             border: saved ? '1px solid #10B981' : 'none',
           }}
         >
@@ -261,7 +256,7 @@ export default function ProfilePage() {
             </>
           ) : saved ? (
             <>
-              <span className="text-emerald-400"><CheckIcon /></span>
+              <CheckIcon />
               Changes Saved
             </>
           ) : (
@@ -273,8 +268,7 @@ export default function ProfilePage() {
         <button
           onClick={handleSignOut}
           disabled={signingOut}
-          className="w-full py-3.5 rounded-xl font-semibold text-sm text-red-400 transition-all"
-          style={{ background: '#1a0a0a', border: '1px solid #7f1d1d' }}
+          className="w-full py-3.5 rounded-xl font-semibold text-sm text-red-500 transition-all bg-red-50 border border-red-200"
         >
           {signingOut ? 'Signing out…' : 'Sign Out'}
         </button>
@@ -282,32 +276,7 @@ export default function ProfilePage() {
       </div>
 
       {/* Bottom Nav */}
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] md:max-w-3xl bg-gray-900 border-t border-gray-800 px-2 pt-2.5 pb-6 flex justify-around items-center z-30">
-        <Link href="/dashboard" className="flex flex-col items-center gap-1">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
-          </svg>
-          <span className="text-[10px] font-semibold text-gray-400">Home</span>
-        </Link>
-        <Link href="/my-work" className="flex flex-col items-center gap-1">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-          </svg>
-          <span className="text-[10px] font-semibold text-gray-400">My Work</span>
-        </Link>
-        <Link href="/progress" className="flex flex-col items-center gap-1">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
-          </svg>
-          <span className="text-[10px] font-semibold text-gray-400">Progress</span>
-        </Link>
-        <Link href="/profile" className="flex flex-col items-center gap-1">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F4B942" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
-          </svg>
-          <span className="text-[10px] font-semibold text-[#F4B942]">Profile</span>
-        </Link>
-      </div>
+      <BottomNav active="profile" />
     </div>
   )
 }

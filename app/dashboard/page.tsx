@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { MODULE_INFO, isModuleUnlockedForStudent, getDaysUntilUnlock } from '@/lib/modules'
 import SignOutButton from './SignOutButton'
+import BottomNav from '@/components/BottomNav'
 
 export const dynamic = 'force-dynamic'
 
@@ -200,9 +201,12 @@ export default async function DashboardPage({
           </div>
           <Link
             href="/upgrade"
-            className="bg-[#1A1F36] text-[#F4B942] text-[11px] font-bold px-3 py-1.5 rounded-lg whitespace-nowrap"
+            className="bg-[#1A1F36] text-[#F4B942] text-[11px] font-bold px-3 py-1.5 rounded-lg whitespace-nowrap inline-flex items-center gap-1"
           >
-            Unlock →
+            Unlock
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="9 18 15 12 9 6"/>
+            </svg>
           </Link>
         </div>
       )}
@@ -412,8 +416,11 @@ export default async function DashboardPage({
                 <p className="text-[#F4B942] text-xl font-bold leading-none">₱28,000</p>
                 <p className="text-white/40 text-[10px] mt-0.5">workshop pricing ends May 18</p>
               </div>
-              <span className="bg-[#F4B942] text-[#1A1F36] text-xs font-bold px-4 py-2 rounded-lg">
-                I&apos;m in →
+              <span className="bg-[#F4B942] text-[#1A1F36] text-xs font-bold px-4 py-2 rounded-lg inline-flex items-center gap-1">
+                I&apos;m in
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="9 18 15 12 9 6"/>
+                </svg>
               </span>
             </div>
           </Link>
@@ -505,41 +512,7 @@ export default async function DashboardPage({
       </div>
 
       {/* ── Bottom Nav ─────────────────────────────────────── */}
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] md:max-w-3xl bg-gray-900 border-t border-gray-800 px-2 pt-2.5 pb-6 flex justify-around items-center z-30">
-
-        {/* Home — active */}
-        <Link href="/dashboard" className="flex flex-col items-center gap-1">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F4B942" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
-          </svg>
-          <span className="text-[10px] font-semibold text-[#F4B942]">Home</span>
-        </Link>
-
-        {/* My Work */}
-        <Link href="/my-work" className="flex flex-col items-center gap-1">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-          </svg>
-          <span className="text-[10px] font-semibold text-gray-400">My Work</span>
-        </Link>
-
-        {/* Progress */}
-        <Link href="/progress" className="flex flex-col items-center gap-1">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
-          </svg>
-          <span className="text-[10px] font-semibold text-gray-400">Progress</span>
-        </Link>
-
-        {/* Profile */}
-        <Link href="/profile" className="flex flex-col items-center gap-1">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
-          </svg>
-          <span className="text-[10px] font-semibold text-gray-400">Profile</span>
-        </Link>
-
-      </div>
+      <BottomNav active="home" />
     </div>
   )
 }

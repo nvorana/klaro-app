@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { openai, AI_MODEL } from '@/lib/openai'
+import { logAiUsage } from '@/lib/aiUsage'
 import { getMarketLanguageHintForUser } from '@/lib/marketLanguage'
 import { requireUser } from '@/lib/apiAuth'
 
@@ -323,6 +324,7 @@ export async function POST(request: NextRequest) {
       max_tokens: 1200,
       ...(section === 'headline' ? { response_format: { type: 'json_object' as const } } : {}),
     })
+    logAiUsage({ userId: auth.user.id, route: 'sales-page-section', model: AI_MODEL, usage: completion.usage })
 
     const content = completion.choices[0].message.content?.trim() || ''
     return NextResponse.json({ data: content })

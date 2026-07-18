@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { openai, AI_MODEL } from '@/lib/openai'
+import { logAiUsage } from '@/lib/aiUsage'
 import { getMarketLanguageHintForUser } from '@/lib/marketLanguage'
 import { findBannedWords, buildCorrectionPrompt } from '@/lib/bannedWords'
 import { requireUser } from '@/lib/apiAuth'
@@ -315,6 +316,7 @@ Return ONLY valid JSON in this shape:
       temperature: 0.75,
       max_tokens: 2500,
     })
+    logAiUsage({ userId: auth.user.id, route: 'bonus-content', model: AI_MODEL, usage: completion.usage })
 
     let raw = completion.choices[0].message.content ?? '{}'
 
@@ -332,6 +334,7 @@ Return ONLY valid JSON in this shape:
         response_format: { type: 'json_object' },
         temperature: 0.5,
       })
+      logAiUsage({ userId: auth.user.id, route: 'bonus-content', model: AI_MODEL, usage: correction.usage })
       raw = correction.choices[0].message.content ?? raw
     }
 

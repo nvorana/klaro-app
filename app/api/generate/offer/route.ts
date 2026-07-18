@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { openai, AI_MODEL } from '@/lib/openai'
+import { logAiUsage } from '@/lib/aiUsage'
 import { getMarketLanguageHintForUser } from '@/lib/marketLanguage'
 import { requireUser } from '@/lib/apiAuth'
 
@@ -58,6 +59,7 @@ Return ONLY a valid JSON object:
         temperature: 0.7,
         max_tokens: 200,
       })
+      logAiUsage({ userId: auth.user.id, route: 'offer', model: AI_MODEL, usage: completion.usage })
 
       const result = JSON.parse(completion.choices[0].message.content || '{}')
       return NextResponse.json({ data: result })
@@ -91,6 +93,7 @@ Return ONLY a valid JSON object:
         temperature: 0.7,
         max_tokens: 200,
       })
+      logAiUsage({ userId: auth.user.id, route: 'offer', model: AI_MODEL, usage: completion.usage })
 
       const result = JSON.parse(completion.choices[0].message.content || '{}')
       if (result.justification) {
@@ -140,6 +143,7 @@ Return ONLY a valid JSON object:
         temperature: 0.72,
         max_tokens: 600,
       })
+      logAiUsage({ userId: auth.user.id, route: 'offer', model: AI_MODEL, usage: completion.usage })
 
       const result = JSON.parse(completion.choices[0].message.content || '{}')
       // Sanitize: replace peso sign with PHP to prevent font rendering issues on some devices

@@ -2,6 +2,9 @@
 
 import GoldConfetti from '@/components/GoldConfetti'
 import ModuleReviewStatus from '@/app/components/ModuleReviewStatus'
+import StepBar from '@/components/StepBar'
+import CopyButton from '@/components/CopyButton'
+import { CompletionBanner, BackToDashboardLink } from '@/components/CompletionBanner'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
@@ -53,12 +56,6 @@ const POST_TYPES: { key: PostType; label: string; description: string }[] = [
 const COUNT_OPTIONS: PostCount[] = [3, 5]
 
 // ── SVG Icons ────────────────────────────────────────────────────
-const CheckIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="20 6 9 17 4 12" />
-  </svg>
-)
-
 const BackIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
     <polyline points="15 18 9 12 15 6" />
@@ -297,48 +294,6 @@ export default function Module7Page() {
     }
   }
 
-  // ── Progress Dots ────────────────────────────────────────────
-  function ProgressDots() {
-    return (
-      <div className="flex items-center justify-center mb-6">
-        {STEP_LABELS.map((label, i) => {
-          const isDone = i < currentStepIndex
-          const isActive = i === currentStepIndex
-          return (
-            <div key={label} className="flex items-center">
-              <div className="flex flex-col items-center">
-                <div
-                  className="w-7 h-7 rounded-full flex items-center justify-center"
-                  style={{ background: isDone ? '#10B981' : isActive ? '#F4B942' : '#D1D5DB' }}
-                >
-                  {isDone ? (
-                    <span className="text-white"><CheckIcon /></span>
-                  ) : (
-                    <span className="text-xs font-bold" style={{ color: isActive ? '#1A1F36' : '#9CA3AF' }}>
-                      {i + 1}
-                    </span>
-                  )}
-                </div>
-                <span
-                  className="text-[10px] mt-1 font-medium whitespace-nowrap"
-                  style={{ color: isDone ? '#10B981' : isActive ? '#F4B942' : '#9CA3AF' }}
-                >
-                  {label}
-                </span>
-              </div>
-              {i < STEP_LABELS.length - 1 && (
-                <div
-                  className="h-0.5 w-16 mb-4 mx-1"
-                  style={{ background: i < currentStepIndex ? '#10B981' : '#D1D5DB' }}
-                />
-              )}
-            </div>
-          )
-        })}
-      </div>
-    )
-  }
-
   // ── Loading ──────────────────────────────────────────────────
   if (clarityLoading) {
     return (
@@ -401,15 +356,7 @@ export default function Module7Page() {
             </div>
           </div>
 
-          <div className="rounded-xl px-4 py-4 mb-5 flex items-start gap-3" style={{ background: '#ecfdf5', border: '1px solid #10B981' }}>
-            <div className="w-6 h-6 rounded-full flex items-center justify-center mt-0.5 flex-shrink-0" style={{ background: '#10B981' }}>
-              <span className="text-white"><CheckIcon /></span>
-            </div>
-            <div>
-              <p className="font-bold text-emerald-700">Module 7 Complete!</p>
-              <p className="text-sm text-emerald-700 mt-0.5">Your Facebook posts are saved and ready to publish.</p>
-            </div>
-          </div>
+          <CompletionBanner moduleNumber={7} moduleTitle="Your Facebook posts are saved and ready to publish." />
 
           {/* Coach review status (AP students) */}
           <ModuleReviewStatus moduleNumber={7} />
@@ -442,13 +389,10 @@ export default function Module7Page() {
                     <div key={label} className="bg-white rounded-xl p-4 border border-gray-100">
                       <div className="flex items-start justify-between gap-3 mb-2">
                         <p className="text-sm font-medium text-[#1A1F36] leading-snug flex-1 min-w-0">{post.hook}</p>
-                        <button
-                          onClick={() => copyToClipboard(post.full_post, label)}
+                        <CopyButton
+                          text={post.full_post}
                           className="flex items-center gap-1 text-xs text-gray-500 hover:text-[#1A1F36] flex-shrink-0"
-                        >
-                          <CopyIcon />
-                          <span>{copiedLabel === label ? 'Copied!' : 'Copy'}</span>
-                        </button>
+                        />
                       </div>
                       <p className="text-xs text-gray-500 leading-relaxed whitespace-pre-wrap line-clamp-4">{post.full_post}</p>
                     </div>
@@ -475,6 +419,8 @@ export default function Module7Page() {
               Go to Dashboard
             </button>
           </div>
+
+          <BackToDashboardLink />
         </div>
       </div>
       </>
@@ -507,7 +453,9 @@ export default function Module7Page() {
           </div>
         </div>
 
-        <ProgressDots />
+        <div className="mb-6">
+          <StepBar steps={STEP_LABELS} currentIndex={currentStepIndex} />
+        </div>
 
         {error && (
           <div className="text-red-600 text-sm rounded-lg px-4 py-3 mb-4" style={{ background: '#FEF2F2', border: '1px solid #FECACA' }}>
@@ -678,13 +626,10 @@ export default function Module7Page() {
                                   <RefreshIcon />
                                   <span>{isRegenerating ? 'Rewriting…' : 'Rewrite'}</span>
                                 </button>
-                                <button
-                                  onClick={() => copyToClipboard(post.full_post, `post-${i}`)}
+                                <CopyButton
+                                  text={post.full_post}
                                   className="flex items-center gap-1 text-xs text-gray-500 hover:text-[#1A1F36]"
-                                >
-                                  <CopyIcon />
-                                  <span>{copiedLabel === `post-${i}` ? 'Copied!' : 'Copy'}</span>
-                                </button>
+                                />
                               </div>
                             </div>
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { openai, AI_MODEL } from '@/lib/openai'
+import { logAiUsage } from '@/lib/aiUsage'
 import { getMarketLanguageHintForUser } from '@/lib/marketLanguage'
 import { requireUser } from '@/lib/apiAuth'
 
@@ -194,6 +195,7 @@ export async function POST(request: NextRequest) {
       temperature: 0.75,
       max_tokens: section === 'main_content' ? 3000 : 1500,
     })
+    logAiUsage({ userId: auth.user.id, route: 'lead-magnet', model: AI_MODEL, usage: completion.usage })
 
     const content = completion.choices[0].message.content
     const result = JSON.parse(content || '{}')

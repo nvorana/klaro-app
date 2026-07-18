@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { AI_MODEL } from '@/lib/openai'
+import { logAiUsage } from '@/lib/aiUsage'
 import {
   getActiveSession,
   upsertStepDraft,
@@ -293,6 +295,10 @@ export async function POST(
     } else {
       return NextResponse.json({ error: 'unsupported_screen' }, { status: 400 })
     }
+
+    // Creator runs exactly one OpenAI call per request (inside runCreator,
+    // which doesn't expose token usage) — log the call with usage: null.
+    logAiUsage({ userId: user.id, route: 'module8-screen', model: AI_MODEL, usage: null })
 
     // ─── Persist draft ────────────────────────────────────────────────
     const stepRow = await upsertStepDraft(

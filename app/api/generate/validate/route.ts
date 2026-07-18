@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { openai, AI_MODEL } from '@/lib/openai'
+import { openai, AI_MODEL_UTILITY } from '@/lib/openai'
+import { logAiUsage } from '@/lib/aiUsage'
 import { requireUser } from '@/lib/apiAuth'
 
 // POST /api/generate/validate
@@ -42,11 +43,12 @@ Scoring guide:
 Be specific to Philippine culture, economics, and buying behavior. Do not be overly encouraging.`
 
     const completion = await openai.chat.completions.create({
-      model: AI_MODEL,
+      model: AI_MODEL_UTILITY,
       messages: [{ role: 'user', content: prompt }],
       response_format: { type: 'json_object' },
       temperature: 0.5,
     })
+    logAiUsage({ userId: auth.user.id, route: 'validate', model: AI_MODEL_UTILITY, usage: completion.usage })
 
     const content = completion.choices[0].message.content
     const result = JSON.parse(content || '{}')

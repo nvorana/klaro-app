@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import { createBrowserClient } from '@supabase/ssr'
+import BottomNav from '@/components/BottomNav'
 
 interface ProjectSummary {
   id: string
@@ -83,27 +83,30 @@ export default function MyWorkPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+      <div className="min-h-screen bg-[#F8F9FA] flex items-center justify-center">
         <p className="text-gray-500 text-sm animate-pulse">Loading your projects…</p>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white flex flex-col">
+    <div className="min-h-screen bg-[#F8F9FA] text-[#1F2937] flex flex-col">
       <div className="w-full max-w-[430px] md:max-w-3xl mx-auto flex flex-col min-h-screen pb-28">
 
         {/* ── Header ──────────────────────────────────────────────────────── */}
         <div className="px-6 pt-8 pb-4">
           <button
             onClick={() => router.push('/dashboard')}
-            className="text-gray-500 hover:text-gray-300 text-sm mb-5 flex items-center gap-1"
+            className="text-gray-500 hover:text-[#1A1F36] text-sm mb-5 flex items-center gap-1"
           >
-            ← Dashboard
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="15 18 9 12 15 6"/>
+            </svg>
+            Dashboard
           </button>
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-white">My Work</h1>
+              <h1 className="text-2xl font-bold text-[#1A1F36]">My Work</h1>
               <p className="text-gray-500 text-sm mt-0.5">
                 {projects.length === 0 ? 'No projects yet.' : `${projects.length} project${projects.length > 1 ? 's' : ''}`}
               </p>
@@ -111,8 +114,7 @@ export default function MyWorkPage() {
             {/* Future: New Project button */}
             <button
               disabled
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold opacity-30 cursor-not-allowed"
-              style={{ background: '#1f2937', color: '#9CA3AF', border: '1px solid #374151' }}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold opacity-40 cursor-not-allowed bg-white text-gray-500 border border-gray-200"
             >
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
@@ -125,16 +127,23 @@ export default function MyWorkPage() {
         {/* ── Empty state ─────────────────────────────────────────────────── */}
         {projects.length === 0 && (
           <div className="flex-1 flex flex-col items-center justify-center px-6 text-center pb-20">
-            <div className="text-4xl mb-4">✦</div>
-            <h2 className="text-lg font-bold text-white mb-2">No projects yet</h2>
+            <div className="mb-4">
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#F4B942" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+              </svg>
+            </div>
+            <h2 className="text-lg font-bold text-[#1A1F36] mb-2">No projects yet</h2>
             <p className="text-gray-500 text-sm mb-6 max-w-xs">
               Start Module 1 to create your first digital product project.
             </p>
             <button
               onClick={() => router.push('/module/1')}
-              className="bg-yellow-400 text-black font-bold px-6 py-3 rounded-xl text-sm"
+              className="bg-[#F4B942] text-[#1A1F36] font-bold px-6 py-3 rounded-xl text-sm inline-flex items-center gap-1.5"
             >
-              Start Module 1 →
+              Start Module 1
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="9 18 15 12 9 6"/>
+              </svg>
             </button>
           </div>
         )}
@@ -145,17 +154,17 @@ export default function MyWorkPage() {
             <button
               key={project.id}
               onClick={() => router.push('/my-work/detail')}
-              className="w-full text-left bg-gray-900 border border-gray-800 rounded-2xl p-5 hover:border-gray-700 transition-all active:scale-[0.99]"
+              className="w-full text-left bg-white border border-gray-100 shadow-sm rounded-2xl p-5 hover:border-gray-200 transition-all active:scale-[0.99]"
             >
               {/* Top row: name + arrow */}
               <div className="flex items-start justify-between gap-3 mb-3">
                 <div className="min-w-0">
-                  <p className="text-white font-bold text-base leading-snug truncate">{project.name}</p>
+                  <p className="text-[#1A1F36] font-bold text-base leading-snug truncate">{project.name}</p>
                   {project.market && (
                     <p className="text-gray-500 text-xs mt-0.5 truncate">For: {project.market}</p>
                   )}
                 </div>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0 mt-0.5">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0 mt-0.5">
                   <polyline points="9 18 15 12 9 6"/>
                 </svg>
               </div>
@@ -166,13 +175,13 @@ export default function MyWorkPage() {
                   <div key={i} className="flex items-center gap-1.5">
                     <div
                       className="w-2 h-2 rounded-full flex-shrink-0"
-                      style={{ background: step.done ? '#F4B942' : '#374151' }}
+                      style={{ background: step.done ? '#F4B942' : '#D1D5DB' }}
                     />
-                    <span className="text-[10px] font-medium" style={{ color: step.done ? '#F4B942' : '#6B7280' }}>
+                    <span className="text-[10px] font-medium" style={{ color: step.done ? '#F4B942' : '#9CA3AF' }}>
                       {step.label}
                     </span>
                     {i < project.steps.length - 1 && (
-                      <div className="w-3 h-px bg-gray-800 ml-0.5" />
+                      <div className="w-3 h-px bg-gray-200 ml-0.5" />
                     )}
                   </div>
                 ))}
@@ -181,7 +190,7 @@ export default function MyWorkPage() {
               {/* Footer: progress + date */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <div className="h-1.5 w-24 bg-gray-800 rounded-full overflow-hidden">
+                  <div className="h-1.5 w-24 bg-gray-100 rounded-full overflow-hidden">
                     <div
                       className="h-full rounded-full transition-all"
                       style={{
@@ -195,7 +204,7 @@ export default function MyWorkPage() {
                   </span>
                 </div>
                 {project.lastUpdated && (
-                  <span className="text-[10px] text-gray-700">
+                  <span className="text-[10px] text-gray-400">
                     {new Date(project.lastUpdated).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                   </span>
                 )}
@@ -207,32 +216,7 @@ export default function MyWorkPage() {
       </div>
 
       {/* ── Bottom Nav ────────────────────────────────────────────────────── */}
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] md:max-w-3xl bg-gray-900 border-t border-gray-800 px-2 pt-2.5 pb-6 flex justify-around items-center z-30">
-        <Link href="/dashboard" className="flex flex-col items-center gap-1">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
-          </svg>
-          <span className="text-[10px] font-semibold text-gray-500">Home</span>
-        </Link>
-        <Link href="/my-work" className="flex flex-col items-center gap-1">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F4B942" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-          </svg>
-          <span className="text-[10px] font-semibold text-yellow-400">My Work</span>
-        </Link>
-        <Link href="/progress" className="flex flex-col items-center gap-1">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
-          </svg>
-          <span className="text-[10px] font-semibold text-gray-500">Progress</span>
-        </Link>
-        <Link href="/profile" className="flex flex-col items-center gap-1">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
-          </svg>
-          <span className="text-[10px] font-semibold text-gray-500">Profile</span>
-        </Link>
-      </div>
+      <BottomNav active="my-work" />
     </div>
   )
 }

@@ -2,6 +2,9 @@
 
 import GoldConfetti from '@/components/GoldConfetti'
 import ModuleReviewStatus from '@/app/components/ModuleReviewStatus'
+import StepBar from '@/components/StepBar'
+import CopyButton from '@/components/CopyButton'
+import { CompletionBanner, UpNextCard, BackToDashboardLink } from '@/components/CompletionBanner'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
@@ -31,12 +34,6 @@ const STEP_LABELS = ['Sales Page', 'Your Emails']
 const STEP_KEYS: Step[] = ['url', 'emails']
 
 // ── SVG Icons ────────────────────────────────────────────────────
-const CheckIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="20 6 9 17 4 12" />
-  </svg>
-)
-
 const BackIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
     <polyline points="15 18 9 12 15 6" />
@@ -96,7 +93,6 @@ export default function Module5Page() {
   const [expandedDay, setExpandedDay] = useState<number | null>(1)
   const [regeneratingDay, setRegeneratingDay] = useState<number | null>(null)
   const [copiedLabel, setCopiedLabel] = useState<string | null>(null)
-  const [promptCopied, setPromptCopied] = useState(false)
 
   // Lock state
   const [locked, setLocked] = useState(false)
@@ -300,48 +296,6 @@ export default function Module5Page() {
     }
   }
 
-  // ── Progress Dots ────────────────────────────────────────────
-  function ProgressDots() {
-    return (
-      <div className="flex items-center justify-center mb-6">
-        {STEP_LABELS.map((label, i) => {
-          const isDone = i < currentStepIndex
-          const isActive = i === currentStepIndex
-          return (
-            <div key={label} className="flex items-center">
-              <div className="flex flex-col items-center">
-                <div
-                  className="w-7 h-7 rounded-full flex items-center justify-center"
-                  style={{ background: isDone ? '#10B981' : isActive ? '#F4B942' : '#D1D5DB' }}
-                >
-                  {isDone ? (
-                    <span className="text-white"><CheckIcon /></span>
-                  ) : (
-                    <span className="text-xs font-bold" style={{ color: isActive ? '#1A1F36' : '#9CA3AF' }}>
-                      {i + 1}
-                    </span>
-                  )}
-                </div>
-                <span
-                  className="text-[10px] mt-1 font-medium whitespace-nowrap"
-                  style={{ color: isDone ? '#10B981' : isActive ? '#F4B942' : '#9CA3AF' }}
-                >
-                  {label}
-                </span>
-              </div>
-              {i < STEP_LABELS.length - 1 && (
-                <div
-                  className="h-0.5 w-12 mb-4 mx-1"
-                  style={{ background: i < currentStepIndex ? '#10B981' : '#D1D5DB' }}
-                />
-              )}
-            </div>
-          )
-        })}
-      </div>
-    )
-  }
-
   // ── Loading ──────────────────────────────────────────────────
   if (clarityLoading) {
     return (
@@ -393,15 +347,7 @@ export default function Module5Page() {
             </div>
           </div>
 
-          <div className="rounded-xl px-4 py-4 mb-5 flex items-start gap-3" style={{ background: '#ecfdf5', border: '1px solid #10B981' }}>
-            <div className="w-6 h-6 rounded-full flex items-center justify-center mt-0.5 flex-shrink-0" style={{ background: '#10B981' }}>
-              <span className="text-white"><CheckIcon /></span>
-            </div>
-            <div>
-              <p className="font-bold text-emerald-700">Module 5 Complete!</p>
-              <p className="text-sm text-emerald-700 mt-0.5">Your 7-day email sequence is saved.</p>
-            </div>
-          </div>
+          <CompletionBanner moduleNumber={5} moduleTitle="Your 7-day email sequence is saved." />
 
           {/* Coach review status (AP students) */}
           <ModuleReviewStatus moduleNumber={5} />
@@ -435,18 +381,11 @@ export default function Module5Page() {
               <p className="text-xs text-gray-500">{nextModuleDaysLeft > 0 ? `Opens in ${nextModuleDaysLeft} day${nextModuleDaysLeft !== 1 ? 's' : ''}` : 'Coming soon'}</p>
             </div>
           ) : (
-            <div className="rounded-xl p-4 mb-4" style={{ background: '#1A1F36', border: '2px solid #F4B942' }}>
-              <p className="text-xs font-medium mb-1" style={{ color: '#F4B942' }}>Up Next</p>
-              <p className="text-white font-bold">Module 6 — Lead Magnet Builder</p>
-              <p className="text-gray-400 text-sm mt-1">Create a free lead magnet that builds your email list.</p>
-              <button
-                onClick={() => router.push('/module/6')}
-                className="mt-3 w-full py-2.5 rounded-lg font-bold text-sm"
-                style={{ background: '#F4B942', color: '#1A1F36' }}
-              >
-                Start Module 6
-              </button>
-            </div>
+            <UpNextCard
+              moduleNumber={6}
+              title="Lead Magnet Builder"
+              blurb="Create a free lead magnet that builds your email list."
+            />
           )}
 
           <button
@@ -456,12 +395,7 @@ export default function Module5Page() {
             Rewrite My Emails
           </button>
 
-          <button
-            onClick={() => router.push('/dashboard')}
-            className="w-full text-center text-sm text-gray-500 underline py-2"
-          >
-            Back to Dashboard
-          </button>
+          <BackToDashboardLink />
         </div>
       </div>
       </>
@@ -494,7 +428,9 @@ export default function Module5Page() {
           </div>
         </div>
 
-        <ProgressDots />
+        <div className="mb-6">
+          <StepBar steps={STEP_LABELS} currentIndex={currentStepIndex} />
+        </div>
 
         {error && (
           <div className="bg-red-900/40 border border-red-700 text-red-300 text-sm rounded-lg px-4 py-3 mb-4">
@@ -741,23 +677,16 @@ export default function Module5Page() {
                                   <RefreshIcon />
                                   <span>{isRegenerating ? 'Rewriting…' : 'Rewrite'}</span>
                                 </button>
-                                <button
-                                  onClick={() => copyToClipboard(
-                                    [
-                                      `Subject A: ${email.subject_a || email.subject || ''}`,
-                                      email.subject_b ? `Subject B: ${email.subject_b}` : '',
-                                      '',
-                                      email.body,
-                                      email.cta ? `\nCTA: ${email.cta}` : '',
-                                    ].filter(l => l !== '').join('\n'),
-                                    `day-${email.day}`
-                                  )}
-                                  className="flex items-center gap-1 text-xs"
-                                  style={{ color: copiedLabel === `day-${email.day}` ? '#6EE7B7' : '#9CA3AF' }}
-                                >
-                                  <CopyIcon />
-                                  <span>{copiedLabel === `day-${email.day}` ? 'Copied!' : 'Copy'}</span>
-                                </button>
+                                <CopyButton
+                                  text={[
+                                    `Subject A: ${email.subject_a || email.subject || ''}`,
+                                    email.subject_b ? `Subject B: ${email.subject_b}` : '',
+                                    '',
+                                    email.body,
+                                    email.cta ? `\nCTA: ${email.cta}` : '',
+                                  ].filter(l => l !== '').join('\n')}
+                                  className="flex items-center gap-1 text-xs text-gray-400"
+                                />
                               </div>
                             </div>
 

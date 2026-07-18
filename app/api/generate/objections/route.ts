@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { openai, AI_MODEL } from '@/lib/openai'
+import { openai, AI_MODEL_UTILITY } from '@/lib/openai'
+import { logAiUsage } from '@/lib/aiUsage'
 import { getMarketLanguageHintForUser } from '@/lib/marketLanguage'
 import { requireUser } from '@/lib/apiAuth'
 
@@ -48,11 +49,12 @@ Return ONLY a valid JSON object in exactly this format:
 }`
 
     const completion = await openai.chat.completions.create({
-      model: AI_MODEL,
+      model: AI_MODEL_UTILITY,
       messages: [{ role: 'user', content: prompt }],
       response_format: { type: 'json_object' },
       temperature: 0.7,
     })
+    logAiUsage({ userId: auth.user.id, route: 'objections', model: AI_MODEL_UTILITY, usage: completion.usage })
 
     const content = completion.choices[0].message.content
     const parsed = JSON.parse(content || '{}')

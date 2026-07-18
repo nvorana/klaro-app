@@ -12,4 +12,11 @@ export const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 })
 
+// ── Two-tier model config ────────────────────────────────────────────────────
+// AI_MODEL (creative tier): student-facing prose where voice/Taglish register
+// matters — ebooks, sales pages, emails, FB posts, clarity narratives.
+// AI_MODEL_UTILITY: structured/judgment tasks with rigid JSON outputs where
+// 4o-mini is indistinguishable at ~6% of the cost — validation scoring,
+// objection lists, title/idea generation.
 export const AI_MODEL = 'gpt-4o'
+export const AI_MODEL_UTILITY = 'gpt-4o-mini'

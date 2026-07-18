@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
 import ModuleReviewStatus from '@/app/components/ModuleReviewStatus'
 import GoldConfetti from '@/components/GoldConfetti'
+import StepBar from '@/components/StepBar'
+import CopyButton from '@/components/CopyButton'
+import { CompletionBanner, UpNextCard, BackToDashboardLink } from '@/components/CompletionBanner'
 import { isModuleUnlockedForStudent, getDaysUntilUnlock } from '@/lib/modules'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -72,13 +75,6 @@ const RefreshIcon = () => (
   </svg>
 )
 
-const CopyIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-  </svg>
-)
-
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export default function Module3Page() {
@@ -120,7 +116,6 @@ export default function Module3Page() {
   // Offer Statement
   const [offerStatement, setOfferStatement] = useState('')
   const [offerLoading, setOfferLoading] = useState(false)
-  const [copied, setCopied] = useState(false)
 
   // Module 4 lock state (shown on complete screen)
   const [module4Unlocked, setModule4Unlocked] = useState(false)
@@ -559,15 +554,7 @@ export default function Module3Page() {
       <div className="max-w-[430px] md:max-w-3xl mx-auto flex flex-col min-h-screen">
         <GoldConfetti trigger={showConfetti} onDone={() => setShowConfetti(false)} />
         <div className="px-4 pt-6 pb-10 flex-1">
-          <div className="text-center mb-6">
-            <div className="w-16 h-16 rounded-full bg-[#F4B942] flex items-center justify-center mx-auto mb-4">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#1A1F36" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
-            </div>
-            <h1 className="text-[#1A1F36] text-xl font-bold mb-2">Your Offer is Built!</h1>
-            <p className="text-gray-500 text-sm">Your irresistible offer is saved and ready to power your sales page.</p>
-          </div>
+          <CompletionBanner moduleNumber={3} moduleTitle="Your irresistible offer is saved and ready to power your sales page." />
 
           {/* Coach review status (AP students) */}
           <ModuleReviewStatus moduleNumber={3} />
@@ -575,17 +562,11 @@ export default function Module3Page() {
           <div className="bg-white rounded-2xl p-4 mb-4" style={{ border: '1px solid #e5e7eb' }}>
             <p className="text-[10px] font-bold text-[#F4B942] uppercase tracking-wide mb-3">Your Irresistible Offer Statement</p>
             <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{offerStatement}</p>
-            <button
-              onClick={() => {
-                navigator.clipboard.writeText(offerStatement)
-                setCopied(true)
-                setTimeout(() => setCopied(false), 2000)
-              }}
+            <CopyButton
+              text={offerStatement}
+              label="Copy Offer Statement"
               className="flex items-center gap-2 mt-4 text-xs font-semibold text-[#F4B942]"
-            >
-              <CopyIcon />
-              {copied ? 'Copied!' : 'Copy Offer Statement'}
-            </button>
+            />
           </div>
 
           <div className="bg-white rounded-2xl p-4 mb-6" style={{ border: '1px solid #e5e7eb' }}>
@@ -613,13 +594,12 @@ export default function Module3Page() {
           </div>
 
           {module4Unlocked ? (
-            <button
-              onClick={() => router.push('/module/4')}
-              className="w-full py-4 rounded-xl font-bold text-sm mb-3"
-              style={{ background: '#F4B942', color: '#1A1F36' }}
-            >
-              Next: Write My Sales Page →
-            </button>
+            <UpNextCard
+              moduleNumber={4}
+              title="Write My Sales Page"
+              blurb="Turn your offer into a full sales page that sells for you."
+              buttonLabel="Start Module 4"
+            />
           ) : (
             <div
               className="w-full py-4 rounded-xl text-sm mb-3 flex flex-col items-center gap-1"
@@ -637,13 +617,7 @@ export default function Module3Page() {
               </p>
             </div>
           )}
-          <button
-            onClick={() => router.push('/dashboard')}
-            className="w-full py-3 rounded-xl font-semibold text-sm text-gray-500 mb-2"
-            style={{ background: '#f3f4f6', border: '1px solid #e5e7eb' }}
-          >
-            Back to Dashboard
-          </button>
+          <BackToDashboardLink />
           <button
             onClick={() => { setStep('offer_statement'); setOfferStatement('') }}
             className="w-full py-2 text-xs text-gray-600 font-semibold"
@@ -674,36 +648,7 @@ export default function Module3Page() {
       </div>
 
       {/* Stepper */}
-      <div className="px-4 py-3 border-b border-gray-200">
-        <div className="flex items-center gap-1">
-          {STEP_LABELS.map((label, i) => {
-            const isActive = i === currentStepIndex
-            const isDone = i < currentStepIndex
-            return (
-              <div key={i} className="flex items-center gap-1 flex-1">
-                <div className="flex flex-col items-center flex-1">
-                  <div
-                    className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold flex-shrink-0"
-                    style={{
-                      background: isDone ? '#F4B942' : isActive ? '#fff' : '#e5e7eb',
-                      border: isDone ? 'none' : isActive ? '2px solid #F4B942' : '2px solid #d1d5db',
-                      color: isDone ? '#1A1F36' : isActive ? '#F4B942' : '#6b7280',
-                    }}
-                  >
-                    {isDone ? '✓' : i + 1}
-                  </div>
-                  <span className={`text-[8px] mt-0.5 font-semibold ${isActive ? 'text-[#F4B942]' : isDone ? 'text-gray-400' : 'text-gray-600'}`}>
-                    {label}
-                  </span>
-                </div>
-                {i < STEP_LABELS.length - 1 && (
-                  <div className="h-px flex-1 mb-3" style={{ background: isDone ? '#F4B942' : '#d1d5db' }} />
-                )}
-              </div>
-            )
-          })}
-        </div>
-      </div>
+      <StepBar steps={STEP_LABELS} currentIndex={currentStepIndex} />
 
       {/* Error */}
       {error && (
@@ -781,7 +726,7 @@ export default function Module3Page() {
                     onClick={() => { setStudentInput(transformation); setEditingTransformation(true) }}
                     className="flex items-center gap-1.5 text-xs text-gray-500 font-semibold"
                   >
-                    ✏️ Edit manually
+                    Edit manually
                   </button>
                 </div>
               </div>
@@ -977,7 +922,7 @@ export default function Module3Page() {
                             onClick={() => generateBonusContent(i)}
                             className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-bold bg-[#1A1F36] text-[#F4B942] hover:bg-[#2d3458] transition-colors"
                           >
-                            ✦ Generate the actual bonus content
+                            Generate the actual bonus content
                           </button>
                         )}
                         {bonus.contentLoading && (
@@ -989,7 +934,7 @@ export default function Module3Page() {
                         {bonus.content && !bonus.contentLoading && (
                           <div>
                             <div className="flex items-center justify-between mb-2">
-                              <p className="text-[10px] font-bold text-[#10B981] uppercase tracking-wide">✓ Content ready ({bonus.content.length.toLocaleString()} chars)</p>
+                              <p className="text-[10px] font-bold text-[#10B981] uppercase tracking-wide">Content ready ({bonus.content.length.toLocaleString()} chars)</p>
                               <div className="flex gap-2">
                                 <button
                                   type="button"
@@ -1344,7 +1289,7 @@ export default function Module3Page() {
             className="w-full py-4 rounded-xl font-bold text-base"
             style={{ background: '#F4B942', color: '#1A1F36' }}
           >
-            Save My Offer ✓
+            Save My Offer
           </button>
         )}
 

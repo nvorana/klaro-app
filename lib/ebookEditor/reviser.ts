@@ -7,6 +7,7 @@
 // error). The orchestrator falls back to the original chapter on null.
 
 import { openai, AI_MODEL } from '../openai'
+import { logAiUsage } from '../aiUsage'
 import { findBannedWords } from '../bannedWords'
 import { getMarketLanguageHintForUser } from '../marketLanguage'
 import type { ChapterShape, Issue } from './types'
@@ -55,6 +56,7 @@ Return the corrected chapter as valid JSON only — same keys, same shape. No ex
       temperature: 0.5,
       max_tokens: 4500,
     })
+    logAiUsage({ userId: null, route: 'ebook-editor-reviser', model: AI_MODEL, usage: completion.usage })
 
     const raw = completion.choices[0].message.content ?? ''
     let parsed: ChapterShape

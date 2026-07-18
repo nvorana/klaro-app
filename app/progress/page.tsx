@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { MODULE_UNLOCK_DAYS } from '@/lib/modules'
+import BottomNav from '@/components/BottomNav'
 
 export const dynamic = 'force-dynamic'
 
@@ -19,18 +20,47 @@ function getPaceStatus(enrolledAt: string | null, completedCount: number): {
   bg: string
   border: string
 } {
-  if (!enrolledAt) return { label: 'Not Started', sublabel: 'Complete Module 1 to begin.', color: '#9CA3AF', bg: '#111827', border: '#374151' }
+  if (!enrolledAt) return { label: 'Not Started', sublabel: 'Complete Module 1 to begin.', color: '#6B7280', bg: '#F3F4F6', border: '#E5E7EB' }
 
   const daysSince = Math.floor((Date.now() - new Date(enrolledAt).getTime()) / 86400000)
   const expectedDone = Object.values(MODULE_UNLOCK_DAYS).filter(d => d <= daysSince).length
 
   const diff = completedCount - expectedDone
 
-  if (completedCount === 7) return { label: 'Program Complete 🎉', sublabel: 'You\'ve finished all 7 modules. Amazing work!', color: '#34d399', bg: '#064e3b', border: '#10B981' }
-  if (diff > 0) return { label: `${diff} Module${diff > 1 ? 's' : ''} Ahead`, sublabel: 'You\'re moving faster than the program schedule. Keep it up!', color: '#F4B942', bg: '#1c1500', border: '#F4B942' }
-  if (diff === 0) return { label: 'Right on Track', sublabel: 'You\'re keeping up perfectly with the weekly schedule.', color: '#34d399', bg: '#064e3b', border: '#10B981' }
-  if (diff === -1) return { label: 'Slightly Behind', sublabel: 'One module to catch up. You\'ve got this — keep going.', color: '#F59E0B', bg: '#1c0a00', border: '#92400E' }
-  return { label: 'Behind Schedule', sublabel: `${Math.abs(diff)} modules to catch up. Set aside time this week.`, color: '#f87171', bg: '#1a0000', border: '#7f1d1d' }
+  if (completedCount === 7) return { label: 'Program Complete', sublabel: 'You\'ve finished all 7 modules. Amazing work!', color: '#059669', bg: '#ECFDF5', border: '#10B981' }
+  if (diff > 0) return { label: `${diff} Module${diff > 1 ? 's' : ''} Ahead`, sublabel: 'You\'re moving faster than the program schedule. Keep it up!', color: '#B45309', bg: '#FFFBEB', border: '#F4B942' }
+  if (diff === 0) return { label: 'Right on Track', sublabel: 'You\'re keeping up perfectly with the weekly schedule.', color: '#059669', bg: '#ECFDF5', border: '#10B981' }
+  if (diff === -1) return { label: 'Slightly Behind', sublabel: 'One module to catch up. You\'ve got this — keep going.', color: '#B45309', bg: '#FFFBEB', border: '#FCD34D' }
+  return { label: 'Behind Schedule', sublabel: `${Math.abs(diff)} modules to catch up. Set aside time this week.`, color: '#DC2626', bg: '#FEF2F2', border: '#FECACA' }
+}
+
+// SVG line icons for milestones (no text emojis — design rule)
+const MilestoneIcons: Record<string, React.ReactNode> = {
+  flag: (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/>
+    </svg>
+  ),
+  zap: (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+    </svg>
+  ),
+  flame: (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>
+    </svg>
+  ),
+  trophy: (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/>
+    </svg>
+  ),
+  wrench: (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+    </svg>
+  ),
 }
 
 function getMilestones(completedCount: number, enrolledAt: string | null, moduleProgress: { module_number: number, completed_at: string | null }[]) {
@@ -40,28 +70,28 @@ function getMilestones(completedCount: number, enrolledAt: string | null, module
       label: 'First Step Taken',
       desc: 'Completed Module 1',
       earned: completedCount >= 1,
-      icon: '🚀',
+      icon: 'flag',
     },
     {
       id: 'halfway',
       label: 'Halfway There',
       desc: 'Completed 4 of 7 modules',
       earned: completedCount >= 4,
-      icon: '⚡',
+      icon: 'zap',
     },
     {
       id: 'almost',
       label: 'Almost There',
       desc: 'Completed 6 of 7 modules',
       earned: completedCount >= 6,
-      icon: '🔥',
+      icon: 'flame',
     },
     {
       id: 'complete',
       label: 'Mission Complete',
       desc: 'Finished all 7 modules',
       earned: completedCount === 7,
-      icon: '🏆',
+      icon: 'trophy',
     },
     {
       id: 'fast_starter',
@@ -74,7 +104,7 @@ function getMilestones(completedCount: number, enrolledAt: string | null, module
         const days = Math.floor((new Date(m1.completed_at).getTime() - new Date(enrolledAt).getTime()) / 86400000)
         return days <= 3
       })(),
-      icon: '⚡',
+      icon: 'zap',
     },
     {
       id: 'builder',
@@ -86,7 +116,7 @@ function getMilestones(completedCount: number, enrolledAt: string | null, module
         const doneInTwo = moduleProgress.filter(m => m.completed_at && new Date(m.completed_at).getTime() <= twoWeeks).length
         return doneInTwo >= 3
       })(),
-      icon: '🛠️',
+      icon: 'wrench',
     },
   ]
   return milestones
@@ -136,6 +166,9 @@ export default async function ProgressPage() {
     return m?.completed_at ? formatDate(m.completed_at) : null
   }
 
+  // Gold badge pill used on several build outputs
+  const goldPill = { background: '#FEF3C7', color: '#B45309' }
+
   // Builds data per module
   const builds = [
     {
@@ -145,12 +178,12 @@ export default async function ProgressPage() {
       completedAt: getCompletedAt(1),
       output: clarity ? (
         <div>
-          <p className="text-xs text-gray-500 uppercase tracking-wide font-bold mb-1">Your Market</p>
-          <p className="text-sm text-gray-300 leading-relaxed">{clarity.target_market}</p>
-          <p className="text-xs text-gray-500 uppercase tracking-wide font-bold mt-3 mb-1">Their Problem</p>
-          <p className="text-sm text-gray-300 leading-relaxed">{clarity.core_problem}</p>
-          <p className="text-xs text-gray-500 uppercase tracking-wide font-bold mt-3 mb-1">Your Mechanism</p>
-          <p className="text-sm text-gray-300 leading-relaxed">{clarity.unique_mechanism}</p>
+          <p className="text-xs text-gray-400 uppercase tracking-wide font-bold mb-1">Your Market</p>
+          <p className="text-sm text-gray-600 leading-relaxed">{clarity.target_market}</p>
+          <p className="text-xs text-gray-400 uppercase tracking-wide font-bold mt-3 mb-1">Their Problem</p>
+          <p className="text-sm text-gray-600 leading-relaxed">{clarity.core_problem}</p>
+          <p className="text-xs text-gray-400 uppercase tracking-wide font-bold mt-3 mb-1">Your Mechanism</p>
+          <p className="text-sm text-gray-600 leading-relaxed">{clarity.unique_mechanism}</p>
         </div>
       ) : null,
     },
@@ -161,8 +194,8 @@ export default async function ProgressPage() {
       completedAt: getCompletedAt(2),
       output: ebook ? (
         <div>
-          <p className="text-xs text-gray-500 uppercase tracking-wide font-bold mb-1">Your Ebook Title</p>
-          <p className="text-sm text-white font-semibold leading-snug">{ebook.title}</p>
+          <p className="text-xs text-gray-400 uppercase tracking-wide font-bold mb-1">Your Ebook Title</p>
+          <p className="text-sm text-[#1A1F36] font-semibold leading-snug">{ebook.title}</p>
         </div>
       ) : null,
     },
@@ -175,17 +208,17 @@ export default async function ProgressPage() {
         <div>
           {offer.offer_statement ? (
             <>
-              <p className="text-xs text-gray-500 uppercase tracking-wide font-bold mb-1">Your Offer</p>
-              <p className="text-sm text-gray-300 leading-relaxed">{offer.offer_statement}</p>
+              <p className="text-xs text-gray-400 uppercase tracking-wide font-bold mb-1">Your Offer</p>
+              <p className="text-sm text-gray-600 leading-relaxed">{offer.offer_statement}</p>
             </>
           ) : (
             <>
-              <p className="text-xs text-gray-500 uppercase tracking-wide font-bold mb-1">Your Offer</p>
-              <p className="text-sm text-white font-semibold leading-snug">{offer.ebook_title}</p>
+              <p className="text-xs text-gray-400 uppercase tracking-wide font-bold mb-1">Your Offer</p>
+              <p className="text-sm text-[#1A1F36] font-semibold leading-snug">{offer.ebook_title}</p>
             </>
           )}
           {!!offer.selling_price && (
-            <span className="inline-block mt-2 text-[10px] font-bold px-2.5 py-1 rounded-full" style={{ background: '#1c1500', color: '#F4B942' }}>
+            <span className="inline-block mt-2 text-[10px] font-bold px-2.5 py-1 rounded-full" style={goldPill}>
               PHP {offer.selling_price}
             </span>
           )}
@@ -201,17 +234,20 @@ export default async function ProgressPage() {
         <div>
           {salesPage.headline && (
             <>
-              <p className="text-xs text-gray-500 uppercase tracking-wide font-bold mb-1">Headline</p>
-              <p className="text-sm text-white font-semibold leading-snug mb-3">{salesPage.headline}</p>
+              <p className="text-xs text-gray-400 uppercase tracking-wide font-bold mb-1">Headline</p>
+              <p className="text-sm text-[#1A1F36] font-semibold leading-snug mb-3">{salesPage.headline}</p>
             </>
           )}
           <div className="flex items-center gap-2">
             {salesPage.published_url ? (
-              <span className="text-[10px] font-bold px-2.5 py-1 rounded-full" style={{ background: '#064e3b', color: '#34d399' }}>
-                ✓ Published
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full" style={{ background: '#ECFDF5', color: '#059669' }}>
+                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+                Published
               </span>
             ) : (
-              <span className="text-[10px] font-bold px-2.5 py-1 rounded-full" style={{ background: '#1c1500', color: '#F4B942' }}>
+              <span className="text-[10px] font-bold px-2.5 py-1 rounded-full" style={goldPill}>
                 Draft — not yet published
               </span>
             )}
@@ -226,12 +262,12 @@ export default async function ProgressPage() {
       completedAt: getCompletedAt(5),
       output: emailSeq ? (
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-lg flex-shrink-0" style={{ background: '#1c1500', color: '#F4B942' }}>
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-lg flex-shrink-0" style={goldPill}>
             7
           </div>
           <div>
-            <p className="text-sm text-white font-semibold">Emails written</p>
-            <p className="text-xs text-gray-400">Days 1–4 value + Days 5–7 selling</p>
+            <p className="text-sm text-[#1A1F36] font-semibold">Emails written</p>
+            <p className="text-xs text-gray-500">Days 1–4 value + Days 5–7 selling</p>
           </div>
         </div>
       ) : null,
@@ -243,9 +279,9 @@ export default async function ProgressPage() {
       completedAt: getCompletedAt(6),
       output: leadMagnet ? (
         <div>
-          <p className="text-xs text-gray-500 uppercase tracking-wide font-bold mb-1">Your Lead Magnet</p>
-          <p className="text-sm text-white font-semibold leading-snug mb-2">{leadMagnet.title}</p>
-          <span className="text-[10px] font-bold px-2.5 py-1 rounded-full capitalize" style={{ background: '#1c1500', color: '#F4B942' }}>
+          <p className="text-xs text-gray-400 uppercase tracking-wide font-bold mb-1">Your Lead Magnet</p>
+          <p className="text-sm text-[#1A1F36] font-semibold leading-snug mb-2">{leadMagnet.title}</p>
+          <span className="text-[10px] font-bold px-2.5 py-1 rounded-full capitalize" style={goldPill}>
             {leadMagnet.format?.replace('_', ' ')}
           </span>
         </div>
@@ -258,12 +294,12 @@ export default async function ProgressPage() {
       completedAt: getCompletedAt(7),
       output: postsCount && postsCount > 0 ? (
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-lg flex-shrink-0" style={{ background: '#1c1500', color: '#F4B942' }}>
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-lg flex-shrink-0" style={goldPill}>
             {postsCount}
           </div>
           <div>
-            <p className="text-sm text-white font-semibold">Facebook posts ready</p>
-            <p className="text-xs text-gray-400">Ready to publish and drive conversations</p>
+            <p className="text-sm text-[#1A1F36] font-semibold">Facebook posts ready</p>
+            <p className="text-xs text-gray-500">Ready to publish and drive conversations</p>
           </div>
         </div>
       ) : null,
@@ -274,25 +310,25 @@ export default async function ProgressPage() {
   const completedBuilds = builds.filter(b => b.done)
 
   return (
-    <div className="min-h-screen bg-gray-950 max-w-[430px] md:max-w-3xl mx-auto flex flex-col">
+    <div className="min-h-screen bg-[#F8F9FA] max-w-[430px] md:max-w-3xl mx-auto flex flex-col">
       <div className="px-4 pt-6 pb-32 flex-1">
 
         {/* Header */}
         <div className="mb-6">
-          <h1 className="text-white text-xl font-bold mb-1">Your Progress</h1>
-          <p className="text-gray-400 text-sm">Everything you&apos;ve built inside KLARO.</p>
+          <h1 className="text-[#1A1F36] text-xl font-bold mb-1">Your Progress</h1>
+          <p className="text-gray-500 text-sm">Everything you&apos;ve built inside KLARO.</p>
         </div>
 
         {/* Overall progress bar */}
-        <div className="bg-gray-900 rounded-2xl p-4 mb-4" style={{ border: '1px solid #374151' }}>
+        <div className="bg-white border border-gray-100 shadow-sm rounded-2xl p-4 mb-4">
           <div className="flex items-end justify-between mb-3">
             <div>
-              <p className="text-white font-bold text-2xl">{completedCount}<span className="text-gray-500 text-base font-normal">/7</span></p>
-              <p className="text-gray-400 text-xs mt-0.5">Modules completed</p>
+              <p className="text-[#1A1F36] font-bold text-2xl">{completedCount}<span className="text-gray-400 text-base font-normal">/7</span></p>
+              <p className="text-gray-500 text-xs mt-0.5">Modules completed</p>
             </div>
             <p className="text-[#F4B942] font-black text-3xl">{progressPercent}%</p>
           </div>
-          <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
+          <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
             <div
               className="h-full rounded-full transition-all"
               style={{ width: `${progressPercent}%`, background: progressPercent === 100 ? '#10B981' : '#F4B942' }}
@@ -310,7 +346,7 @@ export default async function ProgressPage() {
             </div>
             <div>
               <p className="font-bold text-sm" style={{ color: pace.color }}>{pace.label}</p>
-              <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">{pace.sublabel}</p>
+              <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">{pace.sublabel}</p>
             </div>
           </div>
         </div>
@@ -318,12 +354,12 @@ export default async function ProgressPage() {
         {/* Your Builds */}
         {completedBuilds.length > 0 && (
           <div className="mb-6">
-            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3 pl-1">What You&apos;ve Built</p>
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 pl-1">What You&apos;ve Built</p>
             <div className="space-y-3">
               {builds.map(build => {
                 if (!build.done) return null
                 return (
-                  <div key={build.num} className="bg-gray-900 rounded-2xl p-4" style={{ border: '1px solid #374151' }}>
+                  <div key={build.num} className="bg-white border border-gray-100 shadow-sm rounded-2xl p-4">
                     <div className="flex items-center gap-3 mb-3">
                       <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: '#10B981' }}>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
@@ -331,9 +367,9 @@ export default async function ProgressPage() {
                         </svg>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-white text-sm font-bold leading-tight">{build.title}</p>
+                        <p className="text-[#1A1F36] text-sm font-bold leading-tight">{build.title}</p>
                         {build.completedAt && (
-                          <p className="text-gray-500 text-[10px] mt-0.5">Completed {build.completedAt}</p>
+                          <p className="text-gray-400 text-[10px] mt-0.5">Completed {build.completedAt}</p>
                         )}
                       </div>
                     </div>
@@ -352,21 +388,21 @@ export default async function ProgressPage() {
         {/* Milestones */}
         {earnedMilestones.length > 0 && (
           <div className="mb-6">
-            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3 pl-1">Milestones Earned</p>
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 pl-1">Milestones Earned</p>
             <div className="grid grid-cols-2 gap-3">
               {milestones.map(m => (
                 <div
                   key={m.id}
                   className="rounded-2xl p-3 flex flex-col items-start gap-1.5"
                   style={{
-                    background: m.earned ? '#1c1500' : '#111827',
-                    border: `1px solid ${m.earned ? '#F4B942' : '#374151'}`,
-                    opacity: m.earned ? 1 : 0.4,
+                    background: m.earned ? '#FFFBEB' : '#FFFFFF',
+                    border: `1px solid ${m.earned ? '#F4B942' : '#E5E7EB'}`,
+                    opacity: m.earned ? 1 : 0.5,
                   }}
                 >
-                  <span className="text-2xl">{m.icon}</span>
-                  <p className="text-white text-xs font-bold leading-tight">{m.label}</p>
-                  <p className="text-gray-400 text-[10px] leading-snug">{m.desc}</p>
+                  <span style={{ color: m.earned ? '#F4B942' : '#9CA3AF' }}>{MilestoneIcons[m.icon]}</span>
+                  <p className="text-[#1A1F36] text-xs font-bold leading-tight">{m.label}</p>
+                  <p className="text-gray-500 text-[10px] leading-snug">{m.desc}</p>
                 </div>
               ))}
             </div>
@@ -376,13 +412,13 @@ export default async function ProgressPage() {
         {/* Empty state */}
         {completedCount === 0 && (
           <div className="text-center py-12">
-            <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4" style={{ background: '#1c1500' }}>
+            <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4" style={{ background: '#FFFBEB' }}>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#F4B942" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
               </svg>
             </div>
-            <p className="text-white font-bold mb-1">Nothing here yet</p>
-            <p className="text-gray-400 text-sm mb-4">Complete your first module to start tracking your progress.</p>
+            <p className="text-[#1A1F36] font-bold mb-1">Nothing here yet</p>
+            <p className="text-gray-500 text-sm mb-4">Complete your first module to start tracking your progress.</p>
             <Link
               href="/module/1"
               className="inline-flex items-center gap-2 px-5 py-3 rounded-xl font-bold text-sm"
@@ -396,32 +432,7 @@ export default async function ProgressPage() {
       </div>
 
       {/* Bottom Nav */}
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] md:max-w-3xl bg-gray-900 border-t border-gray-800 px-2 pt-2.5 pb-6 flex justify-around items-center z-30">
-        <Link href="/dashboard" className="flex flex-col items-center gap-1">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
-          </svg>
-          <span className="text-[10px] font-semibold text-gray-400">Home</span>
-        </Link>
-        <Link href="/my-work" className="flex flex-col items-center gap-1">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-          </svg>
-          <span className="text-[10px] font-semibold text-gray-400">My Work</span>
-        </Link>
-        <Link href="/progress" className="flex flex-col items-center gap-1">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F4B942" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
-          </svg>
-          <span className="text-[10px] font-semibold text-[#F4B942]">Progress</span>
-        </Link>
-        <Link href="/profile" className="flex flex-col items-center gap-1">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
-          </svg>
-          <span className="text-[10px] font-semibold text-gray-400">Profile</span>
-        </Link>
-      </div>
+      <BottomNav active="progress" />
     </div>
   )
 }

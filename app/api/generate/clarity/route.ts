@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { openai, AI_MODEL } from '@/lib/openai'
+import { logAiUsage } from '@/lib/aiUsage'
 import { findBannedWords, buildCorrectionPrompt } from '@/lib/bannedWords'
 import { requireUser } from '@/lib/apiAuth'
 
@@ -15,7 +16,7 @@ import { requireUser } from '@/lib/apiAuth'
 // agency behaviors, current issues). This closes the ChatGPT-with-browsing
 // gap that makes outputs feel generic. Failures are non-fatal — the prompt
 // still works without research context.
-async function researchNiche(targetMarket: string): Promise<string> {
+async function researchNiche(targetMarket: string, userId: string | null): Promise<string> {
   try {
     const research = await openai.responses.create({
       model: AI_MODEL,
@@ -35,6 +36,19 @@ Find and list:
 - Sensitivity flags (politically charged topics, taboo subjects)
 
 Format: dense bullet list. No intro, no conclusion. Cite source domains inline in parens where useful (e.g. "(reddit.com/r/Philippines)"). 400-700 words. Skip anything you can't verify.`,
+    })
+    const researchUsage = (research as { usage?: { input_tokens?: number; output_tokens?: number; total_tokens?: number } }).usage
+    logAiUsage({
+      userId,
+      route: 'clarity',
+      model: AI_MODEL,
+      usage: researchUsage
+        ? {
+            prompt_tokens: researchUsage.input_tokens,
+            completion_tokens: researchUsage.output_tokens,
+            total_tokens: researchUsage.total_tokens,
+          }
+        : null,
     })
     const text = (research as { output_text?: string }).output_text ?? ''
     return text.trim()
@@ -101,7 +115,7 @@ export async function POST(request: NextRequest) {
       // "preserve all specifics, add no new facts" rules.
 
       console.log(`[clarity] problems step — running niche research for "${target_market}"`)
-      const research = await researchNiche(target_market)
+      const research = await researchNiche(target_market, auth.user.id)
       console.log(`[clarity] research returned ${research.length} chars`)
 
       const researchBlock = research
@@ -147,6 +161,7 @@ Write the narrative now — 10 problems, ranked #1 = most urgent and most likely
         messages: [{ role: 'user', content: narrativePrompt }],
         temperature: 0.8, // Higher temp on narrative pass — we want creative depth
       })
+      logAiUsage({ userId: auth.user.id, route: 'clarity', model: AI_MODEL, usage: narrativeRes.usage })
       const narrative = narrativeRes.choices[0].message.content || ''
       console.log(`[clarity] narrative returned ${narrative.length} chars`)
 
@@ -190,6 +205,7 @@ ${BANNED_WORDS_RULE}`
         response_format: { type: 'json_object' },
         temperature: 0.3, // Low temp — we want faithful extraction, not creativity
       })
+      logAiUsage({ userId: auth.user.id, route: 'clarity', model: AI_MODEL, usage: extractRes.usage })
       let content = extractRes.choices[0].message.content || '{}'
 
       // ── Banned word scan on extracted JSON ──────────────────────────────
@@ -206,6 +222,7 @@ ${BANNED_WORDS_RULE}`
           response_format: { type: 'json_object' },
           temperature: 0.3,
         })
+        logAiUsage({ userId: auth.user.id, route: 'clarity', model: AI_MODEL, usage: correctionRes.usage })
         content = correctionRes.choices[0].message.content || content
       }
 
@@ -337,6 +354,7 @@ Return JSON: { "sentence": "..." }`
         response_format: { type: 'json_object' },
         temperature: 0.3,
       })
+      logAiUsage({ userId: auth.user.id, route: 'clarity', model: AI_MODEL, usage: polishCompletion.usage })
       const polished = JSON.parse(polishCompletion.choices[0].message.content || '{}')
       return NextResponse.json({ sentence: polished.sentence || '' })
     }
@@ -347,6 +365,7 @@ Return JSON: { "sentence": "..." }`
       response_format: { type: 'json_object' },
       temperature: 0.7,
     })
+    logAiUsage({ userId: auth.user.id, route: 'clarity', model: AI_MODEL, usage: completion.usage })
 
     let content = completion.choices[0].message.content || '{}'
 
@@ -366,6 +385,7 @@ Return JSON: { "sentence": "..." }`
         response_format: { type: 'json_object' },
         temperature: 0.5,
       })
+      logAiUsage({ userId: auth.user.id, route: 'clarity', model: AI_MODEL, usage: correctionCompletion.usage })
       content = correctionCompletion.choices[0].message.content || content
     }
 

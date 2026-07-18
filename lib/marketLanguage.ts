@@ -7,6 +7,7 @@
 // Auto-captured (no user confirmation). Lazy-backfills if missing.
 
 import { openai, AI_MODEL } from './openai'
+import { logAiUsage } from './aiUsage'
 import { findBannedWords } from './bannedWords'
 import { createClient } from './supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
@@ -78,6 +79,7 @@ export async function generateMarketLanguage(project: ProjectContext): Promise<M
     temperature: 0.6,
     max_tokens: 1500,
   })
+  logAiUsage({ userId: null, route: 'market-language', model: AI_MODEL, usage: completion.usage })
 
   const raw = completion.choices[0].message.content ?? '{}'
   const parsed = JSON.parse(raw) as Partial<MarketLanguage>

@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import { createBrowserClient } from '@supabase/ssr'
+import BottomNav from '@/components/BottomNav'
 
 interface ClarityData {
   target_market: string
@@ -121,7 +121,7 @@ export default function MyWorkDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+      <div className="min-h-screen bg-[#F8F9FA] flex items-center justify-center">
         <p className="text-gray-500 text-sm animate-pulse">Loading…</p>
       </div>
     )
@@ -188,18 +188,21 @@ export default function MyWorkDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white flex flex-col">
+    <div className="min-h-screen bg-[#F8F9FA] text-[#1F2937] flex flex-col">
       <div className="w-full max-w-[430px] md:max-w-3xl mx-auto flex flex-col min-h-screen pb-36">
 
         {/* ── Header ──────────────────────────────────────────────────────── */}
         <div className="px-6 pt-8 pb-2">
           <button
             onClick={() => router.push('/my-work')}
-            className="text-gray-500 hover:text-gray-300 text-sm mb-5 flex items-center gap-1"
+            className="text-gray-500 hover:text-[#1A1F36] text-sm mb-5 flex items-center gap-1"
           >
-            ← My Work
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="15 18 9 12 15 6"/>
+            </svg>
+            My Work
           </button>
-          <h1 className="text-xl font-bold text-white leading-snug">{projectName}</h1>
+          <h1 className="text-xl font-bold text-[#1A1F36] leading-snug">{projectName}</h1>
           {clarity?.target_market && (
             <p className="text-gray-500 text-xs mt-1">For: {clarity.target_market}</p>
           )}
@@ -212,7 +215,7 @@ export default function MyWorkDetailPage() {
               <div key={step.num} className="flex items-start flex-1">
                 <div className="flex flex-col items-center flex-shrink-0 w-16">
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all ${
-                    step.done ? 'bg-yellow-400 border-yellow-400 text-black' : 'bg-gray-900 border-gray-700 text-gray-600'
+                    step.done ? 'bg-[#F4B942] border-[#F4B942] text-[#1A1F36]' : 'bg-white border-gray-300 text-gray-400'
                   }`}>
                     {step.done ? (
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
@@ -220,14 +223,14 @@ export default function MyWorkDetailPage() {
                       </svg>
                     ) : step.num}
                   </div>
-                  <span className={`text-[10px] mt-1.5 font-medium text-center leading-tight ${step.done ? 'text-yellow-400' : 'text-gray-600'}`}>
+                  <span className={`text-[10px] mt-1.5 font-medium text-center leading-tight ${step.done ? 'text-[#F4B942]' : 'text-gray-400'}`}>
                     {step.label}
                   </span>
                 </div>
                 {i < JOURNEY_STEPS.length - 1 && (
                   <div className="flex-1 flex items-center mt-4 mx-1">
                     <div className={`h-0.5 w-full rounded-full ${
-                      step.done && JOURNEY_STEPS[i + 1].done ? 'bg-yellow-400' : step.done ? 'bg-gray-700' : 'bg-gray-800'
+                      step.done && JOURNEY_STEPS[i + 1].done ? 'bg-[#F4B942]' : step.done ? 'bg-gray-300' : 'bg-gray-200'
                     }`} />
                   </div>
                 )}
@@ -240,11 +243,11 @@ export default function MyWorkDetailPage() {
         <div className="px-6 space-y-4">
 
           {/* ── 1. Clarity ─────────────────────────────────────────────────── */}
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
-            <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-gray-800">
+          <div className="bg-white border border-gray-100 shadow-sm rounded-2xl overflow-hidden">
+            <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-gray-100">
               <div className="flex items-center gap-2">
                 <StatusDot done={!!clarity} num={1} />
-                <span className="text-white text-sm font-bold">Niche &amp; Clarity</span>
+                <span className="text-[#1A1F36] text-sm font-bold">Niche &amp; Clarity</span>
               </div>
               {foundationSealed ? (
                 <span className="flex items-center gap-1 text-gray-500 text-[11px] font-semibold">
@@ -252,21 +255,22 @@ export default function MyWorkDetailPage() {
                   Sealed
                 </span>
               ) : (
-                <button onClick={() => router.push('/module/1')} className="text-yellow-400 text-xs font-semibold">
-                  {clarity ? 'Edit →' : 'Start →'}
+                <button onClick={() => router.push('/module/1')} className="text-[#F4B942] text-xs font-semibold flex items-center gap-0.5">
+                  {clarity ? 'Edit' : 'Start'}
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
                 </button>
               )}
             </div>
             {clarity ? (
               <div className="px-5 py-4">
-                <p className="text-yellow-300 text-sm font-medium leading-relaxed mb-4 border-l-2 border-yellow-500 pl-3">
+                <p className="text-[#1A1F36] text-sm font-medium leading-relaxed mb-4 border-l-2 border-[#F4B942] pl-3">
                   &ldquo;{clarity.full_sentence}&rdquo;
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {([['Market', clarity.target_market], ['Problem', clarity.core_problem], ['Mechanism', clarity.unique_mechanism]] as [string, string][]).map(([label, val]) => (
-                    <div key={label} className="bg-gray-800 rounded-lg px-3 py-1.5 min-w-0">
-                      <p className="text-gray-500 text-[10px] uppercase tracking-wide">{label}</p>
-                      <p className="text-white text-xs font-medium">{val}</p>
+                    <div key={label} className="bg-gray-50 border border-gray-100 rounded-lg px-3 py-1.5 min-w-0">
+                      <p className="text-gray-400 text-[10px] uppercase tracking-wide">{label}</p>
+                      <p className="text-[#1F2937] text-xs font-medium">{val}</p>
                     </div>
                   ))}
                 </div>
@@ -277,11 +281,11 @@ export default function MyWorkDetailPage() {
           </div>
 
           {/* ── 2. E-Book ──────────────────────────────────────────────────── */}
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
-            <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-gray-800">
+          <div className="bg-white border border-gray-100 shadow-sm rounded-2xl overflow-hidden">
+            <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-gray-100">
               <div className="flex items-center gap-2">
                 <StatusDot done={!!ebook} num={2} />
-                <span className="text-white text-sm font-bold">E-Book</span>
+                <span className="text-[#1A1F36] text-sm font-bold">E-Book</span>
               </div>
               {foundationSealed ? (
                 <span className="flex items-center gap-1 text-gray-500 text-[11px] font-semibold">
@@ -289,48 +293,52 @@ export default function MyWorkDetailPage() {
                   Sealed
                 </span>
               ) : (
-                <button onClick={() => router.push('/module/2')} className="text-yellow-400 text-xs font-semibold">
-                  {ebook ? 'Edit →' : 'Start →'}
+                <button onClick={() => router.push('/module/2')} className="text-[#F4B942] text-xs font-semibold flex items-center gap-0.5">
+                  {ebook ? 'Edit' : 'Start'}
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
                 </button>
               )}
             </div>
             {ebook ? (
               <div className="px-5 py-4">
                 <div className="mb-4">
-                  <p className="text-white font-bold text-base leading-snug">{ebook.title}</p>
-                  {ebook.outline?.subtitle && <p className="text-gray-400 text-xs mt-0.5 italic">{ebook.outline.subtitle}</p>}
-                  <p className="text-gray-600 text-xs mt-1">{ebook.chapters?.length || 0} chapters · Saved {new Date(ebook.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                  <p className="text-[#1A1F36] font-bold text-base leading-snug">{ebook.title}</p>
+                  {ebook.outline?.subtitle && <p className="text-gray-500 text-xs mt-0.5 italic">{ebook.outline.subtitle}</p>}
+                  <p className="text-gray-400 text-xs mt-1">{ebook.chapters?.length || 0} chapters · Saved {new Date(ebook.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
                 </div>
                 {chapters.length > 0 && (
-                  <div className="bg-gray-800/50 rounded-xl p-3">
-                    <p className="text-gray-500 text-[10px] uppercase tracking-wide mb-2 font-semibold">Chapters</p>
+                  <div className="bg-gray-50 border border-gray-100 rounded-xl p-3">
+                    <p className="text-gray-400 text-[10px] uppercase tracking-wide mb-2 font-semibold">Chapters</p>
                     <div className="space-y-1.5">
                       {visibleChapters.map(ch => (
                         <div key={ch.number} className="flex items-baseline gap-2">
-                          <span className="text-yellow-500 text-[10px] font-bold w-4 flex-shrink-0">{ch.number}</span>
-                          <span className="text-gray-300 text-xs leading-snug">{ch.title}</span>
+                          <span className="text-[#F4B942] text-[10px] font-bold w-4 flex-shrink-0">{ch.number}</span>
+                          <span className="text-gray-600 text-xs leading-snug">{ch.title}</span>
                         </div>
                       ))}
                     </div>
                     {hasHiddenChapters && (
-                      <button onClick={() => setShowAllChapters(v => !v)} className="mt-2.5 text-yellow-500 text-xs font-semibold flex items-center gap-1">
-                        {showAllChapters ? <>Show less <span className="text-[10px]">↑</span></> : <>Show all {chapters.length} chapters <span className="text-[10px]">↓</span></>}
+                      <button onClick={() => setShowAllChapters(v => !v)} className="mt-2.5 text-[#F4B942] text-xs font-semibold flex items-center gap-1">
+                        {showAllChapters ? 'Show less' : `Show all ${chapters.length} chapters`}
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: showAllChapters ? 'rotate(180deg)' : undefined }}>
+                          <polyline points="6 9 12 15 18 9"/>
+                        </svg>
                       </button>
                     )}
                   </div>
                 )}
               </div>
             ) : (
-              <EmptyCard message="Complete Module 1 first to write your e-book." cta="Start My E-Book →" onCta={() => router.push('/module/2')} enabled={!!clarity} />
+              <EmptyCard message="Complete Module 1 first to write your e-book." cta="Start My E-Book" onCta={() => router.push('/module/2')} enabled={!!clarity} />
             )}
           </div>
 
           {/* ── 3. Sales Page ──────────────────────────────────────────────── */}
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
-            <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-gray-800">
+          <div className="bg-white border border-gray-100 shadow-sm rounded-2xl overflow-hidden">
+            <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-gray-100">
               <div className="flex items-center gap-2">
                 <StatusDot done={!!salesPage} num={3} />
-                <span className="text-white text-sm font-bold">Sales Page</span>
+                <span className="text-[#1A1F36] text-sm font-bold">Sales Page</span>
               </div>
               {foundationSealed ? (
                 <span className="flex items-center gap-1 text-gray-500 text-[11px] font-semibold">
@@ -338,28 +346,29 @@ export default function MyWorkDetailPage() {
                   Sealed
                 </span>
               ) : ebook && (
-                <button onClick={() => router.push('/module/3')} className="text-yellow-400 text-xs font-semibold">
-                  {salesPage ? 'Edit →' : 'Start →'}
+                <button onClick={() => router.push('/module/3')} className="text-[#F4B942] text-xs font-semibold flex items-center gap-0.5">
+                  {salesPage ? 'Edit' : 'Start'}
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
                 </button>
               )}
             </div>
             {salesPage ? (
               <div className="px-5 py-4">
-                <div className="bg-gray-800/50 rounded-xl p-3 mb-3">
-                  <p className="text-gray-500 text-[10px] uppercase tracking-wide mb-1 font-semibold">Headline</p>
-                  <p className="text-white text-sm font-semibold leading-snug whitespace-pre-line">{salesPage.headline}</p>
+                <div className="bg-gray-50 border border-gray-100 rounded-xl p-3 mb-3">
+                  <p className="text-gray-400 text-[10px] uppercase tracking-wide mb-1 font-semibold">Headline</p>
+                  <p className="text-[#1A1F36] text-sm font-semibold leading-snug whitespace-pre-line">{salesPage.headline}</p>
                 </div>
                 {salesPage.hook && (
-                  <div className="bg-gray-800/50 rounded-xl p-3">
-                    <p className="text-gray-500 text-[10px] uppercase tracking-wide mb-1 font-semibold">Opening Hook</p>
-                    <p className="text-gray-300 text-xs leading-relaxed line-clamp-3">{salesPage.hook}</p>
+                  <div className="bg-gray-50 border border-gray-100 rounded-xl p-3">
+                    <p className="text-gray-400 text-[10px] uppercase tracking-wide mb-1 font-semibold">Opening Hook</p>
+                    <p className="text-gray-600 text-xs leading-relaxed line-clamp-3">{salesPage.hook}</p>
                   </div>
                 )}
               </div>
             ) : (
               <EmptyCard
                 message={ebook ? 'Turn your offer into a page that sells — section by section.' : 'Complete your e-book first to unlock this step.'}
-                cta="Build My Sales Page →"
+                cta="Build My Sales Page"
                 onCta={() => router.push('/module/3')}
                 enabled={!!ebook}
               />
@@ -371,11 +380,15 @@ export default function MyWorkDetailPage() {
               bonuses after Module 3 is sealed (otherwise they'd be locked
               out of their own deliverables). */}
           {Array.isArray(offer?.bonuses) && offer.bonuses.length > 0 && (
-            <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
-              <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-gray-800">
+            <div className="bg-white border border-gray-100 shadow-sm rounded-2xl overflow-hidden">
+              <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-gray-100">
                 <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-full bg-yellow-500/20 flex items-center justify-center text-yellow-400 text-xs font-bold">★</div>
-                  <span className="text-white text-sm font-bold">Bonus Stack</span>
+                  <div className="w-7 h-7 rounded-full bg-amber-50 flex items-center justify-center">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="#F4B942">
+                      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                    </svg>
+                  </div>
+                  <span className="text-[#1A1F36] text-sm font-bold">Bonus Stack</span>
                 </div>
                 <span className="text-gray-500 text-[11px] font-semibold">{offer.bonuses.length} bonuses</span>
               </div>
@@ -383,13 +396,13 @@ export default function MyWorkDetailPage() {
                 {offer.bonuses.map((b, i) => {
                   const hasContent = typeof b.content === 'string' && b.content.length > 0
                   return (
-                    <div key={i} className="bg-gray-800/50 rounded-xl p-3">
+                    <div key={i} className="bg-gray-50 border border-gray-100 rounded-xl p-3">
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1 min-w-0">
-                          <p className="text-yellow-300 text-xs font-bold truncate">{b.bonus_name}</p>
-                          <p className="text-gray-500 text-[10px]">{b.format} · ₱{(b.value_peso ?? 0).toLocaleString()}</p>
+                          <p className="text-[#1A1F36] text-xs font-bold truncate">{b.bonus_name}</p>
+                          <p className="text-gray-500 text-[10px]">{b.format} · PHP {(b.value_peso ?? 0).toLocaleString()}</p>
                           {b.description && (
-                            <p className="text-gray-400 text-[11px] mt-1">{b.description}</p>
+                            <p className="text-gray-500 text-[11px] mt-1">{b.description}</p>
                           )}
                         </div>
                         {hasContent && (
@@ -428,7 +441,7 @@ export default function MyWorkDetailPage() {
                                 setDownloadingBonus(null)
                               }
                             }}
-                            className="text-yellow-400 text-[11px] font-bold flex items-center gap-1 px-2 py-1 rounded hover:bg-yellow-500/10 transition-colors disabled:opacity-50 flex-shrink-0"
+                            className="text-[#B8860B] text-[11px] font-bold flex items-center gap-1 px-2 py-1 rounded hover:bg-amber-50 transition-colors disabled:opacity-50 flex-shrink-0"
                           >
                             {downloadingBonus === i ? '…' : '.docx'}
                           </button>
@@ -437,7 +450,7 @@ export default function MyWorkDetailPage() {
                       {hasContent ? (
                         <button
                           onClick={() => setExpandedBonus(expandedBonus === i ? null : i)}
-                          className="mt-2 text-[10px] text-gray-500 hover:text-gray-300"
+                          className="mt-2 text-[10px] text-gray-500 hover:text-gray-700"
                         >
                           {expandedBonus === i ? 'Hide content' : `View content (${b.content!.length.toLocaleString()} chars)`}
                         </button>
@@ -446,17 +459,24 @@ export default function MyWorkDetailPage() {
                           <button
                             onClick={() => generateBonusContentMyWork(i)}
                             disabled={generatingBonus === i}
-                            className="text-[10px] font-bold text-yellow-400 hover:text-yellow-300 disabled:opacity-50"
+                            className="text-[10px] font-bold text-[#B8860B] hover:text-[#F4B942] disabled:opacity-50 flex items-center gap-1"
                           >
-                            {generatingBonus === i ? `Writing your ${(b.format ?? 'bonus').toLowerCase()}…` : '✦ Generate content'}
+                            {generatingBonus === i ? `Writing your ${(b.format ?? 'bonus').toLowerCase()}…` : (
+                              <>
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+                                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                                </svg>
+                                Generate content
+                              </>
+                            )}
                           </button>
                           {generatingBonus !== i && (
-                            <span className="text-[10px] text-gray-600 italic">Not generated yet</span>
+                            <span className="text-[10px] text-gray-400 italic">Not generated yet</span>
                           )}
                         </div>
                       )}
                       {hasContent && expandedBonus === i && (
-                        <pre className="mt-2 text-[10px] text-gray-300 bg-gray-900 rounded p-2 max-h-48 overflow-y-auto whitespace-pre-wrap font-mono leading-relaxed">{b.content}</pre>
+                        <pre className="mt-2 text-[10px] text-gray-600 bg-white border border-gray-100 rounded p-2 max-h-48 overflow-y-auto whitespace-pre-wrap font-mono leading-relaxed">{b.content}</pre>
                       )}
                     </div>
                   )
@@ -466,26 +486,27 @@ export default function MyWorkDetailPage() {
           )}
 
           {/* ── 4. Email Sequence & Launch ─────────────────────────────────── */}
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
-            <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-gray-800">
+          <div className="bg-white border border-gray-100 shadow-sm rounded-2xl overflow-hidden">
+            <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-gray-100">
               <div className="flex items-center gap-2">
                 <StatusDot done={!!emailSeq} num={4} />
-                <span className="text-white text-sm font-bold">Email Sequence &amp; Launch</span>
+                <span className="text-[#1A1F36] text-sm font-bold">Email Sequence &amp; Launch</span>
               </div>
               {salesPage && (
-                <button onClick={() => router.push('/module/4')} className="text-yellow-400 text-xs font-semibold">
-                  {emailSeq ? 'Edit →' : 'Start →'}
+                <button onClick={() => router.push('/module/4')} className="text-[#F4B942] text-xs font-semibold flex items-center gap-0.5">
+                  {emailSeq ? 'Edit' : 'Start'}
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
                 </button>
               )}
             </div>
             {emailSeq ? (
               <div className="px-5 py-4">
-                <p className="text-gray-400 text-sm">Your 7-day email sequence is ready.</p>
+                <p className="text-gray-600 text-sm">Your 7-day email sequence is ready.</p>
               </div>
             ) : (
               <EmptyCard
                 message={salesPage ? 'Write 7 emails that warm up your audience and close the sale.' : 'Complete your sales page first to unlock this step.'}
-                cta="Write My Email Sequence →"
+                cta="Write My Email Sequence"
                 onCta={() => router.push('/module/4')}
                 enabled={!!salesPage}
               />
@@ -499,7 +520,7 @@ export default function MyWorkDetailPage() {
       {nextStep && !emailSeq && (
         <div
           className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] md:max-w-3xl px-4 py-4 z-30"
-          style={{ background: 'linear-gradient(to top, #030712 70%, transparent)', paddingBottom: '1.5rem' }}
+          style={{ background: 'linear-gradient(to top, #F8F9FA 70%, transparent)', paddingBottom: '1.5rem' }}
         >
           <div className="mb-2 text-center">
             <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Your Next Step</p>
@@ -518,11 +539,7 @@ export default function MyWorkDetailPage() {
       )}
 
       {/* All steps done — no next-step bar, show bottom nav normally */}
-      {emailSeq && (
-        <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] md:max-w-3xl bg-gray-900 border-t border-gray-800 px-2 pt-2.5 pb-6 flex justify-around items-center z-30">
-          <NavBar />
-        </div>
-      )}
+      {emailSeq && <BottomNav active="my-work" />}
     </div>
   )
 }
@@ -531,10 +548,10 @@ export default function MyWorkDetailPage() {
 
 function StatusDot({ done, num }: { done: boolean; num: number }) {
   return (
-    <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${done ? 'bg-yellow-400' : 'bg-gray-800 border border-gray-700'}`}>
+    <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${done ? 'bg-[#F4B942]' : 'bg-gray-100 border border-gray-200'}`}>
       {done
-        ? <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="black" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-        : <span className="text-gray-500 text-[9px] font-bold">{num}</span>}
+        ? <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#1A1F36" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+        : <span className="text-gray-400 text-[9px] font-bold">{num}</span>}
     </div>
   )
 }
@@ -544,41 +561,11 @@ function EmptyCard({ message, cta, onCta, enabled }: { message: string; cta: str
     <div className="px-5 py-5 text-center">
       <p className="text-gray-500 text-sm mb-4">{message}</p>
       {enabled && (
-        <button onClick={onCta} className="bg-yellow-400 text-black font-bold px-5 py-2 rounded-xl text-sm">
+        <button onClick={onCta} className="bg-[#F4B942] text-[#1A1F36] font-bold px-5 py-2 rounded-xl text-sm inline-flex items-center gap-1.5">
           {cta}
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
         </button>
       )}
     </div>
-  )
-}
-
-function NavBar() {
-  return (
-    <>
-      <Link href="/dashboard" className="flex flex-col items-center gap-1">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
-        </svg>
-        <span className="text-[10px] font-semibold text-gray-500">Home</span>
-      </Link>
-      <Link href="/my-work" className="flex flex-col items-center gap-1">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F4B942" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-        </svg>
-        <span className="text-[10px] font-semibold text-yellow-400">My Work</span>
-      </Link>
-      <Link href="/progress" className="flex flex-col items-center gap-1">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
-        </svg>
-        <span className="text-[10px] font-semibold text-gray-500">Progress</span>
-      </Link>
-      <Link href="/profile" className="flex flex-col items-center gap-1">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
-        </svg>
-        <span className="text-[10px] font-semibold text-gray-500">Profile</span>
-      </Link>
-    </>
   )
 }

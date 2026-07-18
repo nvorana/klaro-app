@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
 import ModuleReviewStatus from '@/app/components/ModuleReviewStatus'
 import GoldConfetti from '@/components/GoldConfetti'
+import CopyButton from '@/components/CopyButton'
+import { CompletionBanner, UpNextCard, BackToDashboardLink } from '@/components/CompletionBanner'
 import { isModuleUnlockedForStudent, getDaysUntilUnlock } from '@/lib/modules'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -122,7 +124,6 @@ export default function Module4Page() {
   const [generating, setGenerating] = useState(false)
   const [editing, setEditing] = useState(false)
   const [editText, setEditText] = useState('')
-  const [copiedKey, setCopiedKey] = useState<string | null>(null)
 
   // Complete step
   const [publishedUrl, setPublishedUrl] = useState('')
@@ -320,10 +321,8 @@ export default function Module4Page() {
   }
 
   // ── Copy to clipboard ────────────────────────────────────────────────────
-  function copyText(text: string, key: string) {
+  function copyText(text: string) {
     navigator.clipboard.writeText(text).catch(() => {})
-    setCopiedKey(key)
-    setTimeout(() => setCopiedKey(null), 2000)
   }
 
   // ── Build full copy for "copy all" ───────────────────────────────────────
@@ -491,15 +490,7 @@ export default function Module4Page() {
             </div>
 
             {/* Success banner */}
-            <div className="rounded-xl px-4 py-4 mb-5 flex items-start gap-3" style={{ background: '#ecfdf5', border: '1px solid #10B981' }}>
-              <div className="w-6 h-6 rounded-full flex items-center justify-center mt-0.5 flex-shrink-0" style={{ background: '#10B981' }}>
-                <span className="text-white"><CheckIcon /></span>
-              </div>
-              <div>
-                <p className="font-bold text-emerald-700">Your Sales Page Copy Is Ready!</p>
-                <p className="text-sm text-emerald-700 mt-0.5">All 10 sections written. Copy them into Systeme.io or your page builder.</p>
-              </div>
-            </div>
+            <CompletionBanner moduleNumber={4} moduleTitle="All 10 sections written. Copy them into Systeme.io or your page builder." />
 
             {/* Coach review status (AP students) */}
             <ModuleReviewStatus moduleNumber={4} />
@@ -507,7 +498,7 @@ export default function Module4Page() {
             {/* Copy all */}
             <button
               onClick={() => {
-                copyText(buildFullCopy(), 'all')
+                copyText(buildFullCopy())
                 setCopyAllDone(true)
                 setTimeout(() => setCopyAllDone(false), 2500)
               }}
@@ -533,14 +524,10 @@ export default function Module4Page() {
                       </div>
                       <span className="text-sm font-semibold text-[#1A1F36]">{s.label}</span>
                     </div>
-                    <button
-                      onClick={() => copyText(sectionContents[s.key], s.key)}
-                      className="flex items-center gap-1 text-xs"
-                      style={{ color: copiedKey === s.key ? '#6EE7B7' : '#9CA3AF' }}
-                    >
-                      <CopyIcon />
-                      {copiedKey === s.key ? 'Copied!' : 'Copy'}
-                    </button>
+                    <CopyButton
+                      text={sectionContents[s.key]}
+                      className="flex items-center gap-1 text-xs text-gray-400"
+                    />
                   </div>
                   <div className="px-4 py-3">
                     <p className="text-xs text-gray-500 leading-relaxed whitespace-pre-wrap line-clamp-3">
@@ -579,25 +566,13 @@ export default function Module4Page() {
             </div>
 
             {/* Next module CTA */}
-            <div className="rounded-xl p-4 mb-4" style={{ background: '#1A1F36', border: '2px solid #F4B942' }}>
-              <p className="text-xs font-medium mb-1" style={{ color: '#F4B942' }}>Up Next</p>
-              <p className="text-white font-bold">Module 5 — 7-Day Email Sequence</p>
-              <p className="text-gray-400 text-sm mt-1">Write 7 emails that nurture readers and sell your ebook.</p>
-              <button
-                onClick={() => router.push('/module/5')}
-                className="mt-3 w-full py-3 rounded-lg font-bold text-sm"
-                style={{ background: '#F4B942', color: '#1A1F36' }}
-              >
-                Next: Write My Email Sequence →
-              </button>
-            </div>
+            <UpNextCard
+              moduleNumber={5}
+              title="7-Day Email Sequence"
+              blurb="Write 7 emails that nurture readers and sell your ebook."
+            />
 
-            <button
-              onClick={() => router.push('/dashboard')}
-              className="w-full text-center text-sm text-gray-500 underline py-2"
-            >
-              Back to Dashboard
-            </button>
+            <BackToDashboardLink />
           </div>
         </div>
       </>
@@ -811,7 +786,7 @@ export default function Module4Page() {
                           )}
                         </div>
                         <button
-                          onClick={e => { e.stopPropagation(); copyText(option, `h-${i}`) }}
+                          onClick={e => { e.stopPropagation(); copyText(option) }}
                           className="text-gray-400 hover:text-gray-600 flex-shrink-0"
                         >
                           <CopyIcon />
@@ -854,14 +829,10 @@ export default function Module4Page() {
                   <EditIcon />
                   Edit
                 </button>
-                <button
-                  onClick={() => copyText(currentContent, sec.key)}
-                  className="flex items-center gap-1.5 text-xs ml-auto"
-                  style={{ color: copiedKey === sec.key ? '#6EE7B7' : '#9CA3AF' }}
-                >
-                  <CopyIcon />
-                  {copiedKey === sec.key ? 'Copied!' : 'Copy'}
-                </button>
+                <CopyButton
+                  text={currentContent}
+                  className="flex items-center gap-1.5 text-xs ml-auto text-gray-400"
+                />
               </div>
 
               {/* Content */}

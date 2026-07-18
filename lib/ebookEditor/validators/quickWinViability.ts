@@ -7,6 +7,7 @@
 // Single small LLM call. Runs only when Tier 1 already flagged.
 
 import { openai, AI_MODEL } from '../../openai'
+import { logAiUsage } from '../../aiUsage'
 import type { ChapterShape, Issue, ValidatorResult } from '../types'
 
 export async function validateQuickWinViability(chapter: ChapterShape): Promise<ValidatorResult> {
@@ -58,6 +59,7 @@ Return ONLY valid JSON:
       temperature: 0.3,
       max_tokens: 200,
     })
+    logAiUsage({ userId: null, route: 'ebook-editor-validator', model: AI_MODEL, usage: completion.usage })
     const raw = completion.choices[0].message.content ?? '{}'
     const parsed = JSON.parse(raw) as { doable_in_5_min?: boolean; issue?: string }
 

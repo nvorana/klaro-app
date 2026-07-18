@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { openai, AI_MODEL } from '@/lib/openai'
+import { logAiUsage } from '@/lib/aiUsage'
 import { findBannedWords, buildCorrectionPrompt } from '@/lib/bannedWords'
 import { buildVocabularyHint } from '@/lib/preferredVocabulary'
 import { getMarketLanguageHintForUser } from '@/lib/marketLanguage'
@@ -104,9 +105,10 @@ async function callOpenAI(
   prompt: string,
   context: Message[] = [],
   maxTokens = 2500,
-  systemSuffix = ''
+  systemSuffix = '',
+  userId: string | null = null
 ): Promise<unknown> {
-  const { result } = await callOpenAIWithUsage(prompt, context, maxTokens, systemSuffix)
+  const { result } = await callOpenAIWithUsage(prompt, context, maxTokens, systemSuffix, userId)
   return result
 }
 
@@ -115,7 +117,8 @@ async function callOpenAIWithUsage(
   prompt: string,
   context: Message[] = [],
   maxTokens = 2500,
-  systemSuffix = ''
+  systemSuffix = '',
+  userId: string | null = null
 ): Promise<{ result: unknown; usage: TokenUsage }> {
   const messages = [
     { role: 'system' as const, content: MASTER_SYSTEM_PROMPT + systemSuffix },
@@ -130,6 +133,7 @@ async function callOpenAIWithUsage(
     temperature: 0.78,
     max_tokens: maxTokens,
   })
+  logAiUsage({ userId, route: 'ebook-agent', model: AI_MODEL, usage: completion.usage })
 
   let content = completion.choices[0].message.content || '{}'
   const usage: TokenUsage = {
@@ -153,6 +157,7 @@ async function callOpenAIWithUsage(
       temperature: 0.5,
       max_tokens: maxTokens,
     })
+    logAiUsage({ userId, route: 'ebook-agent', model: AI_MODEL, usage: correction.usage })
     content = correction.choices[0].message.content || content
     usage.total_tokens += correction.usage?.total_tokens ?? 0
     usage.completion_tokens += correction.usage?.completion_tokens ?? 0
@@ -583,19 +588,20 @@ async function generateStandardChapterMultiPass(
   bookTitle: string,
   chapter: ChapterOutline,
   _allChapters: ChapterOutline[],
-  marketHint = ''
+  marketHint = '',
+  userId: string | null = null
 ): Promise<ChapterDraft> {
   console.log(`[ebook-agent] Chapter ${chapter.number} multi-pass — starting`)
 
   // Pass 0 + Pass 1 in parallel (both are independent)
   const [previewData, quoteData] = await Promise.all([
-    callOpenAI(pass0_PreviewPrompt(chapter), [], 300, marketHint) as Promise<{ chapter_preview: string }>,
-    callOpenAI(pass1_QuotePrompt(chapter), [], 400, marketHint) as Promise<{ quote: { text: string; author: string } }>,
+    callOpenAI(pass0_PreviewPrompt(chapter), [], 300, marketHint, userId) as Promise<{ chapter_preview: string }>,
+    callOpenAI(pass1_QuotePrompt(chapter), [], 400, marketHint, userId) as Promise<{ quote: { text: string; author: string } }>,
   ])
   console.log(`[ebook-agent] Chapter ${chapter.number} — preview + quote done`)
 
   // Pass 2: Story Starter
-  const storyData = await callOpenAI(pass2_StoryPrompt(project, bookTitle, chapter), [], 1500, marketHint) as {
+  const storyData = await callOpenAI(pass2_StoryPrompt(project, bookTitle, chapter), [], 1500, marketHint, userId) as {
     story_starter: string
   }
   console.log(`[ebook-agent] Chapter ${chapter.number} — story done`)
@@ -605,7 +611,8 @@ async function generateStandardChapterMultiPass(
     pass3_LessonsPrompt(project, chapter, storyData.story_starter),
     [{ role: 'assistant', content: JSON.stringify(storyData) }],
     3000,
-    marketHint
+    marketHint,
+    userId
   ) as { core_lessons: string }
   console.log(`[ebook-agent] Chapter ${chapter.number} — lessons done`)
 
@@ -617,12 +624,13 @@ async function generateStandardChapterMultiPass(
       { role: 'assistant', content: JSON.stringify(lessonsData) },
     ],
     2000,
-    marketHint
+    marketHint,
+    userId
   ) as { practical_steps: PracticalStep[] }
   console.log(`[ebook-agent] Chapter ${chapter.number} — steps done`)
 
   // Pass 5: Quick Win
-  const quickWinData = await callOpenAI(pass5_QuickWinPrompt(chapter), [], 1500, marketHint) as {
+  const quickWinData = await callOpenAI(pass5_QuickWinPrompt(chapter), [], 1500, marketHint, userId) as {
     quick_win: QuickWin
   }
   console.log(`[ebook-agent] Chapter ${chapter.number} — quick win done`)
@@ -736,6 +744,11 @@ export async function POST(request: NextRequest) {
     // passes in this request speak the same niche bubble.
     const marketHint = await getMarketLanguageHintForUser()
 
+    // Resolve the user once — used for gates below and for AI usage logging.
+    const supabaseAuth = await createClient()
+    const { data: { user: authUser } } = await supabaseAuth.auth.getUser()
+    const userId = authUser?.id ?? null
+
     // ── Lifetime ebook cap check (cost protection) ────────────────────────
     // Refuse outline generation if the user has already completed their
     // maximum ebooks. profiles.max_ebooks_allowed defaults to 2 at signup
@@ -748,8 +761,8 @@ export async function POST(request: NextRequest) {
     // the paywall. They've seen their outline; chapters/intro/conclusion
     // are the value behind the AP offer.
     if (stage !== 'outline') {
-      const supabase = await createClient()
-      const { data: { user } } = await supabase.auth.getUser()
+      const supabase = supabaseAuth
+      const user = authUser
       if (user) {
         const { data: gateProfile } = await supabase
           .from('profiles')
@@ -770,8 +783,8 @@ export async function POST(request: NextRequest) {
     }
 
     if (stage === 'outline') {
-      const supabase = await createClient()
-      const { data: { user } } = await supabase.auth.getUser()
+      const supabase = supabaseAuth
+      const user = authUser
       if (user) {
         // Defensive: if the lifetime-cap migration hasn't been run, the
         // SELECT will return an error and `profile` will be null. We let it
@@ -807,7 +820,7 @@ export async function POST(request: NextRequest) {
 
       // Stage 1: Generate title options + chapter outline
       case 'outline': {
-        const result = await callOpenAI(outlinePrompt(project), [], 2000, marketHint) as {
+        const result = await callOpenAI(outlinePrompt(project), [], 2000, marketHint, userId) as {
           title_options: TitleOption[]
           recommended: number
           chapters: ChapterOutline[]
@@ -827,7 +840,7 @@ export async function POST(request: NextRequest) {
         let result: ChapterDraft
 
         if (chapterType === 'standard') {
-          result = await generateStandardChapterMultiPass(project, bookTitle, chapter, allChapters, marketHint)
+          result = await generateStandardChapterMultiPass(project, bookTitle, chapter, allChapters, marketHint, userId)
 
           // ── Editor pass (standard chapters only, server-side) ────────────
           // Tier 1 validators always run; Tier 2 + reviser only fire if Tier 1
@@ -857,7 +870,8 @@ export async function POST(request: NextRequest) {
             singlePassChapterPrompt(project, bookTitle, chapter, allChapters),
             [],
             4500,
-            marketHint
+            marketHint,
+            userId
           ) as ChapterDraft
         }
 
@@ -869,7 +883,7 @@ export async function POST(request: NextRequest) {
         const bookTitle    = data.book_title as string
         const bookSubtitle = data.book_subtitle as string
         const chapters     = data.chapters as ChapterOutline[]
-        const result = await callOpenAI(introductionPrompt(project, bookTitle, bookSubtitle, chapters), [], 1800, marketHint) as { introduction: string }
+        const result = await callOpenAI(introductionPrompt(project, bookTitle, bookSubtitle, chapters), [], 1800, marketHint, userId) as { introduction: string }
         return NextResponse.json({ stage, data: result })
       }
 
@@ -877,7 +891,7 @@ export async function POST(request: NextRequest) {
       case 'conclusion': {
         const bookTitle = data.book_title as string
         const chapters  = data.chapters as ChapterOutline[]
-        const result = await callOpenAI(conclusionPrompt(project, bookTitle, chapters), [], 1000, marketHint) as { conclusion: string }
+        const result = await callOpenAI(conclusionPrompt(project, bookTitle, chapters), [], 1000, marketHint, userId) as { conclusion: string }
         return NextResponse.json({ stage, data: result })
       }
 
@@ -927,7 +941,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: `Unknown section: ${section}` }, { status: 400 })
         }
 
-        const { result, usage } = await callOpenAIWithUsage(prompt, context, maxTokens, marketHint)
+        const { result, usage } = await callOpenAIWithUsage(prompt, context, maxTokens, marketHint, userId)
         return NextResponse.json({ stage, section, data: result, usage })
       }
 

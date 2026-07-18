@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
 import ModuleReviewStatus from '@/app/components/ModuleReviewStatus'
 import GoldConfetti from '@/components/GoldConfetti'
+import StepBar from '@/components/StepBar'
+import CopyButton from '@/components/CopyButton'
+import { CompletionBanner, UpNextCard, BackToDashboardLink } from '@/components/CompletionBanner'
 
 type Step = 'warning' | 'market' | 'problem' | 'solution' | 'validate' | 'complete'
 
@@ -204,7 +207,6 @@ export default function Module1Page() {
   const [validation, setValidation] = useState<Validation | null>(null)
   const [loading, setLoading] = useState(false)
   const [loadingMessage, setLoadingMessage] = useState('')
-  const [copied, setCopied] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [existingClarity, setExistingClarity] = useState<{ target_market: string; core_problem: string; unique_mechanism: string; full_sentence: string } | null>(null)
@@ -422,12 +424,6 @@ export default function Module1Page() {
     }
   }
 
-  function handleCopy(text: string) {
-    navigator.clipboard.writeText(text)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
-
   function handleBack() {
     setError('')
     if (step === 'problem') setStep('market')
@@ -479,7 +475,7 @@ export default function Module1Page() {
                 <span className="text-xs text-gray-400">{existingClarity.core_problem}</span>
               </div>
               <div className="flex items-baseline gap-2">
-                <span className="text-[9px] font-bold uppercase tracking-wide text-gray-500 w-20 flex-shrink-0">Mechanism</span>
+                <span className="text-[9px] font-bold uppercase tracking-wide text-gray-500 w-20 flex-shrink-0">Solution</span>
                 <span className="text-xs text-gray-400">{existingClarity.unique_mechanism}</span>
               </div>
             </div>
@@ -530,17 +526,7 @@ export default function Module1Page() {
         <div className="min-h-screen bg-[#F8F9FA]">
         <div className="max-w-[430px] md:max-w-3xl mx-auto px-4 py-10">
           {/* Success banner */}
-          <div className="bg-[#10B981] rounded-2xl p-5 mb-6 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center shrink-0">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
-            </div>
-            <div>
-              <p className="text-white font-bold text-base">Module 1 Complete!</p>
-              <p className="text-white/80 text-sm">Your Clarity Sentence is saved.</p>
-            </div>
-          </div>
+          <CompletionBanner moduleNumber={1} moduleTitle="Your Clarity Sentence is saved." />
 
           {/* Coach review status (AP students) */}
           <ModuleReviewStatus moduleNumber={1} />
@@ -549,39 +535,20 @@ export default function Module1Page() {
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mb-5">
             <p className="text-xs font-semibold text-[#F4B942] uppercase tracking-wide mb-3">Your Clarity Sentence</p>
             <p className="text-[#1A1F36] font-semibold text-base leading-relaxed">{claritySentence}</p>
-            <button
-              onClick={() => handleCopy(claritySentence)}
+            <CopyButton
+              text={claritySentence}
               className="mt-4 flex items-center gap-2 text-sm text-gray-400 hover:text-[#1A1F36] transition-colors"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
-              </svg>
-              {copied ? 'Copied!' : 'Copy'}
-            </button>
+            />
           </div>
 
           {/* Up next card */}
-          <div className="bg-white rounded-2xl border border-[#F4B942]/40 shadow-sm p-5 mb-4">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Up Next</p>
-            <p className="text-[#1A1F36] font-bold text-base mb-1">Module 2 — The Ebook Factory</p>
-            <p className="text-sm text-gray-500 mb-4">
-              Write and export your complete ebook using your Clarity Sentence.
-            </p>
-            <button
-              onClick={() => router.push('/module/2')}
-              className="w-full bg-[#F4B942] text-[#1A1F36] font-bold py-3.5 rounded-xl text-sm hover:bg-[#e5a832] transition-colors"
-            >
-              Start Module 2
-            </button>
-          </div>
+          <UpNextCard
+            moduleNumber={2}
+            title="The Ebook Factory"
+            blurb="Write and export your complete ebook using your Clarity Sentence."
+          />
 
-          <button
-            onClick={() => router.push('/dashboard')}
-            className="w-full text-center text-sm text-gray-400 hover:text-[#1A1F36] transition-colors py-2"
-          >
-            Back to Dashboard
-          </button>
+          <BackToDashboardLink />
 
           {!module2Started && (
             <button
@@ -598,7 +565,7 @@ export default function Module1Page() {
               }}
               className="w-full text-center text-xs text-gray-400 hover:text-red-400 transition-colors py-1 mt-1"
             >
-              ↺ Start over with a new clarity sentence
+              Start over with a new clarity sentence
             </button>
           )}
         </div>
@@ -641,37 +608,10 @@ export default function Module1Page() {
             </div>
           </div>
 
-          {/* Step progress dots */}
-          <div className="flex items-center">
-            {STEP_LABELS.map((label, i) => {
-              const isCompleted = currentStepIndex > i
-              const isActive = currentStepIndex === i
-              return (
-                <div key={label} className="flex items-center flex-1 last:flex-none">
-                  <div className="flex flex-col items-center">
-                    <div className={`w-7 h-7 rounded-full flex items-center justify-center transition-colors ${
-                      isCompleted ? 'bg-[#10B981]' : isActive ? 'bg-[#F4B942]' : 'bg-white/20'
-                    }`}>
-                      {isCompleted ? (
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                          <polyline points="20 6 9 17 4 12" />
-                        </svg>
-                      ) : (
-                        <span className={`text-xs font-bold ${isActive ? 'text-[#1A1F36]' : 'text-white/40'}`}>{i + 1}</span>
-                      )}
-                    </div>
-                    <span className={`text-xs mt-1 font-medium whitespace-nowrap ${
-                      isCompleted ? 'text-[#10B981]' : isActive ? 'text-[#F4B942]' : 'text-white/30'
-                    }`}>{label}</span>
-                  </div>
-                  {i < STEP_LABELS.length - 1 && (
-                    <div className={`h-0.5 flex-1 mx-1 mb-4 ${isCompleted ? 'bg-[#10B981]' : 'bg-white/20'}`} />
-                  )}
-                </div>
-              )
-            })}
-          </div>
         </div>
+
+        {/* Step progress dots */}
+        <StepBar steps={STEP_LABELS} currentIndex={currentStepIndex} />
 
         {/* Step content */}
         <div className="flex-1 overflow-y-auto px-4 py-6 pb-32">
@@ -782,12 +722,12 @@ export default function Module1Page() {
                         <div className="flex gap-1.5 mb-2 flex-wrap">
                           {p.willingness_to_pay && (
                             <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${payColor}`}>
-                              💰 {p.willingness_to_pay}
+                              {p.willingness_to_pay}
                             </span>
                           )}
                           {p.ease_of_selling && (
                             <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${sellColor}`}>
-                              📈 {p.ease_of_selling} to sell
+                              {p.ease_of_selling} to sell
                             </span>
                           )}
                         </div>
@@ -840,7 +780,7 @@ export default function Module1Page() {
                     className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm text-[#1A1F36] placeholder-gray-300 focus:outline-none focus:border-[#F4B942] focus:ring-1 focus:ring-[#F4B942] transition-colors bg-gray-50 resize-none"
                   />
                   <p className="text-[11px] text-gray-400 mt-1.5">
-                    This helps us build a mechanism that&apos;s genuinely different — not a variation of what already exists.
+                    This helps us build a unique solution that&apos;s genuinely different — not a variation of what already exists.
                   </p>
                 </div>
               )}
@@ -850,7 +790,7 @@ export default function Module1Page() {
           {/* ── Step 3: Solution name ── */}
           {step === 'solution' && (
             <div>
-              <h2 className="text-xl font-bold text-[#1A1F36] mb-1">Pick your unique mechanism</h2>
+              <h2 className="text-xl font-bold text-[#1A1F36] mb-1">Pick your unique solution</h2>
               <p className="text-sm text-gray-500 mb-5">
                 Each one is a fully built framework — not generic advice. Pick the one that feels most like <em>you</em>.
               </p>
@@ -910,7 +850,7 @@ export default function Module1Page() {
                           {/* ❌ Why old way fails */}
                           {m.old_way_fails && (
                             <div className="bg-red-50 rounded-xl px-3 py-2.5">
-                              <p className="text-[10px] font-bold text-red-400 uppercase tracking-wide mb-1">❌ Why the old way fails</p>
+                              <p className="text-[10px] font-bold text-red-400 uppercase tracking-wide mb-1">Why the old way fails</p>
                               <p className="text-xs text-red-700 leading-relaxed">{m.old_way_fails}</p>
                             </div>
                           )}
@@ -918,7 +858,7 @@ export default function Module1Page() {
                           {/* 💡 New belief */}
                           {m.new_belief && (
                             <div className="bg-amber-50 rounded-xl px-3 py-2.5">
-                              <p className="text-[10px] font-bold text-amber-500 uppercase tracking-wide mb-1">💡 New belief</p>
+                              <p className="text-[10px] font-bold text-amber-500 uppercase tracking-wide mb-1">New belief</p>
                               <p className="text-xs text-amber-800 italic leading-relaxed">&ldquo;{m.new_belief}&rdquo;</p>
                             </div>
                           )}
@@ -926,7 +866,7 @@ export default function Module1Page() {
                           {/* 🧩 How it works */}
                           {m.steps && m.steps.length > 0 && (
                             <div>
-                              <p className="text-[10px] font-bold text-[#1A1F36] uppercase tracking-wide mb-1.5">🧩 How it works</p>
+                              <p className="text-[10px] font-bold text-[#1A1F36] uppercase tracking-wide mb-1.5">How it works</p>
                               <div className="flex flex-col gap-1.5">
                                 {m.steps.map((s, si) => (
                                   <div key={si} className="flex items-start gap-2">
@@ -941,7 +881,7 @@ export default function Module1Page() {
                           {/* 🔥 Aha statements */}
                           {m.aha_statements && m.aha_statements.length > 0 && (
                             <div>
-                              <p className="text-[10px] font-bold text-[#1A1F36] uppercase tracking-wide mb-1.5">🔥 Aha statements</p>
+                              <p className="text-[10px] font-bold text-[#1A1F36] uppercase tracking-wide mb-1.5">Aha statements</p>
                               <div className="flex flex-col gap-1">
                                 {m.aha_statements.map((a, ai) => (
                                   <p key={ai} className="text-[11px] text-[#F4B942] italic leading-relaxed">&ldquo;{a}&rdquo;</p>
@@ -953,7 +893,7 @@ export default function Module1Page() {
                           {/* 🎯 Positioning line */}
                           {m.positioning_line && (
                             <div className="bg-[#1A1F36] rounded-xl px-3 py-2.5">
-                              <p className="text-[10px] font-bold text-[#F4B942] uppercase tracking-wide mb-1">🎯 Positioning</p>
+                              <p className="text-[10px] font-bold text-[#F4B942] uppercase tracking-wide mb-1">Positioning</p>
                               <p className="text-xs text-white leading-relaxed italic">{m.positioning_line}</p>
                             </div>
                           )}
@@ -979,7 +919,7 @@ export default function Module1Page() {
                                 : 'bg-[#F4B942] text-[#1A1F36] hover:bg-[#e5a830] active:scale-[0.98]'
                             }`}
                           >
-                            {isSelected ? '✓ Selected — tap to change' : 'Choose This'}
+                            {isSelected ? 'Selected — tap to change' : 'Choose This'}
                           </button>
                         </div>
                       )}
@@ -998,16 +938,10 @@ export default function Module1Page() {
               {/* Assembled sentence */}
               <div className="bg-[#1A1F36] rounded-2xl p-5 mb-5">
                 <p className="text-white font-semibold text-base leading-relaxed">{claritySentence}</p>
-                <button
-                  onClick={() => handleCopy(claritySentence)}
+                <CopyButton
+                  text={claritySentence}
                   className="mt-3 flex items-center gap-2 text-[#F4B942] text-xs font-semibold"
-                >
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                    <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
-                  </svg>
-                  {copied ? 'Copied!' : 'Copy'}
-                </button>
+                />
               </div>
 
               {/* Scores */}
@@ -1054,7 +988,7 @@ export default function Module1Page() {
                         : isSolid ? 'bg-[#10B981] text-white'
                         : 'bg-[#F59E0B] text-white'
                       }`}>
-                        {isStrong ? '✓ Strong Signal' : isSolid ? '✓ Solid Starting Point' : 'Rethink the Angle'}
+                        {isStrong ? 'Strong Signal' : isSolid ? 'Solid Starting Point' : 'Rethink the Angle'}
                       </span>
                     </div>
                     <p className="text-sm text-gray-700 leading-relaxed">{validation.recommendation_reason}</p>

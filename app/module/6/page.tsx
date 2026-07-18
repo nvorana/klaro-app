@@ -2,6 +2,9 @@
 
 import GoldConfetti from '@/components/GoldConfetti'
 import ModuleReviewStatus from '@/app/components/ModuleReviewStatus'
+import StepBar from '@/components/StepBar'
+import CopyButton from '@/components/CopyButton'
+import { CompletionBanner, UpNextCard, BackToDashboardLink } from '@/components/CompletionBanner'
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
@@ -138,7 +141,6 @@ export default function Module6Page() {
   const [editingSection, setEditingSection] = useState<string | null>(null)
   const [regeneratingSection, setRegeneratingSection] = useState<string | null>(null)
   const [downloading, setDownloading] = useState(false)
-  const [copiedSection, setCopiedSection] = useState<string | null>(null)
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -400,13 +402,6 @@ export default function Module6Page() {
     }
   }
 
-  // ── Copy helper ───────────────────────────────────────────────
-  function copyToClipboard(text: string, label: string) {
-    navigator.clipboard.writeText(text).catch(() => {})
-    setCopiedSection(label)
-    setTimeout(() => setCopiedSection(null), 2000)
-  }
-
   // ── Save & Complete ───────────────────────────────────────────
   async function handleMarkComplete() {
     if (!clarity || !leadMagnet) return
@@ -444,29 +439,6 @@ export default function Module6Page() {
     } catch {
       setError('Could not save. Please try again.')
     }
-  }
-
-  // ── Progress Dots ─────────────────────────────────────────────
-  function ProgressDots() {
-    return (
-      <div className="flex items-center justify-center mb-6">
-        {STEP_LABELS.map((label, i) => {
-          const isDone = i < currentStepIndex
-          const isActive = i === currentStepIndex
-          return (
-            <div key={label} className="flex items-center">
-              <div className="flex flex-col items-center">
-                <div className="w-7 h-7 rounded-full flex items-center justify-center" style={{ background: isDone ? '#10B981' : isActive ? '#F4B942' : '#D1D5DB' }}>
-                  {isDone ? <span className="text-white"><CheckIcon /></span> : <span className="text-xs font-bold" style={{ color: isActive ? '#1A1F36' : '#9CA3AF' }}>{i + 1}</span>}
-                </div>
-                <span className="text-[10px] mt-1 font-medium whitespace-nowrap" style={{ color: isDone ? '#10B981' : isActive ? '#F4B942' : '#9CA3AF' }}>{label}</span>
-              </div>
-              {i < STEP_LABELS.length - 1 && <div className="h-0.5 w-12 mb-4 mx-1" style={{ background: i < currentStepIndex ? '#10B981' : '#D1D5DB' }} />}
-            </div>
-          )
-        })}
-      </div>
-    )
   }
 
   // ── Loading ───────────────────────────────────────────────────
@@ -521,15 +493,7 @@ export default function Module6Page() {
               </div>
             </div>
 
-            <div className="rounded-xl px-4 py-4 mb-5 flex items-start gap-3" style={{ background: '#ecfdf5', border: '1px solid #10B981' }}>
-              <div className="w-6 h-6 rounded-full flex items-center justify-center mt-0.5 flex-shrink-0" style={{ background: '#10B981' }}>
-                <span className="text-white"><CheckIcon /></span>
-              </div>
-              <div>
-                <p className="font-bold text-emerald-700">Module 6 Complete!</p>
-                <p className="text-sm text-emerald-700 mt-0.5">Your lead magnet is saved and ready to share.</p>
-              </div>
-            </div>
+            <CompletionBanner moduleNumber={6} moduleTitle="Your lead magnet is saved and ready to share." />
 
             {/* Coach review status (AP students) */}
             <ModuleReviewStatus moduleNumber={6} />
@@ -575,19 +539,14 @@ export default function Module6Page() {
                 <p className="text-xs text-gray-500">{nextModuleDaysLeft > 0 ? `Opens in ${nextModuleDaysLeft} day${nextModuleDaysLeft !== 1 ? 's' : ''}` : 'Coming soon'}</p>
               </div>
             ) : (
-              <div className="rounded-xl p-4 mb-4" style={{ background: '#1A1F36', border: '2px solid #F4B942' }}>
-                <p className="text-xs font-medium mb-1" style={{ color: '#F4B942' }}>Up Next</p>
-                <p className="text-white font-bold">Module 7 — Facebook Content Engine</p>
-                <p className="text-gray-400 text-sm mt-1">Generate Facebook posts that attract your ideal buyers.</p>
-                <button onClick={() => router.push('/module/7')} className="mt-3 w-full py-2.5 rounded-lg font-bold text-sm" style={{ background: '#F4B942', color: '#1A1F36' }}>
-                  Start Module 7
-                </button>
-              </div>
+              <UpNextCard
+                moduleNumber={7}
+                title="Facebook Content Engine"
+                blurb="Generate Facebook posts that attract your ideal buyers."
+              />
             )}
 
-            <button onClick={() => router.push('/dashboard')} className="w-full text-center text-sm text-gray-400 underline py-2">
-              Back to Dashboard
-            </button>
+            <BackToDashboardLink />
           </div>
         </div>
       </>
@@ -622,7 +581,9 @@ export default function Module6Page() {
             </div>
           </div>
 
-          <ProgressDots />
+          <div className="mb-6">
+            <StepBar steps={STEP_LABELS} currentIndex={currentStepIndex} />
+          </div>
 
           {error && (
             <div className="text-red-600 text-sm rounded-lg px-4 py-3 mb-4" style={{ background: '#FEF2F2', border: '1px solid #FECACA' }}>
@@ -894,14 +855,10 @@ export default function Module6Page() {
                               <RefreshIcon />
                               <span>{isRegenerating ? '…' : 'Redo'}</span>
                             </button>
-                            <button
-                              onClick={() => copyToClipboard(content, key)}
-                              className="flex items-center gap-1 text-xs"
-                              style={{ color: copiedSection === key ? '#6EE7B7' : '#9CA3AF' }}
-                            >
-                              <CopyIcon />
-                              <span>{copiedSection === key ? 'Copied!' : 'Copy'}</span>
-                            </button>
+                            <CopyButton
+                              text={content}
+                              className="flex items-center gap-1 text-xs text-gray-400"
+                            />
                           </div>
                         </div>
 

@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
 import ModuleReviewStatus from '@/app/components/ModuleReviewStatus'
 import GoldConfetti from '@/components/GoldConfetti'
+import StepBar from '@/components/StepBar'
+import { CompletionBanner, UpNextCard, BackToDashboardLink } from '@/components/CompletionBanner'
 import { isModuleUnlockedForStudent } from '@/lib/modules'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -466,25 +468,8 @@ export default function Module2Page() {
 
       {/* Progress bar */}
       {step !== 'load' && step !== 'complete' && (
-        <div className="px-6 pt-4 mb-6">
-          <div className="flex items-center gap-2">
-            {PROGRESS_STEPS.map((label, i) => (
-              <div key={label} className="flex items-center gap-2">
-                <div className={`flex items-center gap-1.5 ${i <= progressIndex ? 'text-[#F4B942]' : 'text-gray-400'}`}>
-                  <div className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold border
-                    ${i < progressIndex ? 'bg-[#F4B942] text-[#1A1F36] border-[#F4B942]' :
-                      i === progressIndex ? 'border-[#F4B942] text-[#F4B942]' :
-                      'border-gray-300 text-gray-400'}`}>
-                    {i < progressIndex ? '✓' : i + 1}
-                  </div>
-                  <span className="text-xs font-medium hidden sm:block">{label}</span>
-                </div>
-                {i < PROGRESS_STEPS.length - 1 && (
-                  <div className={`h-px w-6 sm:w-12 ${i < progressIndex ? 'bg-[#F4B942]' : 'bg-gray-200'}`} />
-                )}
-              </div>
-            ))}
-          </div>
+        <div className="mb-6">
+          <StepBar steps={PROGRESS_STEPS} currentIndex={progressIndex} />
         </div>
       )}
 
@@ -503,7 +488,11 @@ export default function Module2Page() {
                       isCurrent ? 'border-[#F4B942] text-[#F4B942]' :
                       'border-gray-300 text-gray-400'}`}
                 >
-                  {isDone ? '✓' : ch.number}
+                  {isDone ? (
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  ) : ch.number}
                 </div>
               )
             })}
@@ -541,7 +530,11 @@ export default function Module2Page() {
 
           {titleOptions.length === 0 ? (
             <div className="text-center py-10">
-              <div className="text-4xl mb-4">📖</div>
+              <div className="flex justify-center mb-4">
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#F4B942" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                </svg>
+              </div>
               <h2 className="text-lg font-bold text-[#1A1F36] mb-2">Ready to create your e-book?</h2>
               <p className="text-gray-500 text-sm mb-8 max-w-sm mx-auto">
                 The AI will generate 3 title options and an 8–10 chapter outline based on your clarity sentence.
@@ -551,9 +544,7 @@ export default function Module2Page() {
                 disabled={generatingOutline}
                 className="bg-[#F4B942] text-[#1A1F36] font-bold px-8 py-3 rounded-xl disabled:opacity-50"
               >
-                {generatingOutline
-                  ? <span className="flex items-center gap-2"><span className="animate-spin inline-block">⏳</span> Generating outline...</span>
-                  : 'Generate My E-Book Outline'}
+                {generatingOutline ? 'Generating outline...' : 'Generate My E-Book Outline'}
               </button>
             </div>
           ) : (
@@ -593,7 +584,7 @@ export default function Module2Page() {
                       <div>
                         <p className="text-[#1A1F36] text-sm font-semibold">{ch.title}</p>
                         <p className="text-gray-500 text-xs mt-1">{ch.goal}</p>
-                        <p className="text-[#F4B942] text-xs mt-1">⚡ {ch.quick_win_outcome}</p>
+                        <p className="text-[#F4B942] text-xs mt-1">{ch.quick_win_outcome}</p>
                       </div>
                     </div>
                   </div>
@@ -604,7 +595,7 @@ export default function Module2Page() {
                 onClick={startWriting}
                 className="w-full bg-[#F4B942] text-[#1A1F36] font-bold py-4 rounded-xl text-base"
               >
-                Start Writing Chapter by Chapter →
+                Start Writing Chapter by Chapter
               </button>
             </div>
           )}
@@ -714,7 +705,7 @@ export default function Module2Page() {
           {/* Section: Story Starter */}
           <div className="mb-5">
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-[#F4B942] text-xs font-bold uppercase tracking-wide">📖 Introduction</span>
+              <span className="text-[#F4B942] text-xs font-bold uppercase tracking-wide">Introduction</span>
             </div>
             <div className="bg-white border border-gray-100 rounded-xl p-4">
               <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-line">{currentDraft.story_starter}</p>
@@ -724,7 +715,7 @@ export default function Module2Page() {
           {/* Section: Core Lessons */}
           <div className="mb-5">
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-blue-500 text-xs font-bold uppercase tracking-wide">💡 Core Lessons</span>
+              <span className="text-blue-500 text-xs font-bold uppercase tracking-wide">Core Lessons</span>
             </div>
             <div className="bg-white border border-gray-100 rounded-xl p-4">
               <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-line">{currentDraft.core_lessons}</p>
@@ -735,7 +726,7 @@ export default function Module2Page() {
           {currentDraft.practical_steps?.length > 0 && (
             <div className="mb-5">
               <div className="flex items-center gap-2 mb-2">
-                <span className="text-green-600 text-xs font-bold uppercase tracking-wide">🪜 Practical Steps</span>
+                <span className="text-green-600 text-xs font-bold uppercase tracking-wide">Practical Steps</span>
               </div>
               <div className="space-y-3">
                 {currentDraft.practical_steps.map((s) => (
@@ -743,7 +734,7 @@ export default function Module2Page() {
                     <p className="text-[#1A1F36] text-sm font-semibold mb-1">Step {s.step_number}: {s.title}</p>
                     <p className="text-gray-600 text-sm">{s.what_to_do}</p>
                     <p className="text-gray-400 text-xs mt-1 italic">Why: {s.why_it_matters}</p>
-                    <p className="text-red-500 text-xs mt-1">⚠️ Common mistake: {s.common_mistake}</p>
+                    <p className="text-red-500 text-xs mt-1">Common mistake: {s.common_mistake}</p>
                   </div>
                 ))}
               </div>
@@ -754,7 +745,7 @@ export default function Module2Page() {
           {currentDraft.quick_win && (
             <div className="mb-5">
               <div className="flex items-center gap-2 mb-2">
-                <span className="text-[#F4B942] text-xs font-bold uppercase tracking-wide">⚡ Quick Win</span>
+                <span className="text-[#F4B942] text-xs font-bold uppercase tracking-wide">Quick Win</span>
               </div>
               <div className="bg-[#F4B942]/5 border border-[#F4B942]/20 rounded-xl p-4">
                 <p className="text-[#1A1F36] text-sm font-medium mb-2">{currentDraft.quick_win.goal}</p>
@@ -767,7 +758,7 @@ export default function Module2Page() {
                   ))}
                 </ul>
                 {currentDraft.quick_win.immediate_result && (
-                  <p className="text-green-600 text-xs italic">✓ Result: {currentDraft.quick_win.immediate_result}</p>
+                  <p className="text-green-600 text-xs italic">Result: {currentDraft.quick_win.immediate_result}</p>
                 )}
               </div>
             </div>
@@ -777,7 +768,7 @@ export default function Module2Page() {
           {currentDraft.confidence_close && (
             <div className="mb-8">
               <div className="flex items-center gap-2 mb-2">
-                <span className="text-purple-500 text-xs font-bold uppercase tracking-wide">🎯 Confidence Close</span>
+                <span className="text-purple-500 text-xs font-bold uppercase tracking-wide">Confidence Close</span>
               </div>
               <div className="bg-white border border-gray-100 rounded-xl p-4">
                 <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-line">{currentDraft.confidence_close}</p>
@@ -820,7 +811,7 @@ export default function Module2Page() {
                       ? 'Regeneration limit reached for this chapter'
                       : (
                         <span className="flex items-center justify-center gap-2">
-                          ↺ Regenerate This Chapter
+                          Regenerate This Chapter
                           {usedRegens > 0 && (
                             <span className={`text-xs font-normal px-1.5 py-0.5 rounded-full ${regenLeft === 1 ? 'bg-amber-100 text-amber-600' : 'bg-gray-100 text-gray-400'}`}>
                               {regenLeft} left
@@ -939,23 +930,23 @@ export default function Module2Page() {
                       </div>
                     )}
                     <div>
-                      <p className="text-xs text-[#F4B942] font-bold uppercase tracking-wide mb-1">📖 Introduction</p>
+                      <p className="text-xs text-[#F4B942] font-bold uppercase tracking-wide mb-1">Introduction</p>
                       <p className="text-gray-600 text-sm leading-relaxed whitespace-pre-line">{ch.story_starter}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-blue-500 font-bold uppercase tracking-wide mb-1">💡 Core Lessons</p>
+                      <p className="text-xs text-blue-500 font-bold uppercase tracking-wide mb-1">Core Lessons</p>
                       <p className="text-gray-600 text-sm leading-relaxed whitespace-pre-line">{ch.core_lessons}</p>
                     </div>
                     {ch.practical_steps?.length > 0 && (
                       <div>
-                        <p className="text-xs text-green-600 font-bold uppercase tracking-wide mb-2">🪜 Practical Steps</p>
+                        <p className="text-xs text-green-600 font-bold uppercase tracking-wide mb-2">Practical Steps</p>
                         <div className="space-y-2">
                           {ch.practical_steps.map((s) => (
                             <div key={s.step_number} className="bg-white border border-gray-100 rounded-lg p-3">
                               <p className="text-[#1A1F36] text-sm font-semibold">Step {s.step_number}: {s.title}</p>
                               <p className="text-gray-600 text-xs mt-1">{s.what_to_do}</p>
                               <p className="text-gray-400 text-xs mt-1 italic">Why: {s.why_it_matters}</p>
-                              <p className="text-red-500 text-xs mt-1">⚠️ {s.common_mistake}</p>
+                              <p className="text-red-500 text-xs mt-1">{s.common_mistake}</p>
                             </div>
                           ))}
                         </div>
@@ -963,7 +954,7 @@ export default function Module2Page() {
                     )}
                     {ch.quick_win && (
                       <div>
-                        <p className="text-xs text-[#F4B942] font-bold uppercase tracking-wide mb-2">⚡ Quick Win</p>
+                        <p className="text-xs text-[#F4B942] font-bold uppercase tracking-wide mb-2">Quick Win</p>
                         <div className="bg-[#F4B942]/5 border border-[#F4B942]/20 rounded-lg p-3">
                           <p className="text-[#1A1F36] text-sm font-medium mb-1">{ch.quick_win.goal}</p>
                           <ul className="space-y-0.5">
@@ -974,14 +965,14 @@ export default function Module2Page() {
                             ))}
                           </ul>
                           {ch.quick_win.immediate_result && (
-                            <p className="text-green-600 text-xs mt-1 italic">✓ {ch.quick_win.immediate_result}</p>
+                            <p className="text-green-600 text-xs mt-1 italic">{ch.quick_win.immediate_result}</p>
                           )}
                         </div>
                       </div>
                     )}
                     {ch.confidence_close && (
                       <div>
-                        <p className="text-xs text-purple-500 font-bold uppercase tracking-wide mb-1">🎯 Confidence Close</p>
+                        <p className="text-xs text-purple-500 font-bold uppercase tracking-wide mb-1">Confidence Close</p>
                         <p className="text-gray-600 text-sm leading-relaxed whitespace-pre-line">{ch.confidence_close}</p>
                       </div>
                     )}
@@ -1018,14 +1009,14 @@ export default function Module2Page() {
               disabled={downloading}
               className="w-full bg-white text-gray-900 font-bold py-4 rounded-xl text-base border border-gray-300 disabled:opacity-50 flex items-center justify-center gap-2"
             >
-              {downloading ? '⏳ Generating...' : '⬇ Download as Word Doc (.docx)'}
+              {downloading ? 'Generating...' : 'Download as Word Doc (.docx)'}
             </button>
             <button
               onClick={saveEbook}
               disabled={saving}
               className="w-full bg-yellow-400 text-black font-bold py-4 rounded-xl text-base disabled:opacity-50"
             >
-              {saving ? '⏳ Saving...' : 'Save & Mark Complete →'}
+              {saving ? 'Saving...' : 'Save & Mark Complete'}
             </button>
             {!foundationSealed && (
               <button
@@ -1037,7 +1028,7 @@ export default function Module2Page() {
             )}
             {foundationSealed && (
               <p className="w-full text-center text-xs text-gray-400 py-2">
-                🔒 This module is sealed — ask your coach to reset if you need to redo it.
+                This module is sealed — ask your coach to reset if you need to redo it.
               </p>
             )}
           </div>
@@ -1046,32 +1037,30 @@ export default function Module2Page() {
 
       {/* ── COMPLETE ── */}
       {step === 'complete' && (
-        <div className="flex-1 flex flex-col items-center justify-center px-6 pb-10 text-center">
-          <div className="text-6xl mb-6">🎉</div>
-          <h2 className="text-2xl font-bold text-[#1A1F36] mb-3">Your E-Book is Ready!</h2>
-          <p className="text-[#F4B942] font-semibold text-sm mb-1 max-w-xs">{selectedTitle?.title}</p>
-          <p className="text-gray-500 text-xs mb-4 max-w-xs">
-            {chapterDrafts.length} chapters written and saved. You&apos;ve just created your first digital product.
-          </p>
-          <div className="w-full max-w-sm mb-4">
+        <div className="flex-1 px-6 pb-10 pt-6">
+          <CompletionBanner moduleNumber={2} moduleTitle="Your E-Book is Ready!" />
+          <div className="text-center mb-4">
+            <p className="text-[#F4B942] font-semibold text-sm mb-1">{selectedTitle?.title}</p>
+            <p className="text-gray-500 text-xs">
+              {chapterDrafts.length} chapters written and saved. You&apos;ve just created your first digital product.
+            </p>
+          </div>
+          <div className="w-full mb-4">
             <ModuleReviewStatus moduleNumber={2} />
           </div>
-          <div className="w-full max-w-sm space-y-3 mb-4">
-            <button
-              onClick={downloadEbook}
-              disabled={downloading}
-              className="w-full bg-white text-gray-900 font-bold py-4 rounded-xl text-base border border-gray-300 disabled:opacity-50 flex items-center justify-center gap-2"
-            >
-              {downloading ? '⏳ Generating...' : '⬇ Download as Word Doc (.docx)'}
-            </button>
-            <button
-              onClick={() => router.push('/dashboard')}
-              className="w-full bg-yellow-400 text-black font-bold py-4 rounded-xl text-base"
-            >
-              Back to Dashboard
-            </button>
-          </div>
-          <p className="text-gray-600 text-xs max-w-xs">Next: Design a cover in Canva, then list it for sale in Module 3.</p>
+          <button
+            onClick={downloadEbook}
+            disabled={downloading}
+            className="w-full bg-white text-gray-900 font-bold py-4 rounded-xl text-base border border-gray-300 disabled:opacity-50 flex items-center justify-center gap-2 mb-4"
+          >
+            {downloading ? 'Generating...' : 'Download as Word Doc (.docx)'}
+          </button>
+          <UpNextCard
+            moduleNumber={3}
+            title="The Offer & Sales Page Builder"
+            blurb="Design a cover in Canva, then list your e-book for sale in Module 3."
+          />
+          <BackToDashboardLink />
         </div>
       )}
 
@@ -1083,7 +1072,13 @@ export default function Module2Page() {
           <div className="w-full max-w-[430px] md:max-w-xl mx-auto flex flex-col flex-1 px-6 pt-12 pb-10">
 
             {/* Icon */}
-            <div className="text-5xl mb-6 text-center">⚠️</div>
+            <div className="flex justify-center mb-6">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/>
+                <line x1="12" y1="17" x2="12.01" y2="17"/>
+              </svg>
+            </div>
 
             {/* Headline */}
             <h2 className="text-2xl font-black text-white text-center mb-2 leading-tight">
@@ -1129,7 +1124,7 @@ export default function Module2Page() {
                 disabled={downloading}
                 className="w-full bg-[#F4B942] text-[#1A1F36] font-bold py-4 rounded-xl text-sm flex items-center justify-center gap-2 disabled:opacity-50"
               >
-                {downloading ? '⏳ Generating...' : '⬇ Download My E-Book First'}
+                {downloading ? 'Generating...' : 'Download My E-Book First'}
               </button>
               <button
                 onClick={() => {

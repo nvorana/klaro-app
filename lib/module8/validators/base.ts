@@ -6,6 +6,7 @@
 // runs against the draft, parses + validates the response.
 
 import { openai, AI_MODEL } from '@/lib/openai'
+import { logAiUsage } from '@/lib/aiUsage'
 import { loadPrompt } from '../promptLoader'
 import { validatorResponseSchema, ValidatorResponse } from '../schemas/validator_response'
 import type { ValidatorName } from '../types'
@@ -44,6 +45,7 @@ export async function runValidator(input: ValidatorRunInput): Promise<ValidatorR
     temperature: 0.2,  // low temperature — validators should be consistent
     max_tokens: 1500,
   })
+  logAiUsage({ userId: null, route: 'module8-validator', model: AI_MODEL, usage: completion.usage })
 
   const raw = completion.choices[0].message.content ?? '{}'
   let parsed: unknown

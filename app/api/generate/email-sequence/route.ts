@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { openai, AI_MODEL } from '@/lib/openai'
+import { logAiUsage } from '@/lib/aiUsage'
 import { getMarketLanguageHintForUser } from '@/lib/marketLanguage'
 import { requireUser } from '@/lib/apiAuth'
 
@@ -199,6 +200,7 @@ export async function POST(request: NextRequest) {
       temperature: 0.8,
       max_tokens: 2000,
     })
+    logAiUsage({ userId: auth.user.id, route: 'email-sequence', model: AI_MODEL, usage: completion.usage })
 
     const content = completion.choices[0].message.content
     const result = JSON.parse(content || '{}')

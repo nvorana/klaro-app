@@ -4,6 +4,7 @@
 // Single LLM call (small budget), runs only when Tier 1 already flagged.
 
 import { openai, AI_MODEL } from '../../openai'
+import { logAiUsage } from '../../aiUsage'
 import type { ChapterShape, Issue, ValidatorResult } from '../types'
 
 interface OutlineRef {
@@ -60,6 +61,7 @@ Return ONLY valid JSON:
       temperature: 0.3,
       max_tokens: 300,
     })
+    logAiUsage({ userId: null, route: 'ebook-editor-validator', model: AI_MODEL, usage: completion.usage })
     const raw = completion.choices[0].message.content ?? '{}'
     const parsed = JSON.parse(raw) as { delivered?: boolean; issue?: string }
 

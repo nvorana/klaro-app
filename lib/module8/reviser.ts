@@ -12,6 +12,7 @@
 // context wasn't tampered with.
 
 import { openai, AI_MODEL } from '@/lib/openai'
+import { logAiUsage } from '@/lib/aiUsage'
 import { loadPrompt } from './promptLoader'
 import type { ValidatorRunResult } from './validators/base'
 import type { HardRuleFailure } from './qc/hardRules'
@@ -54,6 +55,7 @@ export async function runReviser<T extends Record<string, unknown>>(
     temperature: 0.4,  // lower temperature — reviser should be precise
     max_tokens: 3500,
   })
+  logAiUsage({ userId: null, route: 'module8-reviser', model: AI_MODEL, usage: completion.usage })
 
   const raw = completion.choices[0].message.content ?? '{}'
   let parsed: unknown
