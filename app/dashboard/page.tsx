@@ -57,13 +57,16 @@ export default async function DashboardPage({
     { data: leadMagnet },
     { data: contentPost },
   ] = await Promise.all([
-    supabase.from('clarity_sentences').select('id').eq('user_id', user.id).maybeSingle(),
-    supabase.from('ebooks').select('id').eq('user_id', user.id).eq('status', 'complete').maybeSingle(),
-    supabase.from('offers').select('id').eq('user_id', user.id).maybeSingle(),
-    supabase.from('sales_pages').select('id').eq('user_id', user.id).maybeSingle(),
-    supabase.from('email_sequences').select('id').eq('user_id', user.id).maybeSingle(),
-    supabase.from('lead_magnets').select('id').eq('user_id', user.id).maybeSingle(),
-    supabase.from('content_posts').select('id').eq('user_id', user.id).maybeSingle(),
+    // .limit(1).maybeSingle() — maybeSingle() alone ERRORS (returns null data)
+    // when more than one row exists, silently marking the module incomplete.
+    // content_posts always has many rows now that module 7 keeps a library.
+    supabase.from('clarity_sentences').select('id').eq('user_id', user.id).limit(1).maybeSingle(),
+    supabase.from('ebooks').select('id').eq('user_id', user.id).eq('status', 'complete').limit(1).maybeSingle(),
+    supabase.from('offers').select('id').eq('user_id', user.id).limit(1).maybeSingle(),
+    supabase.from('sales_pages').select('id').eq('user_id', user.id).limit(1).maybeSingle(),
+    supabase.from('email_sequences').select('id').eq('user_id', user.id).limit(1).maybeSingle(),
+    supabase.from('lead_magnets').select('id').eq('user_id', user.id).limit(1).maybeSingle(),
+    supabase.from('content_posts').select('id').eq('user_id', user.id).limit(1).maybeSingle(),
   ])
 
   const completed = [!!clarity, !!ebook, !!offer, !!salesPage, !!emailSeq, !!leadMagnet, !!contentPost]
