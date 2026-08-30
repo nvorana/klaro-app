@@ -291,19 +291,25 @@ export default async function DashboardPage({
         </div>
       )}
 
-      {/* ── Payment reminder (enrolled only) ───────────────── */}
-      {profile.access_level === 'enrolled' && (
-        <div className="mx-4 mt-4 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-start gap-3">
-          <svg className="flex-shrink-0 mt-0.5" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="10"/>
-            <line x1="12" y1="8" x2="12" y2="12"/>
-            <line x1="12" y1="16" x2="12.01" y2="16"/>
-          </svg>
-          <p className="text-amber-700 text-xs leading-relaxed">
-            <span className="font-bold">Complete your payment</span> to unlock all 7 modules and secure full access to KLARO.
-          </p>
-        </div>
-      )}
+      {/* ── REMOVED 2026-08-25: unconditional "complete your payment" banner ──
+          It rendered for EVERY access_level === 'enrolled' student and claimed
+          that paying would "unlock all 7 modules". That is false for both
+          programs, by design:
+
+            TOPIS — modules open on the cohort schedule (8 weeks of coaching,
+                    the group advances together). 'enrolled' and 'full_access'
+                    unlock identically; payment changes nothing about pacing.
+            AP    — modules are opened by the coach via unlocked_modules, per
+                    student. Payment does not drive that either.
+
+          Payment standing gates ENTRY (overdue -> access_suspended -> hold
+          screen), never module scope. The banner was telling paid-in-full
+          students they were missing modules they already had, which is what
+          generated the Batch 79 support tickets.
+
+          Legitimate payment nudges are already handled just above by
+          showPaymentDueBanner, which only fires when an installment is
+          genuinely due within 7 days. ───────────────────────────────────── */}
 
       {/* ── Module cards ───────────────────────────────────── */}
       <div className="flex-1 px-4 pt-5 pb-28">
