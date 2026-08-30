@@ -58,7 +58,13 @@ function detectTopisTag(tagName: string) {
     isStudent:   /^TOPIS(-\d+)?-Student(-\d+)?$/i.test(t),
     isUnsettled: /^TOPIS-\d+-UNSETTLED$/i.test(t) || /^TOPIS-UNSETTLED-\d+$/i.test(t),
     is2ndPay:    /^TOPIS-\d+-2nd-Pay-Settled$/i.test(t) || /^TOPIS-2nd-Pay-Settled-\d+$/i.test(t),
-    isFullPay:   /^TOPIS-\d+-Full-Payment$/i.test(t) || /^TOPIS-Full-Payment-\d+$/i.test(t),
+    // Two eras of tag. Old funnel: TOPIS-79-Full-Payment. 2026 tag policy:
+    // "TOPIS | 79 | PAYMENT | FULLY_PAID", which normalizeTag turns into
+    // TOPIS-79-PAYMENT-FULLY-PAID (underscores collapse to dashes too). The
+    // policy form matched NOTHING until 2026-08-25, so every fully-paid TOPIS
+    // student tagged under the new scheme silently stayed on "enrolled".
+    isFullPay:   /^TOPIS-\d+-Full-Payment$/i.test(t) || /^TOPIS-Full-Payment-\d+$/i.test(t) ||
+                 /^TOPIS-\d+-PAYMENT-FULLY-PAID$/i.test(t) || /^TOPIS-PAYMENT-FULLY-PAID$/i.test(t),
     batchNumber: extractBatchNumber(tagName),
   }
 }

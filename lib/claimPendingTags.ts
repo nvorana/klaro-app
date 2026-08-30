@@ -139,8 +139,15 @@ export async function claimPendingTagsForUser(
       updates.program_type = 'topis'
       updates.access_level = 'enrolled'
       updates.enrolled_at = enrolledAt
-      // Extract batch number from tag if present (e.g. TOPIS-77-Student → 77)
-      const match = log.tag_name?.match(/(?:^|-)(\d{2,3})(?:-|$)/)
+      // Extract batch number from tag if present (e.g. TOPIS-77-Student → 77).
+      // The separator must be normalized FIRST. Systeme's real tags are
+      // space-delimited ("TOPIS 79 Student"), so matching on the raw name with
+      // a hyphen-anchored pattern silently found nothing — five Batch 79
+      // students were left with cohort_batch = NULL before this was fixed
+      // (2026-08-25). The webhook path already normalizes; only this claim
+      // path did not.
+      const normalized = (log.tag_name ?? '').replace(/[\s|_]+/g, '-').replace(/-+/g, '-')
+      const match = normalized.match(/(?:^|-)(\d{2,3})(?:-|$)/)
       if (match) updates.cohort_batch = parseInt(match[1], 10)
     } else if (action === 'tier_access_pending_signup_tier3') {
       updates.access_level = 'tier3'
