@@ -66,6 +66,7 @@ function accessExpiry(s: Student): { daysLeft: number; expiresOn: string; expire
     access_expires_at: s.accessExpiresAt,
     created_at: s.createdAt,
     enrolled_at: s.enrolledAt,
+    access_level: s.accessLevel,
   })
   if (!expiryDate) return { daysLeft: 90, expiresOn: '—', expired: false }
   const daysLeft = Math.ceil((expiryDate.getTime() - Date.now()) / 86400000)

@@ -11,7 +11,7 @@ export default async function AccessExpiredPage() {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('full_name, access_expires_at, created_at, enrolled_at')
+    .select('full_name, access_expires_at, created_at, enrolled_at, access_level')
     .eq('id', user.id)
     .maybeSingle()
 

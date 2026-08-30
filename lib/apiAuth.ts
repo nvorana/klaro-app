@@ -40,7 +40,7 @@ export async function requireUser(): Promise<RequireUserResult> {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('role, access_suspended, access_expires_at, created_at, enrolled_at')
+    .select('role, access_level, access_suspended, access_expires_at, created_at, enrolled_at')
     .eq('id', user.id)
     .maybeSingle()
 
