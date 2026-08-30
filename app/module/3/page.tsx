@@ -157,7 +157,7 @@ export default function Module3Page() {
       // Load profile for Module 4 unlock check
       const { data: profile } = await supabase
         .from('profiles')
-        .select('access_level, enrolled_at, unlocked_modules, program_type')
+        .select('access_level, enrolled_at, drip_anchor, unlocked_modules, program_type')
         .eq('id', user.id)
         .maybeSingle()
 
@@ -165,13 +165,13 @@ export default function Module3Page() {
         const unlocked = isModuleUnlockedForStudent(
           profile.unlocked_modules,
           profile.access_level,
-          profile.enrolled_at,
+          profile.drip_anchor,
           4,
           profile.program_type
         )
         setModule4Unlocked(unlocked)
-        if (!unlocked && profile.enrolled_at) {
-          setModule4DaysLeft(getDaysUntilUnlock(profile.enrolled_at, 4))
+        if (!unlocked && profile.drip_anchor) {
+          setModule4DaysLeft(getDaysUntilUnlock(profile.drip_anchor, 4))
         }
       }
 

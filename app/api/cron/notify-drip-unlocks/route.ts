@@ -68,10 +68,10 @@ async function handle(request: NextRequest) {
   // All active TOPIS students on the drip
   const { data: students, error: studentsErr } = await admin
     .from('profiles')
-    .select('id, email, first_name, full_name, access_level, enrolled_at, created_at, access_expires_at, access_suspended')
+    .select('id, email, first_name, full_name, access_level, enrolled_at, drip_anchor, created_at, access_expires_at, access_suspended')
     .eq('program_type', 'topis')
     .in('access_level', ['enrolled', 'full_access'])
-    .not('enrolled_at', 'is', null)
+    .not('drip_anchor', 'is', null)
 
   if (studentsErr) {
     return NextResponse.json({ error: studentsErr.message }, { status: 500 })
@@ -114,7 +114,7 @@ async function handle(request: NextRequest) {
     // (Module 1 unlocks at day 0 — the welcome email covers it.)
     const pending: number[] = []
     for (let m = 2; m <= 7; m++) {
-      if (!isModuleUnlocked(s.enrolled_at, m)) continue
+      if (!isModuleUnlocked(s.drip_anchor, m)) continue
       if (alreadySent.has(`${email.toLowerCase()}|${m}`)) continue
       pending.push(m)
     }

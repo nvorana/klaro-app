@@ -24,7 +24,7 @@ export default async function DashboardPage({
   // ── Profile ───────────────────────────────────────────────
   const { data: profile } = await supabase
     .from('profiles')
-    .select('full_name, access_level, enrolled_at, unlocked_modules, access_suspended, created_at, program_type, role, module8_beta, installments_paid, next_payment_due_at')
+    .select('full_name, access_level, enrolled_at, drip_anchor, unlocked_modules, access_suspended, created_at, program_type, role, module8_beta, installments_paid, next_payment_due_at')
     .eq('id', user.id)
     .maybeSingle()
 
@@ -101,10 +101,10 @@ export default async function DashboardPage({
   }
 
   // ── Week calculation ──────────────────────────────────────
-  const enrolledAt = profile.enrolled_at as string | null
+  const dripAnchor = profile.drip_anchor as string | null
   let currentWeek = 1
-  if (enrolledAt) {
-    const daysSince = Math.floor((Date.now() - new Date(enrolledAt).getTime()) / 86400000)
+  if (dripAnchor) {
+    const daysSince = Math.floor((Date.now() - new Date(dripAnchor).getTime()) / 86400000)
     currentWeek = Math.min(8, Math.max(1, Math.floor(daysSince / 7) + 1))
   }
 
@@ -115,7 +115,7 @@ export default async function DashboardPage({
   // ── Next step module ──────────────────────────────────────
   let nextStepModule = -1
   for (let i = 0; i < 7; i++) {
-    const unlocked = isModuleUnlockedForStudent(unlockedModules, accessLevel, enrolledAt, i + 1, programType)
+    const unlocked = isModuleUnlockedForStudent(unlockedModules, accessLevel, dripAnchor, i + 1, programType)
     if (unlocked && !completed[i]) {
       nextStepModule = i + 1
       break
@@ -318,8 +318,8 @@ export default async function DashboardPage({
         {MODULE_INFO.map((mod, i) => {
           const moduleNum = mod.number
           const isCompleted = completed[i]
-          const unlocked = isModuleUnlockedForStudent(unlockedModules, accessLevel, enrolledAt, moduleNum, programType)
-          const daysLeft = !unlocked && enrolledAt ? getDaysUntilUnlock(enrolledAt, moduleNum) : 0
+          const unlocked = isModuleUnlockedForStudent(unlockedModules, accessLevel, dripAnchor, moduleNum, programType)
+          const daysLeft = !unlocked && dripAnchor ? getDaysUntilUnlock(dripAnchor, moduleNum) : 0
           const isNext = moduleNum === nextStepModule
 
           return (

@@ -132,7 +132,7 @@ export default function Module2Page() {
 
       const { data: profile } = await supabase
         .from('profiles')
-        .select('access_level, enrolled_at, unlocked_modules, full_name, program_type')
+        .select('access_level, enrolled_at, drip_anchor, unlocked_modules, full_name, program_type')
         .eq('id', session.user.id)
         .single()
 
@@ -140,7 +140,7 @@ export default function Module2Page() {
 
       if (profile.full_name) setAuthorName(profile.full_name)
 
-      if (!isModuleUnlockedForStudent(profile.unlocked_modules, profile.access_level, profile.enrolled_at, 2, profile.program_type)) {
+      if (!isModuleUnlockedForStudent(profile.unlocked_modules, profile.access_level, profile.drip_anchor, 2, profile.program_type)) {
         router.push('/dashboard'); return
       }
 

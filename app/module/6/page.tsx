@@ -158,21 +158,21 @@ export default function Module6Page() {
       // ── Access check ─────────────────────────────────────────
       const { data: profile } = await supabase
         .from('profiles')
-        .select('access_level, enrolled_at, unlocked_modules, program_type')
+        .select('access_level, enrolled_at, drip_anchor, unlocked_modules, program_type')
         .eq('id', user.id)
         .maybeSingle()
 
       if (profile) {
-        const unlocked = isModuleUnlockedForStudent(profile.unlocked_modules, profile.access_level, profile.enrolled_at, 6, profile.program_type)
+        const unlocked = isModuleUnlockedForStudent(profile.unlocked_modules, profile.access_level, profile.drip_anchor, 6, profile.program_type)
         if (!unlocked) {
-          setDaysUntilUnlock(profile.enrolled_at ? getDaysUntilUnlock(profile.enrolled_at, 6) : 0)
+          setDaysUntilUnlock(profile.drip_anchor ? getDaysUntilUnlock(profile.drip_anchor, 6) : 0)
           setLocked(true)
           setClarityLoading(false)
           return
         }
-        const next = isModuleUnlockedForStudent(profile.unlocked_modules, profile.access_level, profile.enrolled_at, 7, profile.program_type)
+        const next = isModuleUnlockedForStudent(profile.unlocked_modules, profile.access_level, profile.drip_anchor, 7, profile.program_type)
         setNextModuleLocked(!next)
-        if (!next && profile.enrolled_at) setNextModuleDaysLeft(getDaysUntilUnlock(profile.enrolled_at, 7))
+        if (!next && profile.drip_anchor) setNextModuleDaysLeft(getDaysUntilUnlock(profile.drip_anchor, 7))
       }
 
       const { data: clarityData } = await supabase

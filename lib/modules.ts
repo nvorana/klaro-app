@@ -37,7 +37,7 @@ export function isModuleUnlockedByTier(accessLevel: string | null, moduleNumber:
  *
  * 1. Module 1 is always available to any non-pending student
  * 2. If program_type = 'topis' → weekly drip only (0, 7, 14, 21, 28, 35, 42
- *    days since enrolled_at). Payment tier does NOT skip the drip — a
+ *    days since the DRIP ANCHOR). Payment tier does NOT skip the drip — a
  *    fully-paid TOPIS student is paced the same as an installment-paying one.
  * 3. If program_type = 'accelerator' → unlocked_modules array (modules 1-2
  *    on enrollment, next unlocks when student completes current, or coach
@@ -45,11 +45,23 @@ export function isModuleUnlockedByTier(accessLevel: string | null, moduleNumber:
  * 4. Otherwise (tier students / legacy / admins-assigned-full_access with
  *    no program_type): access_level decides. tier1=1, tier2=4, tier3/tier4/
  *    full_access=7. No pacing enforced.
+ *
+ * ── dripAnchor: pass profiles.drip_anchor, NOT profiles.enrolled_at ─────────
+ * TOPIS is group-paced: 8 weeks of coaching where the class advances together.
+ * Anchoring on each student's own enrolled_at gave a cohort as many schedules
+ * as it had signup dates — Batch 79 had 23 students spread across 9 different
+ * unlock calendars, so Module 3 would have trickled out over two weeks to a
+ * class being taught as one group.
+ *
+ * drip_anchor is a generated column: COALESCE(cohort_start_date, enrolled_at).
+ * Cohort students pace off the first day of class; AP, tier, legacy and any
+ * batch without a cohort_start_date keep pacing off enrolled_at exactly as
+ * before, so nothing shifts for them.
  */
 export function isModuleUnlockedForStudent(
   unlockedModules: number[] | null | undefined,
   accessLevel: string | null,
-  enrolledAt: string | null,
+  dripAnchor: string | null,
   moduleNumber: number,
   programType?: string | null
 ): boolean {
@@ -67,7 +79,7 @@ export function isModuleUnlockedForStudent(
   //   - mid-cohort early access: unlocked_modules=[1,2] lets the class start
   //     Module 2 early; the drip still adds 3,4,5,6,7 weekly
   if (programType === 'topis') {
-    if (isModuleUnlocked(enrolledAt, moduleNumber)) return true
+    if (isModuleUnlocked(dripAnchor, moduleNumber)) return true
     if (unlockedModules && unlockedModules.includes(moduleNumber)) return true
     return false
   }
@@ -92,7 +104,7 @@ export function isModuleUnlockedForStudent(
   }
 
   // Legacy time-based fallback (very old accounts pre-program_type)
-  return isModuleUnlocked(enrolledAt, moduleNumber)
+  return isModuleUnlocked(dripAnchor, moduleNumber)
 }
 
 // Module unlock schedule — days after enrollment
@@ -151,22 +163,22 @@ export const MODULE_INFO = [
   },
 ]
 
-export function getUnlockDate(enrolledAt: string, moduleNumber: number): Date {
-  const enrolled = new Date(enrolledAt)
+export function getUnlockDate(anchor: string, moduleNumber: number): Date {
+  const enrolled = new Date(anchor)
   const daysToAdd = MODULE_UNLOCK_DAYS[moduleNumber] ?? 999
   const unlockDate = new Date(enrolled)
   unlockDate.setDate(unlockDate.getDate() + daysToAdd)
   return unlockDate
 }
 
-export function isModuleUnlocked(enrolledAt: string | null, moduleNumber: number): boolean {
-  if (!enrolledAt) return false
-  const unlockDate = getUnlockDate(enrolledAt, moduleNumber)
+export function isModuleUnlocked(anchor: string | null, moduleNumber: number): boolean {
+  if (!anchor) return false
+  const unlockDate = getUnlockDate(anchor, moduleNumber)
   return new Date() >= unlockDate
 }
 
-export function getDaysUntilUnlock(enrolledAt: string, moduleNumber: number): number {
-  const unlockDate = getUnlockDate(enrolledAt, moduleNumber)
+export function getDaysUntilUnlock(anchor: string, moduleNumber: number): number {
+  const unlockDate = getUnlockDate(anchor, moduleNumber)
   const today = new Date()
   const diff = unlockDate.getTime() - today.getTime()
   return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)))

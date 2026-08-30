@@ -41,11 +41,12 @@ function highestUnlockedModule(p: {
   unlocked_modules: number[] | null
   access_level: string | null
   enrolled_at: string | null
+  drip_anchor: string | null
   program_type: string | null
 }): number {
   let highest = 1
   for (let m = 2; m <= 7; m++) {
-    if (isModuleUnlockedForStudent(p.unlocked_modules, p.access_level, p.enrolled_at, m, p.program_type)) {
+    if (isModuleUnlockedForStudent(p.unlocked_modules, p.access_level, p.drip_anchor, m, p.program_type)) {
       highest = m
     }
   }
@@ -81,7 +82,7 @@ async function handle(request: NextRequest) {
   // Students inactive 7-21 days
   const { data: students, error: studentsErr } = await admin
     .from('profiles')
-    .select('id, email, first_name, full_name, role, access_level, program_type, unlocked_modules, enrolled_at, created_at, access_expires_at, access_suspended, last_active_at')
+    .select('id, email, first_name, full_name, role, access_level, program_type, unlocked_modules, enrolled_at, drip_anchor, created_at, access_expires_at, access_suspended, last_active_at')
     .gte('last_active_at', twentyOneDaysAgo)
     .lte('last_active_at', sevenDaysAgo)
     .not('access_level', 'in', '("pending","lite_workshop")')
