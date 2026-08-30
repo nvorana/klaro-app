@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { openai, AI_MODEL } from '@/lib/openai'
+// openaiDirect (not `openai`) for the research call below: it uses the
+// Responses API + hosted web_search, neither of which OpenRouter implements.
+// This route must keep talking to OpenAI even when AI_PROVIDER=openrouter.
+import { openai, openaiDirect, AI_MODEL } from '@/lib/openai'
 import { logAiUsage } from '@/lib/aiUsage'
 import { findBannedWords, buildCorrectionPrompt } from '@/lib/bannedWords'
 import { requireUser } from '@/lib/apiAuth'
@@ -18,8 +21,10 @@ import { requireUser } from '@/lib/apiAuth'
 // still works without research context.
 async function researchNiche(targetMarket: string, userId: string | null): Promise<string> {
   try {
-    const research = await openai.responses.create({
-      model: AI_MODEL,
+    const research = await openaiDirect.responses.create({
+      // Hard-pinned to an OpenAI model id: openaiDirect never routes, so a
+      // namespaced OpenRouter id (openai/gpt-4o) would be rejected here.
+      model: process.env.AI_RESEARCH_MODEL || 'gpt-4o',
       tools: [{ type: 'web_search' }],
       input: `You are a researcher gathering raw, specific facts about this Filipino market segment so a marketer can build a product for them. Search the web and return a dense fact dump.
 

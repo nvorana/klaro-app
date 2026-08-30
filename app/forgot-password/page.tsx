@@ -24,6 +24,23 @@ export default function ForgotPasswordPage() {
     // Build the redirect URL the email link will send them back to.
     // We send it through /auth/callback so the PKCE code can be exchanged
     // for a real session server-side before the user lands on /reset-password.
+    //
+    // window.location.origin is correct in every environment — it always
+    // matches wherever the user actually is (localhost in dev, the custom
+    // domain in production), with no env var to keep in sync.
+    //
+    // CRITICAL: this only works while BOTH origins are listed in Supabase's
+    // Redirect URLs allowlist (Authentication -> URL Configuration). When a
+    // redirectTo is not allowlisted, Supabase does not error — it silently
+    // discards it and substitutes the project's Site URL. The email still
+    // sends, the link just goes somewhere useless.
+    //
+    // That is exactly what happened until 2026-08-08: the allowlist was
+    // EMPTY and Site URL was still http://localhost:3000 from initial local
+    // development, so every password-reset link every student ever received
+    // pointed at their own machine. Fixed by setting Site URL to
+    // https://klaro.chillyonaryo.com and allowlisting both origins.
+    // If reset links ever go to the wrong host again, check that page first.
     const redirectTo = `${window.location.origin}/auth/callback?next=/reset-password`
 
     const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {

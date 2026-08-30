@@ -8,10 +8,11 @@
 // - Scope: peer sets only (lesson-to-lesson within module, module-to-module
 //   within course)
 
-import { openai } from '@/lib/openai'
+// openaiDirect, not `openai`: OpenRouter does not serve embeddings, so this
+// must keep hitting OpenAI even when AI_PROVIDER=openrouter.
+import { openaiDirect, EMBEDDING_MODEL } from '@/lib/openai'
 import { HARD_RULES, HardRuleId } from '../types'
 
-const EMBEDDING_MODEL = 'text-embedding-3-small'
 const COSINE_THRESHOLD = 0.85
 const JACCARD_THRESHOLD = 0.70
 
@@ -54,7 +55,7 @@ export async function detectDuplicates(
 // ─── Cosine similarity ─────────────────────────────────────────────────────
 
 async function getEmbeddings(texts: string[]): Promise<number[][]> {
-  const response = await openai.embeddings.create({
+  const response = await openaiDirect.embeddings.create({
     model: EMBEDDING_MODEL,
     input: texts,
   })

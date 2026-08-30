@@ -45,3 +45,11 @@ next-env.d.ts
 
 # vocab research scratch artifacts (cached comments + dictionary, regenerable)
 scripts/vocab-research/output/
+
+.vercel
+.env.prod-secrets
+
+# Operational output — contains student PII (profile rows, emails, names).
+# Never commit: these are local audit/backup artifacts.
+exports/
+tmp/
