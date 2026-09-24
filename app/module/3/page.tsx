@@ -494,10 +494,13 @@ export default function Module3Page() {
 
     setError('')
     try {
-      // Delete existing offer first (avoids needing unique constraint)
-      await supabase.from('offers').delete().eq('user_id', user.id)
-
-      const { error: insertErr } = await supabase.from('offers').insert({
+      // Atomic upsert on the unique user_id index. This used to be
+      // delete-then-insert; two saves firing close together interleaved as
+      // delete, delete, insert, insert and left two offer rows, which made
+      // Module 4 bounce the student back here (it reads offers with
+      // maybeSingle, which errors on multiple rows). 7 students hit this.
+      // See migrations/one_row_per_user_content_tables.sql.
+      const { error: insertErr } = await supabase.from('offers').upsert({
         user_id: user.id,
         target_market: clarity.target_market,
         core_problem: clarity.core_problem,
@@ -512,7 +515,7 @@ export default function Module3Page() {
         guarantee,
         offer_statement: offerStatement,
         updated_at: new Date().toISOString(),
-      })
+      }, { onConflict: 'user_id' })
 
       if (insertErr) throw insertErr
 

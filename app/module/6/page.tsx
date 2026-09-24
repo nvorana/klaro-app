@@ -412,8 +412,11 @@ export default function Module6Page() {
 
       const lm = { ...leadMagnet, ...editedSections }
 
-      await supabase.from('lead_magnets').delete().eq('user_id', user.id)
-      const { error: lmErr } = await supabase.from('lead_magnets').insert({
+      // Atomic upsert on the unique user_id index — the old delete-then-insert
+      // left duplicate lead magnets when a save fired twice, and this page
+      // reads lead_magnets with maybeSingle, which errors on duplicates.
+      // See migrations/one_row_per_user_content_tables.sql.
+      const { error: lmErr } = await supabase.from('lead_magnets').upsert({
         user_id:         user.id,
         format:          selectedFormat,
         title:           lm.title,
@@ -423,7 +426,8 @@ export default function Module6Page() {
         quick_win:       lm.quick_win,
         bridge_to_ebook: lm.bridge_to_ebook,
         full_content:    Object.values(lm).join('\n\n'),
-      })
+        updated_at:      new Date().toISOString(),
+      }, { onConflict: 'user_id' })
       if (lmErr) throw lmErr
 
       // Record completion server-side (canonical module_progress writer)

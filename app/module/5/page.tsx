@@ -271,14 +271,16 @@ export default function Module5Page() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
-      // email_sequences — no unique constraint on user_id, so use delete + insert
-      await supabase.from('email_sequences').delete().eq('user_id', user.id)
-      const { error: seqErr } = await supabase.from('email_sequences').insert({
+      // email_sequences — atomic upsert on the unique user_id index. The old
+      // delete-then-insert left 8 students with duplicate sequences when a
+      // save fired twice. See migrations/one_row_per_user_content_tables.sql.
+      const { error: seqErr } = await supabase.from('email_sequences').upsert({
         user_id: user.id,
         sales_page_url: salesPageUrl || null,
         emails,
         reusable_prompt: reusablePrompt,
-      })
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'user_id' })
       if (seqErr) throw seqErr
 
       // Record completion server-side (canonical module_progress writer)

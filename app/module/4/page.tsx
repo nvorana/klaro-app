@@ -344,16 +344,18 @@ export default function Module4Page() {
 
       const headlineChosen = sectionContents['headline'] || ''
 
-      // Delete existing row then insert fresh (avoids needing unique constraint)
-      await supabase.from('sales_pages').delete().eq('user_id', user.id)
-      await supabase.from('sales_pages').insert({
+      // Atomic upsert on the unique user_id index — see
+      // migrations/one_row_per_user_content_tables.sql. The old
+      // delete-then-insert could leave two rows when a save fired twice,
+      // and this page's own offers read (maybeSingle) errors on duplicates.
+      await supabase.from('sales_pages').upsert({
         user_id:          user.id,
         headline:         headlineChosen,
         headline_options: headlineData ? JSON.stringify(headlineData) : null,
         sections:         sectionContents,
         published_url:    publishedUrl || null,
         updated_at:       new Date().toISOString(),
-      })
+      }, { onConflict: 'user_id' })
 
       // Record completion server-side (canonical module_progress writer)
       // + auto-unlock next module for AP students (no-op for other programs)

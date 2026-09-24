@@ -388,9 +388,18 @@ export default function Module1Page() {
 
       const avgScore = Math.round((validation.urgency_score + validation.market_demand_score) / 2)
 
-      // clarity_sentences — delete + insert (no unique constraint on user_id)
-      await supabase.from('clarity_sentences').delete().eq('user_id', user.id)
-      const { error: clarityErr } = await supabase.from('clarity_sentences').insert({
+      // clarity_sentences — atomic upsert on the unique user_id index.
+      // This used to be delete-then-insert. Those are two statements, so two
+      // saves firing close together interleaved as delete, delete, insert,
+      // insert and left the student with two rows — which every reader here
+      // (maybeSingle) treats as an error. See
+      // migrations/one_row_per_user_content_tables.sql.
+      //
+      // market_language is reset explicitly: it is a cache derived from the
+      // niche below, and the old delete+insert wiped it on every redo. An
+      // upsert leaves untouched columns alone, so without this a student who
+      // changed their target market would keep the previous niche's language.
+      const { error: clarityErr } = await supabase.from('clarity_sentences').upsert({
         user_id: user.id,
         target_market: targetMarket.trim(),
         core_problem: selectedProblem.problem,
@@ -399,7 +408,9 @@ export default function Module1Page() {
         validation_score: avgScore,
         validation_feedback: validation,
         is_validated: true,
-      })
+        market_language: null,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'user_id' })
       if (clarityErr) throw clarityErr
 
       // Fire-and-forget: warm the niche-language cache. If this fails or is
