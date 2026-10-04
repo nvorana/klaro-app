@@ -8,6 +8,7 @@ export interface Problem {
   problem: string
   real_question?: string
   signs?: string[]
+  how_common?: string
   urgency?: string
   proof_of_demand?: string
   current_attempts?: string
@@ -15,6 +16,7 @@ export interface Problem {
   desired_outcome?: string
   ebook_title?: string
   ebook_positioning?: string
+  reach_score?: number
   demand_score?: number
   urgency_score?: number
   ebook_potential?: number
@@ -25,7 +27,7 @@ export interface Problem {
 }
 
 // ── Problems analysis progress ───────────────────────────────────────────────
-// The problems step takes ~1.5 minutes (gpt-5.6-sol searching and writing the
+// The problems step takes ~2 minutes (gpt-5.6-sol searching and writing the
 // cards in one pass), so it gets a real progress screen instead of the
 // rotating-message loader. Progress comes from what the server is actually
 // doing: each web search, then each card as Sol writes it, then a short
@@ -220,7 +222,7 @@ export function ProblemsProgress({ progress, market }: { progress: AnalysisProgr
         </ol>
 
         <p className="mt-8 text-xs text-gray-400 leading-relaxed">
-          This deep analysis usually takes 1 to 2 minutes. Keep this tab open, sulit ang hintay.
+          This deep analysis usually takes about 2 minutes. Keep this tab open, sulit ang hintay.
         </p>
       </div>
     </div>
@@ -294,8 +296,9 @@ export function ProblemCard({
   
       {/* Scores */}
       <div className="flex gap-x-4 gap-y-1 mb-2.5 flex-wrap">
-        <ScoreDots label="Demand" value={p.demand_score} />
+        <ScoreDots label="Reach" value={p.reach_score} />
         <ScoreDots label="Urgency" value={p.urgency_score} />
+        <ScoreDots label="Demand" value={p.demand_score} />
         <ScoreDots label="E-book potential" value={p.ebook_potential} />
       </div>
   
@@ -321,6 +324,12 @@ export function ProblemCard({
               <ul className="list-disc pl-4 text-xs text-gray-600 leading-relaxed">
                 {p.signs.map((s, k) => <li key={k}>{s}</li>)}
               </ul>
+            </div>
+          )}
+          {p.how_common && (
+            <div>
+              <p className="text-[11px] font-bold text-[#1A1F36] uppercase tracking-wide mb-1">How common it is</p>
+              <p className="text-xs text-gray-600 leading-relaxed">{p.how_common}</p>
             </div>
           )}
           {p.proof_of_demand && (

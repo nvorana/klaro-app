@@ -28,7 +28,8 @@ export const REPORT_MODEL = process.env.AI_RESEARCH_MODEL || 'gpt-5.6-sol'
 // Only used when Sol's cards contain banned words (rare): a quick rewrite.
 const FIX_MODEL = modelForRoute('clarity-cards', 'creative', 'gpt-5.6-terra')
 
-// Well inside the route's 300s maxDuration; one-pass runs took ~70-90s.
+// Well inside the route's 300s maxDuration; one-pass runs took ~90-140s once
+// the "how common is it" searches were added.
 const REPORT_TIMEOUT_MS = 240_000
 
 // OpenAI's priority tier was ~20s faster again in testing (69s vs 88s) at a
@@ -40,10 +41,14 @@ export const PROBLEM_COUNT = 10
 function problemsPrompt(targetMarket: string): string {
   return `I'd like to create an e-book that helps ${targetMarket}.
 
-Find the top ${PROBLEM_COUNT} biggest and most urgent problems this market has, with the highest demand for solutions, ranked by urgency and demand. Look at it through one lens: which problem could become a strong PAID e-book for this market?
+Find the top ${PROBLEM_COUNT} problems this market has, judged on three things:
+1. BIGGEST: how many people in this market have it
+2. MOST URGENT: how badly they want it solved right now
+3. HIGHEST DEMAND: how much they already spend, search, and ask for help with it
+Rank by all three together. Look at it through one lens: which problem could become a strong PAID e-book for this market?
 
 HOW TO WORK
-- Start from what you know about this market's day-to-day life in the Philippines. Then search the web to sharpen EACH problem with specific evidence: recent posts, what people already spend (products, services, prices in pesos), official warnings. Search problem by problem, for specific things. Not one general search.
+- Start from what you know about this market's day-to-day life in the Philippines. Then search the web to sharpen EACH problem with specific evidence: how common it is (official figures, surveys, share of the market affected, how often it comes up in their communities), recent posts, what people already spend (products, services, prices in pesos), official warnings. Search problem by problem, for specific things. Not one general search.
 - Group related symptoms into one problem when one e-book could solve them together. Each problem must still be specific enough to hurt.
 - Only problems people in this market personally experience. Not problems other people have with them, and not public or policy issues.
 - Be honest: if the information is freely available from official sources, or an e-book can't really fix it, score it lower.
@@ -55,9 +60,10 @@ Return ONLY JSON, no other text:
   "items": [
     {
       "rank": 1,
-      "problem": "A plain statement of WHAT the problem is, max 12 words, understandable at a glance. Pain, not topic. Not a quote. This line is saved as the student's core problem and reused by every later module, so it must make sense on its own.",
+      "problem": "Name the problem the way people in THIS market say it when they ask for help: their everyday words for the specific thing going wrong, not an outsider's description of them. Lead with the concrete thing. Max 12 words. English or light Taglish. It is saved as the student's core problem and reused by every later module, so it must make sense on its own.",
       "real_question": "Their own question, in natural Taglish",
       "signs": ["4 to 6 concrete signs, each under 12 words"],
+      "how_common": "1-2 sentences: how many people in this market have this problem, with the evidence you found (official figures, surveys, share affected, how often it comes up). If you found no hard number, say what the evidence suggests. Never invent numbers.",
       "urgency": "2 sentences: why they want it solved now (emotional and money pressure)",
       "proof_of_demand": "2-3 sentences of specific evidence you found. Include every peso amount, product, and recent post or official warning you found for this problem. Never invent numbers, names, or quotes.",
       "current_attempts": "1 sentence: what people do now, and why it isn't working",
@@ -65,6 +71,7 @@ Return ONLY JSON, no other text:
       "desired_outcome": "1 sentence",
       "ebook_title": "A working title",
       "ebook_positioning": "1 sentence, including safety positioning when health or money is involved",
+      "reach_score": <1 to 5, how many people in this market have it>,
       "demand_score": <1 to 5>,
       "urgency_score": <1 to 5>,
       "ebook_potential": <1 to 5>,
@@ -73,7 +80,13 @@ Return ONLY JSON, no other text:
   ]
 }
 
-Exactly ${PROBLEM_COUNT} items, ranked. Scores are whole numbers from 1 to 5. Up to 3 sources per problem. Plain conversational English; Taglish only where it carries the market's own voice (real_question). No em dashes. No apostrophes on shortened Tagalog words (yan, yung, di, wag, to). Never use: unlock, unleash, discover, transform, revolutionize, ultimate, game-changing, next-level, harness, ignite, amplify, supercharge.`
+PROBLEM TITLES: plain conversational English, in the words this market actually uses for the problem: the concrete thing going wrong, the way they'd describe it to a friend. Keep a local term only where it is the word they really use. Save Taglish for real_question. The examples below are from other markets, to show the style only. Never reuse their wording.
+✓ "Tomato plants keep dying in the summer heat"   ✗ "Gardeners face crop management challenges"
+✓ "Suki keep buying on utang and never pay it back"   ✗ "Store owners struggle with receivables"
+✓ "Cramming the night before, then blanking out during exams"   ✗ "Learners exhibit poor study habits"
+Never start a title with the people themselves ("Owners...", "Parents...", "Employees...").
+
+Exactly ${PROBLEM_COUNT} items, ranked. Scores are whole numbers from 1 to 5. Up to 3 sources per problem. Plain conversational English; Taglish only where it carries the market's own voice (real_question). No em dashes. No apostrophes on shortened Tagalog words (yan, yung, di, wag, to), but English contractions and possessives keep theirs (won't, can't, dog's). Never use: unlock, unleash, discover, transform, revolutionize, ultimate, game-changing, next-level, harness, ignite, amplify, supercharge.`
 }
 
 // ── Card shape ───────────────────────────────────────────────────────────────
@@ -83,6 +96,7 @@ export interface ProblemCard {
   problem: string
   real_question: string
   signs: string[]
+  how_common: string
   urgency: string
   proof_of_demand: string
   current_attempts: string
@@ -90,6 +104,7 @@ export interface ProblemCard {
   desired_outcome: string
   ebook_title: string
   ebook_positioning: string
+  reach_score: number
   demand_score: number
   urgency_score: number
   ebook_potential: number
@@ -325,6 +340,7 @@ function normalizeCards(raw: unknown, seenUrls: Set<string>): ProblemCards {
       problem: str(it.problem),
       real_question: realQuestion,
       signs: Array.isArray(it.signs) ? it.signs.map(str).filter(Boolean).slice(0, 6) : [],
+      how_common: str(it.how_common),
       urgency: str(it.urgency),
       proof_of_demand: str(it.proof_of_demand),
       current_attempts: str(it.current_attempts),
@@ -332,6 +348,7 @@ function normalizeCards(raw: unknown, seenUrls: Set<string>): ProblemCards {
       desired_outcome: str(it.desired_outcome),
       ebook_title: str(it.ebook_title),
       ebook_positioning: str(it.ebook_positioning),
+      reach_score: score(it.reach_score),
       demand_score: demand,
       urgency_score: score(it.urgency_score),
       ebook_potential: potential,
