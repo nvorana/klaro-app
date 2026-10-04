@@ -8,19 +8,12 @@ import GoldConfetti from '@/components/GoldConfetti'
 import StepBar from '@/components/StepBar'
 import CopyButton from '@/components/CopyButton'
 import { CompletionBanner, UpNextCard, BackToDashboardLink } from '@/components/CompletionBanner'
+import {
+  ProblemsProgress, ProblemCard, newAnalysisProgress, applyReportEvent, readReportStream,
+  type AnalysisProgress, type Problem,
+} from './problemsAnalysis'
 
 type Step = 'warning' | 'market' | 'problem' | 'solution' | 'validate' | 'complete'
-
-interface Problem {
-  rank: number
-  problem: string
-  urgency?: string
-  proof_of_demand?: string
-  willingness_to_pay?: 'Low' | 'Medium' | 'High'
-  ease_of_selling?: 'Easy' | 'Moderate' | 'Hard'
-  common_phrases?: string
-  insight?: string // legacy fallback
-}
 
 interface Mechanism {
   name: string
@@ -68,29 +61,6 @@ const STEP_KEYS: Step[] = ['market', 'problem', 'solution', 'validate']
 
 // ── Sub-messages per loading context ─────────────────────────────────────────
 const SUB_MESSAGES: Record<string, string[]> = {
-  // ~75s on gpt-5.6-terra (was ~30s on gpt-4o). At 2.2s a line this list
-  // cycles every ~40s, so it plays about twice. No progress-style lines
-  // ("halfway", "almost done"): on the second pass they would be wrong.
-  'Finding the biggest problems for your market…': [
-    'Usually takes about a minute. Worth the wait, promise…',
-    'Researching real conversations sa market mo…',
-    'Scanning Reddit, forums, at community posts…',
-    'Listing the problems people in this market deal with every day…',
-    'Checking what they already spend money on to fix them…',
-    'Looking for problems people will actually pay to fix…',
-    'Filtering out ideas your tita would say "nice lang"…',
-    'Dropping problems na hindi kayang ayusin ng isang ebook…',
-    'Avoiding "passion projects" na walang buyers…',
-    'Writing the full story behind each problem…',
-    'Pulling overheard quotes, what they actually say sa kapwa nila…',
-    'Ranking by urgency at willingness to pay…',
-    'Konting tiis pa, sulit to…',
-    'Double-checking each problem is specific to your market…',
-    'Making each problem line clear in 3 seconds…',
-    'Structuring everything into clean cards…',
-    'Locking in problems that hurt… (and pay)',
-    'Making sure every card is something you can build an ebook on…',
-  ],
   'Coming up with unique solution names for you…': [
     'Turning your idea into something that doesn\'t sound like a thesis title…',
     'Making it sound like a system… not a random thought…',
@@ -210,7 +180,13 @@ export default function Module1Page() {
   const [showIdeas, setShowIdeas] = useState(false)
   const [problems, setProblems] = useState<Problem[]>([])
   const [selectedProblem, setSelectedProblem] = useState<Problem | null>(null)
+  const [topPick, setTopPick] = useState<{ rank: number; reason: string } | null>(null)
+  const [expandedProblem, setExpandedProblem] = useState<number | null>(null)
+  const [analysis, setAnalysis] = useState<AnalysisProgress | null>(null)
   const [currentSolution, setCurrentSolution] = useState('')
+  // What we pre-filled into currentSolution from the selected card, so picking
+  // another card can replace it without clobbering anything the student typed.
+  const [solutionPrefill, setSolutionPrefill] = useState('')
   const [mechanisms, setMechanisms] = useState<Mechanism[]>([])
   const [selectedMechanism, setSelectedMechanism] = useState<Mechanism | null>(null)
   const [expandedMechanismIndex, setExpandedMechanismIndex] = useState<number | null>(null)
@@ -276,36 +252,58 @@ export default function Module1Page() {
   const [claritySentence, setClaritySentence] = useState('')
   const [polishingClarity, setPolishingClarity] = useState(false)
 
+  // Two requests, each with its own server time budget: the streamed Sol
+  // analysis (progress events + the report), then the cards pass.
   async function handleMarketNext() {
-    if (!targetMarket.trim()) return
+    const market = targetMarket.trim()
+    if (!market) return
     setError('')
+    setAnalysis(newAnalysisProgress())
     setLoading(true)
-    setLoadingMessage('Finding the biggest problems for your market…')
     try {
       const res = await fetch('/api/generate/clarity', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ target_market: targetMarket.trim(), step: 'problems' }),
+        body: JSON.stringify({ target_market: market, step: 'problems_report' }),
       })
-      const json = await res.json()
-      if (!res.ok) {
-        // Show the specific message from the API (e.g. excluded market warning)
+      if (!res.ok || !res.body) {
+        const json = await res.json().catch(() => ({}))
         throw new Error(json.message || json.error || 'Something went wrong.')
       }
-      const { data } = json
-      // data may be an array or an object wrapping an array — extract defensively
-      const problems = Array.isArray(data)
-        ? data
-        : Array.isArray(Object.values(data || {}).find(v => Array.isArray(v)))
-          ? (Object.values(data).find(v => Array.isArray(v)) as Problem[])
-          : []
-      setProblems(problems)
+      const report = await readReportStream(res.body, ev =>
+        setAnalysis(p => (p ? applyReportEvent(p, ev) : p)),
+      )
+
+      setAnalysis(p => (p ? { ...p, phase: 'organizing', phaseStartedAt: Date.now() } : p))
+      const cardsRes = await fetch('/api/generate/clarity', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ target_market: market, step: 'problems_cards', report }),
+      })
+      const json = await cardsRes.json().catch(() => ({}))
+      if (!cardsRes.ok) throw new Error(json.message || json.error || 'Something went wrong.')
+
+      setProblems(Array.isArray(json.data) ? json.data : [])
+      setTopPick(json.top_pick ?? null)
       setSelectedProblem(null)
+      setExpandedProblem(null)
+      if (currentSolution === solutionPrefill) { setCurrentSolution(''); setSolutionPrefill('') }
       setStep('problem')
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Something went wrong. Please try again.')
     } finally {
       setLoading(false)
+      setAnalysis(null)
+    }
+  }
+
+  function selectProblem(p: Problem) {
+    setSelectedProblem(p)
+    // Pre-fill "what do people usually do now" from the analysis, unless the
+    // student has typed their own answer.
+    if (p.current_attempts && (!currentSolution.trim() || currentSolution === solutionPrefill)) {
+      setCurrentSolution(p.current_attempts)
+      setSolutionPrefill(p.current_attempts)
     }
   }
 
@@ -454,6 +452,7 @@ export default function Module1Page() {
 
   // ── Loading screen ────────────────────────────────────────────
   if (loading) {
+    if (analysis) return <ProblemsProgress progress={analysis} market={targetMarket.trim()} />
     return <PremiumLoader message={loadingMessage} />
   }
 
@@ -699,89 +698,30 @@ export default function Module1Page() {
             <div>
               <h2 className="text-xl font-bold text-[#1A1F36] mb-1">Pick their biggest problem</h2>
               <p className="text-sm text-gray-500 mb-5">
-                Ranked by profitability for <strong className="text-[#1A1F36]">{targetMarket}</strong>. Pick the one that feels most urgent.
+                Ranked by urgency, demand, and e-book potential for <strong className="text-[#1A1F36]">{targetMarket}</strong>. Tap a card to pick it.
               </p>
 
-              <div className="flex flex-col gap-3">
-                {problems.map((p, i) => {
-                  const isSelected = selectedProblem?.problem === p.problem
-                  const payColor =
-                    p.willingness_to_pay === 'High' ? 'bg-green-100 text-green-700' :
-                    p.willingness_to_pay === 'Medium' ? 'bg-amber-100 text-amber-700' :
-                    p.willingness_to_pay === 'Low' ? 'bg-gray-100 text-gray-500' : ''
-                  const sellColor =
-                    p.ease_of_selling === 'Easy' ? 'bg-blue-100 text-blue-700' :
-                    p.ease_of_selling === 'Moderate' ? 'bg-purple-100 text-purple-700' :
-                    p.ease_of_selling === 'Hard' ? 'bg-red-100 text-red-600' : ''
-                  return (
-                    <button
-                      key={i}
-                      onClick={() => setSelectedProblem(p)}
-                      className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
-                        isSelected
-                          ? 'border-[#F4B942] bg-[#FFF8E8]'
-                          : 'border-gray-100 bg-white hover:border-gray-200'
-                      }`}
-                    >
-                      {/* Rank + title row */}
-                      <div className="flex items-start justify-between gap-3 mb-2">
-                        <div className="flex items-start gap-2 flex-1">
-                          <span className="text-[10px] font-black text-white bg-[#1A1F36] rounded-md px-1.5 py-0.5 shrink-0 mt-0.5">#{p.rank}</span>
-                          <p className="text-sm font-bold text-[#1A1F36] leading-snug">{p.problem}</p>
-                        </div>
-                        {isSelected && (
-                          <div className="w-5 h-5 rounded-full bg-[#F4B942] flex items-center justify-center shrink-0 mt-0.5">
-                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                              <polyline points="20 6 9 17 4 12" />
-                            </svg>
-                          </div>
-                        )}
-                      </div>
+              {/* Our #1 pick */}
+              {topPick && problems[topPick.rank - 1] && (
+                <div className="mb-4 rounded-2xl bg-[#1A1F36] text-white p-4">
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-[#F4B942] mb-1">Strongest e-book opportunity</p>
+                  <p className="text-sm font-bold leading-snug mb-1.5">#{topPick.rank} {problems[topPick.rank - 1].problem}</p>
+                  {topPick.reason && <p className="text-xs text-white/70 leading-relaxed">{topPick.reason}</p>}
+                </div>
+              )}
 
-                      {/* Badges */}
-                      {(p.willingness_to_pay || p.ease_of_selling) && (
-                        <div className="flex gap-1.5 mb-2 flex-wrap">
-                          {p.willingness_to_pay && (
-                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${payColor}`}>
-                              {p.willingness_to_pay}
-                            </span>
-                          )}
-                          {p.ease_of_selling && (
-                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${sellColor}`}>
-                              {p.ease_of_selling} to sell
-                            </span>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Urgency */}
-                      {p.urgency && (
-                        <p className="text-xs text-gray-600 leading-relaxed mb-1.5">
-                          <span className="font-semibold text-[#1A1F36]">Why urgent: </span>{p.urgency}
-                        </p>
-                      )}
-
-                      {/* Proof of demand */}
-                      {p.proof_of_demand && (
-                        <p className="text-xs text-gray-500 leading-relaxed mb-1.5">
-                          <span className="font-semibold text-[#1A1F36]">Demand proof: </span>{p.proof_of_demand}
-                        </p>
-                      )}
-
-                      {/* Common phrases */}
-                      {p.common_phrases && (
-                        <p className="text-[11px] text-[#F4B942] italic leading-relaxed">
-                          &ldquo;{p.common_phrases}&rdquo;
-                        </p>
-                      )}
-
-                      {/* Legacy fallback */}
-                      {!p.urgency && p.insight && (
-                        <p className="text-xs text-gray-500 leading-relaxed">{p.insight}</p>
-                      )}
-                    </button>
-                  )
-                })}
+              <div className="flex flex-col gap-3" role="radiogroup" aria-label="Problems">
+                {problems.map((p, i) => (
+                  <ProblemCard
+                    key={i}
+                    p={p}
+                    isSelected={selectedProblem?.problem === p.problem}
+                    isTopPick={topPick?.rank === p.rank}
+                    isOpen={expandedProblem === p.rank}
+                    onSelect={() => selectProblem(p)}
+                    onToggle={() => setExpandedProblem(expandedProblem === p.rank ? null : p.rank)}
+                  />
+                ))}
               </div>
 
               {/* Current solution input — appears once a problem is selected */}
@@ -797,11 +737,13 @@ export default function Module1Page() {
                     value={currentSolution}
                     onChange={e => setCurrentSolution(e.target.value)}
                     placeholder="e.g., They Google tips, buy generic budgeting apps, or ask friends for advice..."
-                    rows={2}
+                    rows={3}
                     className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm text-[#1A1F36] placeholder-gray-300 focus:outline-none focus:border-[#F4B942] focus:ring-1 focus:ring-[#F4B942] transition-colors bg-gray-50 resize-none"
                   />
                   <p className="text-[11px] text-gray-400 mt-1.5">
-                    This helps us build a unique solution that&apos;s genuinely different — not a variation of what already exists.
+                    {currentSolution && currentSolution === solutionPrefill
+                      ? 'We filled this in from the market analysis. Edit it if you know your market better.'
+                      : 'This helps us build a unique solution that’s genuinely different, not a variation of what already exists.'}
                   </p>
                 </div>
               )}
