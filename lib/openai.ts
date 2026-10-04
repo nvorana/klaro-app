@@ -94,7 +94,43 @@ export const EMBEDDING_MODEL = process.env.AI_EMBEDDING_MODEL || 'text-embedding
 // Route names match what lib/aiUsage.ts already records, so the ai_usage table
 // tells you exactly which routes are worth overriding — and afterwards, what
 // the change did to tokens and cost.
-export function modelForRoute(route: string, tier: 'creative' | 'utility' = 'creative'): string {
+//
+// `defaultModel` pins a route to a specific model in code (env still wins).
+// Pass the plain OpenAI id; it is namespaced automatically under OpenRouter.
+export function modelForRoute(
+  route: string,
+  tier: 'creative' | 'utility' = 'creative',
+  defaultModel?: string,
+): string {
   const key = 'AI_MODEL_ROUTE_' + route.toUpperCase().replace(/-/g, '_')
-  return process.env[key] || (tier === 'utility' ? AI_MODEL_UTILITY : AI_MODEL)
+  if (process.env[key]) return process.env[key] as string
+  if (defaultModel) {
+    return USE_OPENROUTER && !defaultModel.includes('/') ? `openai/${defaultModel}` : defaultModel
+  }
+  return tier === 'utility' ? AI_MODEL_UTILITY : AI_MODEL
+}
+
+// ── Reasoning models (GPT-5 family, o-series) ────────────────────────────────
+// These reject a custom `temperature` with a 400 — every call site in this
+// app sets one, so pointing a route at gpt-5.x through env alone breaks it.
+// They take a reasoning effort instead; higher effort is slower, and at the
+// default effort Module 1 went from ~30s on gpt-4o to 90-180s (2026-10-04
+// benchmark). 'low' kept the quality and brought it to ~75s.
+export type ReasoningEffort = 'minimal' | 'low' | 'medium' | 'high'
+
+export function isReasoningModel(model: string): boolean {
+  return /^(gpt-5|o\d)/.test(model.replace(/^openai\//, ''))
+}
+
+/**
+ * Sampling params valid for `model`, for spreading into
+ * chat.completions.create(): the temperature for classic models, a reasoning
+ * effort for reasoning models.
+ */
+export function samplingParams(
+  model: string,
+  temperature: number,
+  effort: ReasoningEffort = 'low',
+): { temperature: number } | { reasoning_effort: ReasoningEffort } {
+  return isReasoningModel(model) ? { reasoning_effort: effort } : { temperature }
 }

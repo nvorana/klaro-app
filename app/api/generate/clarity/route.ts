@@ -2,10 +2,27 @@ import { NextRequest, NextResponse } from 'next/server'
 // openaiDirect (not `openai`) for the research call below: it uses the
 // Responses API + hosted web_search, neither of which OpenRouter implements.
 // This route must keep talking to OpenAI even when AI_PROVIDER=openrouter.
-import { openai, openaiDirect, AI_MODEL } from '@/lib/openai'
+import { openai, openaiDirect, AI_MODEL, modelForRoute, isReasoningModel, samplingParams } from '@/lib/openai'
 import { logAiUsage } from '@/lib/aiUsage'
 import { findBannedWords, buildCorrectionPrompt } from '@/lib/bannedWords'
 import { requireUser } from '@/lib/apiAuth'
+
+// The problems step runs research + brainstorm in parallel, then narrative,
+// then extraction. On gpt-5.6-terra that is ~75s end to end, well past what a
+// platform default should be trusted with.
+export const maxDuration = 300
+
+// ── Model for the "find the biggest problems" step ───────────────────────────
+// Moved off gpt-4o on 2026-10-04 after a blind comparison of gpt-4o, gpt-5.5
+// and gpt-5.6 sol/terra/luna on the same prompts. gpt-4o was the most generic
+// ("Balancing work and family life feels impossible"); terra wrote the
+// clearest problem lines, which matter most because the chosen line is saved
+// as core_problem and reused by every later module. Cost is ~$0.13 per run vs
+// ~$0.10 on gpt-4o. Override with AI_MODEL_ROUTE_CLARITY_PROBLEMS.
+//
+// Only this step moved. The mechanisms and polish steps below stay on
+// AI_MODEL until they get the same side-by-side test.
+const PROBLEMS_MODEL = modelForRoute('clarity-problems', 'creative', 'gpt-5.6-terra')
 
 // POST /api/generate/clarity
 // Body: { target_market: string, step: 'problems' | 'mechanisms', problem?: string }
@@ -21,12 +38,16 @@ import { requireUser } from '@/lib/apiAuth'
 // still works without research context.
 // Hard-pinned to an OpenAI model id: openaiDirect never routes, so a
 // namespaced OpenRouter id (openai/gpt-4o) would be rejected here.
-const RESEARCH_MODEL = process.env.AI_RESEARCH_MODEL || 'gpt-4o'
+// gpt-5.6-terra since 2026-10-04, alongside PROBLEMS_MODEL above.
+const RESEARCH_MODEL = process.env.AI_RESEARCH_MODEL || 'gpt-5.6-terra'
 
 async function researchNiche(targetMarket: string, userId: string | null): Promise<string> {
   try {
     const research = await openaiDirect.responses.create({
       model: RESEARCH_MODEL,
+      // Low effort: at the default, terra spent far longer searching for no
+      // visible gain in the facts it returned.
+      ...(isReasoningModel(RESEARCH_MODEL) ? { reasoning: { effort: 'low' as const } } : {}),
       tools: [{ type: 'web_search' }],
       // Rewritten 2026-10-04. The old prompt was tuned for employee segments
       // (it demanded agencies, laws, salary tiers, policy news). For any other
@@ -88,8 +109,8 @@ Format: dense bullet list. No intro, no conclusion. Cite source domains inline i
 async function brainstormProblems(targetMarket: string, userId: string | null): Promise<string[]> {
   try {
     const res = await openai.chat.completions.create({
-      model: AI_MODEL,
-      temperature: 0.7,
+      model: PROBLEMS_MODEL,
+      ...samplingParams(PROBLEMS_MODEL, 0.7),
       response_format: { type: 'json_object' },
       messages: [{ role: 'user', content: `Target market: "${targetMarket}"
 
@@ -104,7 +125,7 @@ Spread across different kinds of problems (health, money, time, skills, relation
 
 Return JSON: { "candidates": ["plain problem statement, max 12 words", "..."] }` }],
     })
-    logAiUsage({ userId, route: 'clarity', model: AI_MODEL, usage: res.usage })
+    logAiUsage({ userId, route: 'clarity', model: PROBLEMS_MODEL, usage: res.usage })
     const parsed = JSON.parse(res.choices[0].message.content || '{}') as { candidates?: unknown }
     return Array.isArray(parsed.candidates)
       ? parsed.candidates.filter((c): c is string => typeof c === 'string' && c.trim().length > 0).slice(0, 20)
@@ -255,11 +276,11 @@ Write the narrative now — 10 problems, ranked #1 = most urgent and most likely
 
       console.log(`[clarity] running narrative pass`)
       const narrativeRes = await openai.chat.completions.create({
-        model: AI_MODEL,
+        model: PROBLEMS_MODEL,
         messages: [{ role: 'user', content: narrativePrompt }],
-        temperature: 0.8, // Higher temp on narrative pass — we want creative depth
+        ...samplingParams(PROBLEMS_MODEL, 0.8), // higher temp on a classic model: creative depth
       })
-      logAiUsage({ userId: auth.user.id, route: 'clarity', model: AI_MODEL, usage: narrativeRes.usage })
+      logAiUsage({ userId: auth.user.id, route: 'clarity', model: PROBLEMS_MODEL, usage: narrativeRes.usage })
       const narrative = narrativeRes.choices[0].message.content || ''
       console.log(`[clarity] narrative returned ${narrative.length} chars`)
 
@@ -307,12 +328,12 @@ ${BANNED_WORDS_RULE}`
 
       console.log(`[clarity] running extraction pass`)
       const extractRes = await openai.chat.completions.create({
-        model: AI_MODEL,
+        model: PROBLEMS_MODEL,
         messages: [{ role: 'user', content: extractPrompt }],
         response_format: { type: 'json_object' },
-        temperature: 0.3, // Low temp — we want faithful extraction, not creativity
+        ...samplingParams(PROBLEMS_MODEL, 0.3), // low temp on a classic model: faithful extraction
       })
-      logAiUsage({ userId: auth.user.id, route: 'clarity', model: AI_MODEL, usage: extractRes.usage })
+      logAiUsage({ userId: auth.user.id, route: 'clarity', model: PROBLEMS_MODEL, usage: extractRes.usage })
       let content = extractRes.choices[0].message.content || '{}'
 
       // ── Banned word scan on extracted JSON ──────────────────────────────
@@ -320,16 +341,16 @@ ${BANNED_WORDS_RULE}`
       if (bannedFound.length > 0) {
         console.warn(`[clarity] Banned words found: ${bannedFound.join(', ')} — running auto-correction`)
         const correctionRes = await openai.chat.completions.create({
-          model: AI_MODEL,
+          model: PROBLEMS_MODEL,
           messages: [
             { role: 'user', content: extractPrompt },
             { role: 'assistant', content: content },
             { role: 'user', content: buildCorrectionPrompt(content, bannedFound) },
           ],
           response_format: { type: 'json_object' },
-          temperature: 0.3,
+          ...samplingParams(PROBLEMS_MODEL, 0.3),
         })
-        logAiUsage({ userId: auth.user.id, route: 'clarity', model: AI_MODEL, usage: correctionRes.usage })
+        logAiUsage({ userId: auth.user.id, route: 'clarity', model: PROBLEMS_MODEL, usage: correctionRes.usage })
         content = correctionRes.choices[0].message.content || content
       }
 

@@ -68,18 +68,28 @@ const STEP_KEYS: Step[] = ['market', 'problem', 'solution', 'validate']
 
 // ── Sub-messages per loading context ─────────────────────────────────────────
 const SUB_MESSAGES: Record<string, string[]> = {
+  // ~75s on gpt-5.6-terra (was ~30s on gpt-4o). At 2.2s a line this list
+  // cycles every ~40s, so it plays about twice. No progress-style lines
+  // ("halfway", "almost done"): on the second pass they would be wrong.
   'Finding the biggest problems for your market…': [
+    'Usually takes about a minute. Worth the wait, promise…',
     'Researching real conversations sa market mo…',
-    'Scanning Facebook groups, Reddit, at forums…',
-    'Pulling specific programs, agencies, at benefits relevant sa kanila…',
-    'Writing the full narrative — bawat problema, may kwento…',
+    'Scanning Reddit, forums, at community posts…',
+    'Listing the problems people in this market deal with every day…',
+    'Checking what they already spend money on to fix them…',
     'Looking for problems people will actually pay to fix…',
     'Filtering out ideas your tita would say "nice lang"…',
-    'Finding where people are already spending money…',
-    'Pulling overheard quotes — what they actually say sa kapwa nila…',
+    'Dropping problems na hindi kayang ayusin ng isang ebook…',
     'Avoiding "passion projects" na walang buyers…',
+    'Writing the full story behind each problem…',
+    'Pulling overheard quotes, what they actually say sa kapwa nila…',
+    'Ranking by urgency at willingness to pay…',
+    'Konting tiis pa, sulit to…',
+    'Double-checking each problem is specific to your market…',
+    'Making each problem line clear in 3 seconds…',
     'Structuring everything into clean cards…',
     'Locking in problems that hurt… (and pay)',
+    'Making sure every card is something you can build an ebook on…',
   ],
   'Coming up with unique solution names for you…': [
     'Turning your idea into something that doesn\'t sound like a thesis title…',
