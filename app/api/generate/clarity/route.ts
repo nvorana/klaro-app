@@ -19,34 +19,46 @@ import { requireUser } from '@/lib/apiAuth'
 // agency behaviors, current issues). This closes the ChatGPT-with-browsing
 // gap that makes outputs feel generic. Failures are non-fatal — the prompt
 // still works without research context.
+// Hard-pinned to an OpenAI model id: openaiDirect never routes, so a
+// namespaced OpenRouter id (openai/gpt-4o) would be rejected here.
+const RESEARCH_MODEL = process.env.AI_RESEARCH_MODEL || 'gpt-4o'
+
 async function researchNiche(targetMarket: string, userId: string | null): Promise<string> {
   try {
     const research = await openaiDirect.responses.create({
-      // Hard-pinned to an OpenAI model id: openaiDirect never routes, so a
-      // namespaced OpenRouter id (openai/gpt-4o) would be rejected here.
-      model: process.env.AI_RESEARCH_MODEL || 'gpt-4o',
+      model: RESEARCH_MODEL,
       tools: [{ type: 'web_search' }],
-      input: `You are a researcher gathering raw, specific facts about this Filipino market segment so a marketer can build a product for them. Search the web and return a dense fact dump.
+      // Rewritten 2026-10-04. The old prompt was tuned for employee segments
+      // (it demanded agencies, laws, salary tiers, policy news). For any other
+      // market it dragged the search toward public debates: "Dog owner in the
+      // Philippines" came back as LGU pet ordinances, stray-dog policy and
+      // tourists complaining about dog owners. Those are problems OTHER people
+      // have with the market, not problems the market would pay to solve.
+      input: `You are researching a Filipino market so a creator can write a practical ebook that solves a real problem for them. Search the web and return a dense fact dump.
 
 Target market: "${targetMarket}"
 
+Focus on problems these people experience in their OWN lives and want help with. Not complaints other people make about them, and not public debates about them.
+
 Find and list:
-- Real concerns, frustrations, or money problems people in this group are publicly talking about right now (Reddit r/Philippines, FB groups, news, blog comments)
-- Specific programs, benefits, agencies, schemes, or laws relevant to them (use real names — GSIS, SSS, Pag-IBIG, PhilHealth, CSC, DBM, DepEd, DOH, etc. — wherever applicable)
-- Recent news, policy changes, or events in the last 12 months that affect them
-- Salary tiers, ranks, or income brackets typical for this group, only if publicly documented
-- Specific places they hang out online (named Facebook groups, subreddits, Viber/Telegram patterns)
-- Things they're already paying for (courses, seminars, apps, services)
-- Direct quotes or paraphrased sentiments from forums/comments — what they ACTUALLY say
+- What they ask for help with: recurring questions and struggles in their communities (Reddit, forums, Facebook group posts, Q&A sites, blog comments)
+- What they already spend money or time on to fix those problems (products, services, courses, professionals, apps)
+- What makes these problems harder or different in the Philippines (costs, climate, availability, local brands and services)
+- Typical budgets, income levels, or salary grades, only if relevant and publicly documented
+- Programs, agencies, or laws ONLY if they directly affect this group's day-to-day life. Many markets have none. Skip this if so.
+- Where they gather online. Name a community only if you actually found it.
+- Direct quotes or paraphrased sentiments about their own struggles: what they ACTUALLY say
 - Sensitivity flags (politically charged topics, taboo subjects)
 
-Format: dense bullet list. No intro, no conclusion. Cite source domains inline in parens where useful (e.g. "(reddit.com/r/Philippines)"). 400-700 words. Skip anything you can't verify.`,
+Format: dense bullet list. No intro, no conclusion. Cite source domains inline in parens where useful (e.g. "(reddit.com/r/Philippines)"). 400-700 words. Skip anything you can't verify. If a category has nothing relevant for this market, leave it out rather than stretching.`,
     })
     const researchUsage = (research as { usage?: { input_tokens?: number; output_tokens?: number; total_tokens?: number } }).usage
     logAiUsage({
       userId,
       route: 'clarity',
-      model: AI_MODEL,
+      // Was AI_MODEL, which mislabelled this call whenever AI_RESEARCH_MODEL
+      // was set to something else.
+      model: RESEARCH_MODEL,
       usage: researchUsage
         ? {
             prompt_tokens: researchUsage.input_tokens,
@@ -63,6 +75,62 @@ Format: dense bullet list. No intro, no conclusion. Cite source domains inline i
   }
 }
 
+// ── Candidate brainstorm (runs in parallel with the research) ────────────────
+// Added 2026-10-04. When the research was the only input, it decided WHICH
+// problems made the list: one Reddit thread became one "problem", and asking
+// the narrative pass to filter with a buyer test did not stop it. Dog owners
+// got stray-dog policy and animal-welfare enforcement; working moms got
+// "energy-related service disruptions". The model's own knowledge of a market
+// (potty training, ticks, picky eaters) is far better at this than one web
+// search, so it now proposes the candidates and the research supplies the
+// evidence. Runs alongside researchNiche, so it adds no wall-clock time.
+// Failures are non-fatal: an empty list falls back to research-only.
+async function brainstormProblems(targetMarket: string, userId: string | null): Promise<string[]> {
+  try {
+    const res = await openai.chat.completions.create({
+      model: AI_MODEL,
+      temperature: 0.7,
+      response_format: { type: 'json_object' },
+      messages: [{ role: 'user', content: `Target market: "${targetMarket}"
+
+List 15 problems people in this market personally struggle with in their own day-to-day life and would pay for help solving. Think like someone who has been part of this market for years, not like a journalist.
+
+BUYER TEST: every item must pass all three.
+1. They personally experience it. Not a problem other people have with them. Not a public, policy, or social issue.
+2. A practical, beginner-friendly ebook could solve it or make it much easier.
+3. People in this market already spend money, time, or effort trying to fix it.
+
+Spread across different kinds of problems (health, money, time, skills, relationships, results, daily routines). Be concrete: "Tomato plants keep dying in the summer heat", not "Gardening challenges".
+
+Return JSON: { "candidates": ["plain problem statement, max 12 words", "..."] }` }],
+    })
+    logAiUsage({ userId, route: 'clarity', model: AI_MODEL, usage: res.usage })
+    const parsed = JSON.parse(res.choices[0].message.content || '{}') as { candidates?: unknown }
+    return Array.isArray(parsed.candidates)
+      ? parsed.candidates.filter((c): c is string => typeof c === 'string' && c.trim().length > 0).slice(0, 20)
+      : []
+  } catch (err) {
+    console.warn('[clarity] candidate brainstorm failed, falling back to research only:', err)
+    return []
+  }
+}
+
+// ── House style the prompts ask for but cannot guarantee ────────────────────
+// gpt-4o still emits em dashes and 'yan / 'yung often enough to matter, so
+// enforce both in code on every string the student will see.
+function enforceHouseStyle(value: unknown): unknown {
+  if (typeof value === 'string') {
+    return value
+      .replace(/\s*—\s*/g, ', ')
+      .replace(/(^|[\s"(])[''](yan|yung|yun|di|wag|to|nung|pag)\b/gi, '$1$2')
+  }
+  if (Array.isArray(value)) return value.map(enforceHouseStyle)
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, enforceHouseStyle(v)]))
+  }
+  return value
+}
+
 // ── Few-shot exemplar (anchors the model to the depth we want) ───────────────
 // Different niche on purpose — we want pattern, not content, to transfer.
 const PROBLEM_EXEMPLAR = `EXAMPLE OF THE DEPTH AND SPECIFICITY WE WANT (different niche — DO NOT COPY THE CONTENT, only the depth and shape):
@@ -72,15 +140,15 @@ Target market: Filipino OFW nurses in the Middle East
 Example item:
 {
   "rank": 1,
-  "problem": "Naipon pero hindi tumutubo — savings nakatengga sa bank account ng dalawang dekada",
-  "urgency": "Karamihan ng OFW nurses sa Saudi at UAE nag-aabono ng family bills sa Pilipinas habang nag-iipon din para sa retirement at sa bahay. Pero ang ipon nakatengga sa ATM ng BDO o BPI Pinas — kinakain ng inflation, walang growth. Pagdating ng end-of-contract, biglang gigising sila na ang 15-year ipon, kasya na lang sa half-renovation ng ancestral house.",
-  "proof_of_demand": "Aktibo ang mga private FB groups tulad ng 'Pinoy Nurses in UAE Investing 101' at 'OFW Nurse Money Talks' — usapan tungkol sa Pag-IBIG MP2, mutual funds, COL Financial, at GCash GStocks. Pumipila rin sila sa Philippine Embassy financial literacy sessions tuwing weekend off, at marami nag-e-enroll sa Bo Sanchez TrulyRichClub via remote.",
+  "problem": "Savings sitting idle in the bank for years, eaten by inflation",
+  "urgency": "Karamihan ng OFW nurses sa Saudi at UAE nag-aabono ng family bills sa Pilipinas habang nag-iipon din para sa retirement at sa bahay. Pero ang ipon nakatengga sa ATM ng BDO o BPI Pinas, kinakain ng inflation, walang growth. Pagdating ng end-of-contract, biglang gigising sila na ang 15-year ipon, kasya na lang sa half-renovation ng ancestral house.",
+  "proof_of_demand": "OFW and nurse investing groups on Facebook are full of the same questions about Pag-IBIG MP2, mutual funds, COL Financial, at GCash GStocks. Pumipila rin sila sa Philippine Embassy financial literacy sessions tuwing weekend off, at marami nag-e-enroll sa Bo Sanchez TrulyRichClub via remote.",
   "willingness_to_pay": "High",
   "ease_of_selling": "Easy",
   "common_phrases": "Sis, anong investment ba kayang gawin habang nasa duty? Wala akong panahon mag-aral ng stocks."
 }
 
-Notice: The problem is a PAIN, not a topic. The urgency names specific places (Saudi, UAE), specific banks (BDO, BPI), and specific consequences. The proof of demand names ACTUAL groups, programs, and brands by name. The quote sounds overheard. THAT is the bar.`
+Notice: The problem line says plainly WHAT the problem is, so anyone gets it in 3 seconds. The raw feeling lives in the quote, not in the problem line. The urgency names specific places (Saudi, UAE), specific banks (BDO, BPI), and specific consequences. The proof of demand names real programs and brands, and describes the groups instead of inventing group names. The quote sounds overheard. THAT is the bar.`
 
 // ── Banned word rules injected into every prompt ─────────────────────────────
 const BANNED_WORDS_RULE = `
@@ -120,11 +188,24 @@ export async function POST(request: NextRequest) {
       // "preserve all specifics, add no new facts" rules.
 
       console.log(`[clarity] problems step — running niche research for "${target_market}"`)
-      const research = await researchNiche(target_market, auth.user.id)
-      console.log(`[clarity] research returned ${research.length} chars`)
+      const [research, candidates] = await Promise.all([
+        researchNiche(target_market, auth.user.id),
+        brainstormProblems(target_market, auth.user.id),
+      ])
+      console.log(`[clarity] research returned ${research.length} chars, ${candidates.length} candidates`)
+
+      const candidatesBlock = candidates.length
+        ? `CANDIDATE PROBLEMS: from long experience with this market. Every one already passes the buyer test below.
+
+${candidates.map((c, i) => `${i + 1}. ${c}`).join('\n')}
+
+Build your top 10 mainly from these candidates, and use the research as evidence for them. You may swap in a problem that only appears in the research if it clearly passes the buyer test.
+
+`
+        : ''
 
       const researchBlock = research
-        ? `RESEARCH CONTEXT — real facts pulled from the web about this exact niche. USE THESE. Reference specific programs, groups, salary tiers, and behaviors named here.
+        ? `RESEARCH CONTEXT: real facts from a quick web search about this niche. Use them as EVIDENCE and for specific details. This is only what one search surfaced. It is NOT the full list of this market's problems, so do not build your list only from it, and skip anything in it that fails the buyer test below.
 
 <research>
 ${research}
@@ -137,15 +218,26 @@ ${research}
       // Mirrors the manual ChatGPT workshop prompt that produces vivid output.
       // Word choice tuned: "problems and frustrations" (emotional pair),
       // "why they'd like to solve immediately" (motivation story, not consequence).
-      const narrativePrompt = `${researchBlock}I'd like to create an e-book that helps ${target_market}.
+      const narrativePrompt = `${candidatesBlock}${researchBlock}I'd like to create an e-book that helps ${target_market}.
 
-Help me find the biggest and most urgent problems that this market has — the ones with the highest demand for solutions. Provide the top 10 specific and detailed problems and frustrations they face. Arrange them in order of urgency and demand for a solution.
+Help me find the biggest and most urgent problems that this market has, the ones with the highest demand for solutions. Provide the top 10 specific and detailed problems and frustrations they face. Arrange them in order of urgency and demand for a solution.
+
+Start from your own knowledge of what people in this market go through day to day. Then use the research to add real evidence and specifics.
+
+BUYER TEST: only include a problem if ALL three are true.
+1. People in this market personally experience it in their own life. Not a problem other people have with them. Not a public, policy, or social issue about them.
+2. A practical, beginner-friendly ebook could solve it or make it much easier.
+3. People in this market already spend money, time, or effort trying to fix it.
+Drop anything that fails, even if it appears in the research.
+
+Cover a range of different kinds of problems (for example health, money, time, skills, relationships, results). Not several versions of the same worry.
 
 For each of the 10, write a detailed insight that covers:
-- The frustration itself, described the way someone in this market would actually describe it (pain, not topic — never a how-to)
-- WHY they'd like to solve this problem immediately — the internal pull, not just the consequence. What's eating them about it right now?
-- Specific evidence of demand — named Facebook groups, courses, agencies, programs, products, or behaviors people in THIS niche are already doing about it. Use real names from the research context above.
-- One sentence this person would actually say out loud to a peer inside their world — overheard, not staged. Use real terms (agency names, ranks, benefit names) when relevant.
+- The problem stated plainly: what it is, in words a reader understands in 3 seconds
+- The frustration itself, described the way someone in this market would actually describe it (pain, not topic, never a how-to)
+- WHY they'd like to solve this problem immediately: the internal pull, not just the consequence. What's eating them about it right now?
+- Specific evidence of demand: what people in THIS niche are already doing or buying about it. Name groups, courses, products, programs, or brands only if they appear in the research or you are certain they exist. Otherwise describe the behavior without a name. Never invent names.
+- One sentence this person would actually say out loud to a peer inside their world. Overheard, not staged. Use real terms from their world when relevant.
 
 Write in dense, vivid prose. NO bullets, NO numbered fields, NO labels — just narrative. About 100-150 words per problem. Be specific. Name names. Quote what people say.
 
@@ -154,6 +246,7 @@ CRITICAL:
 - Specific to THIS niche only. If a line would read the same for "Filipino professionals" in general, rewrite with niche-specific references.
 - Do NOT invent peso figures or statistics. Only use numbers from the research context.
 - Natural Taglish — ~70% English, ~30% Tagalog at the word level. Tagalog in emotional beats. Avoid deep/literary Tagalog ("nahihirapan", "kakulangan", "pangangailangan").
+- No em dashes. No apostrophes on shortened Tagalog words: write yan, yung, di, wag, to (not 'yan, 'yung, 'di, 'wag, 'to).
 ${BANNED_WORDS_RULE}
 
 ${PROBLEM_EXEMPLAR}
@@ -184,7 +277,7 @@ Extract into this EXACT JSON shape — the key must be "items":
   "items": [
     {
       "rank": 1,
-      "problem": "The pain statement in one short line (pain, not topic). Pull directly from the narrative — preserve any Taglish or specific terms used.",
+      "problem": "A plain statement of WHAT the problem is, max 12 words, that a reader understands at a glance (e.g. 'Savings sitting idle in the bank, eaten by inflation'). English or light Taglish. Pain, not topic. It is NOT a quote and must not repeat common_phrases. This line is saved as the student's core problem and reused by every later module, so it must make sense on its own.",
       "urgency": "2-3 sentences pulled from the narrative explaining why they want to solve it now. Preserve all named programs, agencies, salary tiers, situations.",
       "proof_of_demand": "2-3 sentences pulled from the narrative naming what they're already doing about it — specific groups, courses, products, behaviors.",
       "willingness_to_pay": "Low | Medium | High",
@@ -197,10 +290,19 @@ Extract into this EXACT JSON shape — the key must be "items":
 EXTRACTION RULES — strict:
 1. Use ONLY content from the narrative. Do NOT invent new facts, agencies, numbers, or quotes. If the narrative didn't mention it, don't add it.
 2. Preserve all specifics — named agencies, FB groups, salary tiers, benefit names, programs, brand names. Do not generalize.
-3. Preserve the Taglish phrasing from the narrative. Do NOT translate to English.
+3. Preserve the Taglish phrasing from the narrative in urgency, proof_of_demand and common_phrases. Do NOT translate those to English. (The problem line is the exception: it must be a plain statement, see above.)
 4. Order should match the narrative's ranking (#1 = most urgent / highest demand).
 5. Return exactly 10 items.
-6. Assign willingness_to_pay and ease_of_selling based on the narrative's signal — high if emotionally urgent + tied to money/health/career; easy if the problem fits a short practical ebook.
+6. willingness_to_pay:
+   - High: it costs them money, income, or health right now AND people in this market already pay to fix it
+   - Medium: a real ongoing struggle, but people mostly try free fixes
+   - Low: an annoyance, or something they rarely spend on
+   Being emotional or health-related alone does NOT make it High.
+7. ease_of_selling:
+   - Easy: a short practical ebook can clearly solve it
+   - Moderate: an ebook helps, but it also needs practice, time, or other help
+   - Hard: an ebook can barely help (needs a professional, a law change, or someone else to change)
+8. No em dashes anywhere. No apostrophes on shortened Tagalog words (yan, yung, di, wag, to).
 ${BANNED_WORDS_RULE}`
 
       console.log(`[clarity] running extraction pass`)
@@ -232,7 +334,7 @@ ${BANNED_WORDS_RULE}`
       }
 
       // ── Parse + server-side re-rank ─────────────────────────────────────
-      const parsed = JSON.parse(content) as Record<string, unknown>
+      const parsed = enforceHouseStyle(JSON.parse(content)) as Record<string, unknown>
       let items: unknown[] = Array.isArray(parsed.items) ? parsed.items : []
       if (items.length === 0) {
         // Defensive: try any other array key in case extractor used a different name
