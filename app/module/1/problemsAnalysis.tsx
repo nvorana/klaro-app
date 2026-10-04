@@ -25,14 +25,14 @@ export interface Problem {
 }
 
 // ── Problems analysis progress ───────────────────────────────────────────────
-// The problems step takes 3-4 minutes (gpt-5.6-sol researching and writing,
-// then the cards pass), so it gets a real progress screen instead of the
+// The problems step takes ~1.5 minutes (gpt-5.6-sol searching and writing the
+// cards in one pass), so it gets a real progress screen instead of the
 // rotating-message loader. Progress comes from what the server is actually
-// doing: each web search, then each "## Problem N" heading as Sol starts it,
-// then the cards pass. Only the final stretch is time-based.
+// doing: each web search, then each card as Sol writes it, then a short
+// finishing step (source checks). Only that last stretch is time-based.
 
 export const TOTAL_PROBLEMS = 10
-const CHARS_PER_PROBLEM = 4000 // Sol wrote ~42k chars for 10 problems
+const CHARS_PER_PROBLEM = 1500 // one-pass card JSON ran ~15-16k chars for 10 problems
 
 export interface AnalysisProgress {
   phase: 'research' | 'writing' | 'organizing'
@@ -50,8 +50,14 @@ export type ReportStreamEvent =
   | { type: 'search'; count: number; query?: string }
   | { type: 'problem'; index: number; title: string }
   | { type: 'progress'; chars: number }
-  | { type: 'done'; report: string }
+  | { type: 'finalizing' }
+  | { type: 'done'; cards: ProblemCardsResult; report: string }
   | { type: 'error'; message: string }
+
+export interface ProblemCardsResult {
+  items: Problem[]
+  top_pick: { rank: number; reason: string } | null
+}
 
 export function newAnalysisProgress(): AnalysisProgress {
   const now = Date.now()
@@ -64,6 +70,7 @@ export function newAnalysisProgress(): AnalysisProgress {
 export function applyReportEvent(p: AnalysisProgress, ev: ReportStreamEvent): AnalysisProgress {
   if (ev.type === 'search') return { ...p, searches: ev.count, lastQuery: ev.query ?? p.lastQuery }
   if (ev.type === 'progress') return { ...p, chars: ev.chars }
+  if (ev.type === 'finalizing') return { ...p, phase: 'organizing', phaseStartedAt: Date.now() }
   if (ev.type === 'problem') {
     return {
       ...p,
@@ -85,22 +92,22 @@ function analysisPercent(p: AnalysisProgress, now: number): number {
   if (p.phase === 'writing') {
     const done = Math.min(p.problemIndex, TOTAL_PROBLEMS) - 1
     const within = Math.min(0.95, Math.max(0, p.chars - p.charsAtProblemStart) / CHARS_PER_PROBLEM)
-    return Math.min(86, 30 + 56 * ((done + within) / TOTAL_PROBLEMS))
+    return Math.min(95, 30 + 65 * ((done + within) / TOTAL_PROBLEMS))
   }
-  // Cards pass: 40-70s with no events (39s and 66s in testing), so ease toward
-  // 98% slowly enough not to sit pinned there, and let 'done' finish it.
-  return 86 + 12 * (1 - Math.exp(-((now - p.phaseStartedAt) / 1000) / 30))
+  // Finishing: source checks are instant; a banned-word rewrite (rare) can
+  // take ~30s. Ease toward 99% and let 'done' finish it.
+  return 95 + 4 * (1 - Math.exp(-((now - p.phaseStartedAt) / 1000) / 10))
 }
 
-// Reads the NDJSON stream from step 'problems_report'. Returns the report.
-export async function readReportStream(
+// Reads the NDJSON stream from step 'problems_report'. Returns the cards.
+export async function readProblemsStream(
   body: ReadableStream<Uint8Array>,
   onEvent: (ev: ReportStreamEvent) => void,
-): Promise<string> {
+): Promise<ProblemCardsResult> {
   const reader = body.getReader()
   const decoder = new TextDecoder()
   let buffer = ''
-  let report = ''
+  let cards: ProblemCardsResult | null = null
   for (;;) {
     const { value, done } = await reader.read()
     if (done) break
@@ -112,12 +119,12 @@ export async function readReportStream(
       if (!line) continue
       const ev = JSON.parse(line) as ReportStreamEvent
       if (ev.type === 'error') throw new Error(ev.message)
-      if (ev.type === 'done') report = ev.report
+      if (ev.type === 'done') cards = ev.cards
       else onEvent(ev)
     }
   }
-  if (!report) throw new Error('The market analysis did not finish. Please try again.')
-  return report
+  if (!cards) throw new Error('The market analysis did not finish. Please try again.')
+  return cards
 }
 
 export function ProblemsProgress({ progress, market }: { progress: AnalysisProgress; market: string }) {
@@ -149,8 +156,8 @@ export function ProblemsProgress({ progress, market }: { progress: AnalysisProgr
         : 'Checking signs, costs, and what people already spend',
     },
     {
-      label: 'Organizing everything into cards',
-      detail: 'Pulling out the signs, evidence, and e-book angle for each one',
+      label: 'Finishing your cards',
+      detail: 'Checking every source link against what the search found',
     },
   ]
 
@@ -213,7 +220,7 @@ export function ProblemsProgress({ progress, market }: { progress: AnalysisProgr
         </ol>
 
         <p className="mt-8 text-xs text-gray-400 leading-relaxed">
-          This deep analysis usually takes 3 to 4 minutes. Keep this tab open, sulit ang hintay.
+          This deep analysis usually takes 1 to 2 minutes. Keep this tab open, sulit ang hintay.
         </p>
       </div>
     </div>

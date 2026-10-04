@@ -9,7 +9,7 @@ import StepBar from '@/components/StepBar'
 import CopyButton from '@/components/CopyButton'
 import { CompletionBanner, UpNextCard, BackToDashboardLink } from '@/components/CompletionBanner'
 import {
-  ProblemsProgress, ProblemCard, newAnalysisProgress, applyReportEvent, readReportStream,
+  ProblemsProgress, ProblemCard, newAnalysisProgress, applyReportEvent, readProblemsStream,
   type AnalysisProgress, type Problem,
 } from './problemsAnalysis'
 
@@ -252,8 +252,8 @@ export default function Module1Page() {
   const [claritySentence, setClaritySentence] = useState('')
   const [polishingClarity, setPolishingClarity] = useState(false)
 
-  // Two requests, each with its own server time budget: the streamed Sol
-  // analysis (progress events + the report), then the cards pass.
+  // One streamed request: progress events while Sol searches and writes, then
+  // the finished cards.
   async function handleMarketNext() {
     const market = targetMarket.trim()
     if (!market) return
@@ -270,21 +270,12 @@ export default function Module1Page() {
         const json = await res.json().catch(() => ({}))
         throw new Error(json.message || json.error || 'Something went wrong.')
       }
-      const report = await readReportStream(res.body, ev =>
+      const cards = await readProblemsStream(res.body, ev =>
         setAnalysis(p => (p ? applyReportEvent(p, ev) : p)),
       )
 
-      setAnalysis(p => (p ? { ...p, phase: 'organizing', phaseStartedAt: Date.now() } : p))
-      const cardsRes = await fetch('/api/generate/clarity', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ target_market: market, step: 'problems_cards', report }),
-      })
-      const json = await cardsRes.json().catch(() => ({}))
-      if (!cardsRes.ok) throw new Error(json.message || json.error || 'Something went wrong.')
-
-      setProblems(Array.isArray(json.data) ? json.data : [])
-      setTopPick(json.top_pick ?? null)
+      setProblems(cards.items)
+      setTopPick(cards.top_pick)
       setSelectedProblem(null)
       setExpandedProblem(null)
       if (currentSolution === solutionPrefill) { setCurrentSolution(''); setSolutionPrefill('') }

@@ -3,24 +3,24 @@ import { openai, AI_MODEL } from '@/lib/openai'
 import { logAiUsage } from '@/lib/aiUsage'
 import { findBannedWords, buildCorrectionPrompt } from '@/lib/bannedWords'
 import { requireUser } from '@/lib/apiAuth'
-import { streamProblemsReport, extractProblemCards, type ReportEvent } from '@/lib/clarity/problemsReport'
+import { streamProblemCards, cardsFromReportJson, type ProblemsEvent } from '@/lib/clarity/problemsReport'
 
 // POST /api/generate/clarity
 // Body: { target_market: string, step, problem?, current_solution?, report? }
 //
-// step = 'problems_report': streams the gpt-5.6-sol market analysis as NDJSON
-//                           progress events, ending with { type: 'done', report }
-// step = 'problems_cards':  turns that report into the 10 problem cards
-// step = 'problems':        both in one request, plain JSON. Kept for a browser
-//                           still running the previous page bundle.
+// step = 'problems_report': gpt-5.6-sol researches the market and writes the 10
+//                           problem cards, streamed as NDJSON progress events
+//                           ending with { type: 'done', cards, report }
+// step = 'problems_cards':  re-normalizes a 'done' report. Only a browser still
+//                           on the previous (two-request) page bundle calls it.
+// step = 'problems':        the cards as plain JSON, no streaming. Same reason.
 // step = 'mechanisms':      returns 5 unique mechanism names for the target market + problem
 // step = 'polish':          polishes the final clarity sentence
 //
 // The problems step is in lib/clarity/problemsReport.ts; see its header for
 // why it is built the way it is.
 
-// Sol alone can take 2-3 minutes on the report; each problems_* request gets
-// this budget separately.
+// The one-pass Sol analysis runs ~70-90s; this leaves room for slow days.
 export const maxDuration = 300
 
 const BANNED_WORDS_RULE = `
@@ -52,15 +52,14 @@ export async function POST(request: NextRequest) {
 
     if (step === 'problems_report') {
       // NDJSON so the page can show real progress: each web search, then each
-      // problem as Sol starts writing it. The report itself only goes to the
-      // client in the final 'done' event, then comes back in problems_cards.
+      // card as Sol writes it, then the finished cards in the 'done' event.
       const encoder = new TextEncoder()
       const body = new ReadableStream<Uint8Array>({
         async start(controller) {
-          const send = (ev: ReportEvent | { type: 'error'; message: string }) =>
+          const send = (ev: ProblemsEvent | { type: 'error'; message: string }) =>
             controller.enqueue(encoder.encode(JSON.stringify(ev) + '\n'))
           try {
-            for await (const ev of streamProblemsReport(target_market, auth.user.id, request.signal)) send(ev)
+            for await (const ev of streamProblemCards(target_market, auth.user.id, request.signal)) send(ev)
           } catch (err) {
             console.error('[clarity] problems_report failed:', err)
             send({ type: 'error', message: err instanceof Error ? err.message : 'The market analysis failed. Please try again.' })
@@ -82,17 +81,15 @@ export async function POST(request: NextRequest) {
       if (typeof report !== 'string' || report.trim().length < 500) {
         return NextResponse.json({ error: 'Missing market analysis. Please try again.' }, { status: 400 })
       }
-      const cards = await extractProblemCards(target_market, report, auth.user.id)
+      const cards = cardsFromReportJson(report)
       return NextResponse.json({ data: cards.items, top_pick: cards.top_pick })
     }
 
     if (step === 'problems') {
-      let fullReport = ''
-      for await (const ev of streamProblemsReport(target_market, auth.user.id, request.signal)) {
-        if (ev.type === 'done') fullReport = ev.report
+      for await (const ev of streamProblemCards(target_market, auth.user.id, request.signal)) {
+        if (ev.type === 'done') return NextResponse.json({ data: ev.cards.items, top_pick: ev.cards.top_pick })
       }
-      const cards = await extractProblemCards(target_market, fullReport, auth.user.id)
-      return NextResponse.json({ data: cards.items, top_pick: cards.top_pick })
+      return NextResponse.json({ error: 'Generation failed' }, { status: 500 })
     }
 
     if (step === 'mechanisms') {
