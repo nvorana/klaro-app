@@ -132,8 +132,6 @@ export function ProblemsProgress({ progress, market }: { progress: AnalysisProgr
   const pct = Math.max(highest.current, analysisPercent(progress, now))
   useEffect(() => { highest.current = pct })
 
-  const elapsed = Math.max(0, Math.floor((now - progress.startedAt) / 1000))
-  const clock = `${Math.floor(elapsed / 60)}:${String(elapsed % 60).padStart(2, '0')}`
   const order = ['research', 'writing', 'organizing'] as const
   const current = order.indexOf(progress.phase)
 
@@ -165,9 +163,8 @@ export function ProblemsProgress({ progress, market }: { progress: AnalysisProgr
         </h2>
 
         {/* Progress bar */}
-        <div className="flex items-end justify-between mb-2">
+        <div className="mb-2">
           <span className="text-3xl font-black text-[#1A1F36] tabular-nums">{Math.floor(pct)}%</span>
-          <span className="text-xs text-gray-400 tabular-nums">{clock}</span>
         </div>
         <div
           className="h-2.5 w-full rounded-full bg-gray-200 overflow-hidden"
