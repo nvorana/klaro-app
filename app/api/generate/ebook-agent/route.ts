@@ -6,6 +6,7 @@ import { buildVocabularyHint } from '@/lib/preferredVocabulary'
 import { getMarketLanguageHintForUser } from '@/lib/marketLanguage'
 import { editChapter, type ChapterShape } from '@/lib/ebookEditor'
 import { createClient } from '@/lib/supabase/server'
+import { requireUser } from '@/lib/apiAuth'
 
 // A standard chapter is six sequential model calls plus the editor pass. On
 // gpt-5.6-sol each call takes ~15-40s, so a chapter can run 2+ minutes.
@@ -730,6 +731,15 @@ Return this exact JSON:
 
 export async function POST(request: NextRequest) {
   try {
+    // This was the one generate route without the guard (found 2026-10-05).
+    // It looked the user up only to apply the lite-workshop paywall and the
+    // ebook cap, so with no user it skipped both and kept writing: anyone with
+    // the URL could generate chapters on our OpenAI bill, past the paywall.
+    // Same guard as every other generate route (see lib/apiAuth.ts), which
+    // also blocks suspended and expired accounts.
+    const auth = await requireUser()
+    if (!auth.ok) return auth.response
+
     const body = await request.json()
     const { stage, project, data } = body as {
       stage: string
@@ -749,10 +759,10 @@ export async function POST(request: NextRequest) {
     // passes in this request speak the same niche bubble.
     const marketHint = await getMarketLanguageHintForUser()
 
-    // Resolve the user once — used for gates below and for AI usage logging.
+    // Client for the gates below; the user is already verified by requireUser.
     const supabaseAuth = await createClient()
-    const { data: { user: authUser } } = await supabaseAuth.auth.getUser()
-    const userId = authUser?.id ?? null
+    const authUser = auth.user
+    const userId = authUser.id
 
     // ── Lifetime ebook cap check (cost protection) ────────────────────────
     // Refuse outline generation if the user has already completed their
