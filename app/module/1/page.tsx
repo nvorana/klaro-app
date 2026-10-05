@@ -12,23 +12,12 @@ import {
   ProblemsProgress, ProblemCard, newAnalysisProgress, applyReportEvent, readProblemsStream,
   type AnalysisProgress, type Problem,
 } from './problemsAnalysis'
+import {
+  MechanismsProgress, MechanismCard, newMechanismsProgress, applyMechanismsEvent, readMechanismsStream,
+  type Mechanism, type MechanismsProgressState,
+} from './mechanismCards'
 
 type Step = 'warning' | 'market' | 'problem' | 'solution' | 'validate' | 'complete'
-
-interface Mechanism {
-  name: string
-  old_way_fails?: string
-  new_belief?: string
-  core_idea?: string
-  steps?: string[]
-  aha_statements?: string[]
-  positioning_line?: string
-  // legacy fallbacks
-  common_mistake?: string
-  why_it_works?: string
-  analogy?: string
-  description?: string
-}
 
 interface Validation {
   problem_validation: string
@@ -61,13 +50,6 @@ const STEP_KEYS: Step[] = ['market', 'problem', 'solution', 'validate']
 
 // ── Sub-messages per loading context ─────────────────────────────────────────
 const SUB_MESSAGES: Record<string, string[]> = {
-  'Coming up with unique solution names for you…': [
-    'Turning your idea into something that doesn\'t sound like a thesis title…',
-    'Making it sound like a system… not a random thought…',
-    'Avoiding names like "Ultimate Guide 101"…',
-    'Crafting something people can actually remember…',
-    'Adding a bit of "wow, parang legit ah…"',
-  ],
   'Analyzing your idea against the Philippine market…': [
     'Checking if this works sa Philippine market…',
     'Making sure it fits local income levels…',
@@ -190,6 +172,8 @@ export default function Module1Page() {
   const [mechanisms, setMechanisms] = useState<Mechanism[]>([])
   const [selectedMechanism, setSelectedMechanism] = useState<Mechanism | null>(null)
   const [expandedMechanismIndex, setExpandedMechanismIndex] = useState<number | null>(null)
+  const [recommendedMechanism, setRecommendedMechanism] = useState<{ rank: number; reason: string } | null>(null)
+  const [mechanismsProgress, setMechanismsProgress] = useState<MechanismsProgressState | null>(null)
   const [validation, setValidation] = useState<Validation | null>(null)
   const [loading, setLoading] = useState(false)
   const [loadingMessage, setLoadingMessage] = useState('')
@@ -298,11 +282,14 @@ export default function Module1Page() {
     }
   }
 
+  // Streamed so the progress screen can name each mechanism as Sol writes it.
+  // Sends the whole chosen problem card: the mechanisms are only as sharp as
+  // what Sol knows about why the usual fix fails.
   async function handleProblemNext() {
     if (!selectedProblem) return
     setError('')
+    setMechanismsProgress(newMechanismsProgress())
     setLoading(true)
-    setLoadingMessage('Coming up with unique solution names for you…')
     try {
       const res = await fetch('/api/generate/clarity', {
         method: 'POST',
@@ -311,24 +298,33 @@ export default function Module1Page() {
           target_market: targetMarket.trim(),
           problem: selectedProblem.problem,
           current_solution: currentSolution.trim(),
-          step: 'mechanisms',
+          problem_details: {
+            real_question: selectedProblem.real_question,
+            signs: selectedProblem.signs,
+            current_attempts: selectedProblem.current_attempts,
+            proof_of_demand: selectedProblem.proof_of_demand,
+            desired_outcome: selectedProblem.desired_outcome,
+          },
+          step: 'mechanisms_stream',
         }),
       })
-      const { data, error: apiErr } = await res.json()
-      if (apiErr) throw new Error(apiErr)
-      // data may be an array or an object wrapping an array — extract defensively
-      const mechanisms = Array.isArray(data)
-        ? data
-        : Array.isArray(Object.values(data || {}).find(v => Array.isArray(v)))
-          ? (Object.values(data).find(v => Array.isArray(v)) as Mechanism[])
-          : []
-      setMechanisms(mechanisms)
+      if (!res.ok || !res.body) {
+        const json = await res.json().catch(() => ({}))
+        throw new Error(json.message || json.error || 'Something went wrong. Please try again.')
+      }
+      const result = await readMechanismsStream(res.body, ev =>
+        setMechanismsProgress(p => (p ? applyMechanismsEvent(p, ev) : p)),
+      )
+      setMechanisms(result.items)
+      setRecommendedMechanism(result.recommended)
       setSelectedMechanism(null)
+      setExpandedMechanismIndex(null)
       setStep('solution')
-    } catch {
-      setError('Something went wrong. Please try again.')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Something went wrong. Please try again.')
     } finally {
       setLoading(false)
+      setMechanismsProgress(null)
     }
   }
 
@@ -444,6 +440,7 @@ export default function Module1Page() {
   // ── Loading screen ────────────────────────────────────────────
   if (loading) {
     if (analysis) return <ProblemsProgress progress={analysis} market={targetMarket.trim()} />
+    if (mechanismsProgress) return <MechanismsProgress progress={mechanismsProgress} problem={selectedProblem?.problem ?? ''} />
     return <PremiumLoader message={loadingMessage} />
   }
 
@@ -746,140 +743,29 @@ export default function Module1Page() {
             <div>
               <h2 className="text-xl font-bold text-[#1A1F36] mb-1">Pick your unique solution</h2>
               <p className="text-sm text-gray-500 mb-5">
-                Each one is a fully built framework — not generic advice. Pick the one that feels most like <em>you</em>.
+                Five different ways to explain why the usual fix keeps failing, each one a named framework you can build your e-book on. Tap a card to pick it.
               </p>
 
-              <div className="flex flex-col gap-3">
-                {mechanisms.map((m, i) => {
-                  const isSelected = selectedMechanism?.name === m.name
-                  const isExpanded = expandedMechanismIndex === i
-                  return (
-                    <div
-                      key={i}
-                      className={`rounded-2xl border-2 bg-white overflow-hidden transition-all ${
-                        isSelected
-                          ? 'border-[#F4B942] shadow-sm'
-                          : isExpanded
-                            ? 'border-gray-300'
-                            : 'border-gray-100'
-                      }`}
-                    >
-                      {/* ── Collapsed header — always visible, tap to expand ── */}
-                      <button
-                        onClick={() => setExpandedMechanismIndex(isExpanded ? null : i)}
-                        className="w-full text-left px-4 py-3.5 flex items-center justify-between gap-3"
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          {/* Selected indicator dot */}
-                          <div className={`w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center transition-all ${
-                            isSelected ? 'bg-[#F4B942] border-[#F4B942]' : 'border-gray-300'
-                          }`}>
-                            {isSelected && (
-                              <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
-                                <polyline points="20 6 9 17 4 12" />
-                              </svg>
-                            )}
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-base font-bold text-[#1A1F36] leading-snug">{m.name}</p>
-                            {m.positioning_line && !isExpanded && (
-                              <p className="text-xs text-gray-500 mt-0.5 leading-relaxed line-clamp-1 italic">{m.positioning_line}</p>
-                            )}
-                          </div>
-                        </div>
-                        {/* Chevron */}
-                        <svg
-                          width="16" height="16" viewBox="0 0 24 24" fill="none"
-                          stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-                          className={`text-gray-400 shrink-0 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
-                        >
-                          <polyline points="6 9 12 15 18 9" />
-                        </svg>
-                      </button>
+              {recommendedMechanism && mechanisms[recommendedMechanism.rank - 1] && (
+                <div className="mb-4 rounded-2xl bg-[#1A1F36] text-white p-4">
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-[#F4B942] mb-1">Strongest for selling your e-book</p>
+                  <p className="text-sm font-bold leading-snug mb-1.5">{mechanisms[recommendedMechanism.rank - 1].name}</p>
+                  {recommendedMechanism.reason && <p className="text-xs text-white/70 leading-relaxed">{recommendedMechanism.reason}</p>}
+                </div>
+              )}
 
-                      {/* ── Expanded details ── */}
-                      {isExpanded && (
-                        <div className="px-4 pb-4 pt-1 space-y-3 border-t border-gray-100">
-
-                          {/* ❌ Why old way fails */}
-                          {m.old_way_fails && (
-                            <div className="bg-red-50 rounded-xl px-3 py-2.5">
-                              <p className="text-[10px] font-bold text-red-400 uppercase tracking-wide mb-1">Why the old way fails</p>
-                              <p className="text-xs text-red-700 leading-relaxed">{m.old_way_fails}</p>
-                            </div>
-                          )}
-
-                          {/* 💡 New belief */}
-                          {m.new_belief && (
-                            <div className="bg-amber-50 rounded-xl px-3 py-2.5">
-                              <p className="text-[10px] font-bold text-amber-500 uppercase tracking-wide mb-1">New belief</p>
-                              <p className="text-xs text-amber-800 italic leading-relaxed">&ldquo;{m.new_belief}&rdquo;</p>
-                            </div>
-                          )}
-
-                          {/* 🧩 How it works */}
-                          {m.steps && m.steps.length > 0 && (
-                            <div>
-                              <p className="text-[10px] font-bold text-[#1A1F36] uppercase tracking-wide mb-1.5">How it works</p>
-                              <div className="flex flex-col gap-1.5">
-                                {m.steps.map((s, si) => (
-                                  <div key={si} className="flex items-start gap-2">
-                                    <span className="w-4 h-4 rounded-full bg-[#F4B942] text-[#1A1F36] text-[9px] font-black flex items-center justify-center shrink-0 mt-0.5">{si + 1}</span>
-                                    <p className="text-xs text-gray-600 leading-relaxed">{s}</p>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-                          {/* 🔥 Aha statements */}
-                          {m.aha_statements && m.aha_statements.length > 0 && (
-                            <div>
-                              <p className="text-[10px] font-bold text-[#1A1F36] uppercase tracking-wide mb-1.5">Aha statements</p>
-                              <div className="flex flex-col gap-1">
-                                {m.aha_statements.map((a, ai) => (
-                                  <p key={ai} className="text-[11px] text-[#F4B942] italic leading-relaxed">&ldquo;{a}&rdquo;</p>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-                          {/* 🎯 Positioning line */}
-                          {m.positioning_line && (
-                            <div className="bg-[#1A1F36] rounded-xl px-3 py-2.5">
-                              <p className="text-[10px] font-bold text-[#F4B942] uppercase tracking-wide mb-1">Positioning</p>
-                              <p className="text-xs text-white leading-relaxed italic">{m.positioning_line}</p>
-                            </div>
-                          )}
-
-                          {/* Legacy fallback fields */}
-                          {!m.old_way_fails && m.core_idea && (
-                            <p className="text-xs text-gray-600 leading-relaxed">
-                              <span className="font-semibold text-[#1A1F36]">Core idea: </span>{m.core_idea}
-                            </p>
-                          )}
-                          {!m.old_way_fails && m.description && (
-                            <p className="text-xs text-gray-500 leading-relaxed">{m.description}</p>
-                          )}
-
-                          {/* ── Choose / Unchoose button ── */}
-                          <button
-                            onClick={() => {
-                              setSelectedMechanism(isSelected ? null : m)
-                            }}
-                            className={`w-full mt-1 py-2.5 rounded-xl text-sm font-bold transition-all ${
-                              isSelected
-                                ? 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                                : 'bg-[#F4B942] text-[#1A1F36] hover:bg-[#e5a830] active:scale-[0.98]'
-                            }`}
-                          >
-                            {isSelected ? 'Selected — tap to change' : 'Choose This'}
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
+              <div className="flex flex-col gap-3" role="radiogroup" aria-label="Unique mechanisms">
+                {mechanisms.map((m, i) => (
+                  <MechanismCard
+                    key={i}
+                    m={m}
+                    isSelected={selectedMechanism?.name === m.name}
+                    isRecommended={recommendedMechanism?.rank === (m.rank ?? i + 1)}
+                    isOpen={expandedMechanismIndex === i}
+                    onSelect={() => setSelectedMechanism(m)}
+                    onToggle={() => setExpandedMechanismIndex(expandedMechanismIndex === i ? null : i)}
+                  />
+                ))}
               </div>
             </div>
           )}

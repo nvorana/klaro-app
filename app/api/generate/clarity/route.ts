@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { openai, AI_MODEL } from '@/lib/openai'
 import { logAiUsage } from '@/lib/aiUsage'
-import { findBannedWords, buildCorrectionPrompt } from '@/lib/bannedWords'
 import { requireUser } from '@/lib/apiAuth'
 import { streamProblemCards, cardsFromReportJson, type ProblemsEvent } from '@/lib/clarity/problemsReport'
+import { streamMechanisms, type MechanismInput, type MechanismsEvent } from '@/lib/clarity/mechanisms'
 
 // POST /api/generate/clarity
 // Body: { target_market: string, step, problem?, current_solution?, report? }
@@ -14,7 +14,9 @@ import { streamProblemCards, cardsFromReportJson, type ProblemsEvent } from '@/l
 // step = 'problems_cards':  re-normalizes a 'done' report. Only a browser still
 //                           on the previous (two-request) page bundle calls it.
 // step = 'problems':        the cards as plain JSON, no streaming. Same reason.
-// step = 'mechanisms':      returns 5 unique mechanism names for the target market + problem
+// step = 'mechanisms_stream': gpt-5.6-sol writes 5 unique mechanisms for the chosen
+//                           problem, streamed as NDJSON (lib/clarity/mechanisms.ts)
+// step = 'mechanisms':      the same as plain JSON, for a browser on the previous bundle
 // step = 'polish':          polishes the final clarity sentence
 //
 // The problems step is in lib/clarity/problemsReport.ts; see its header for
@@ -23,23 +25,12 @@ import { streamProblemCards, cardsFromReportJson, type ProblemsEvent } from '@/l
 // The one-pass Sol analysis runs ~70-90s; this leaves room for slow days.
 export const maxDuration = 300
 
-const BANNED_WORDS_RULE = `
-LANGUAGE RULES — MANDATORY:
-Never use these words or phrases in any output:
-HARD BAN: unlock, unleash, discover, transform your life, revolutionize, ultimate guide, game-changing, next-level, powerful secrets, tap into, harness, ignite, amplify, supercharge
-SOFT BAN (avoid unless truly necessary): maximize, optimize, elevate, breakthrough, leverage
-
-Write in market-native language — practical, conversational, like a knowledgeable friend talking to another Filipino. NOT a TED Talk. NOT a LinkedIn post.
-❌ AI style: "Unlock your full potential with this powerful method."
-✅ Market style: "Ganito mo magagawa ito… kahit busy ka pa."
-`
-
 export async function POST(request: NextRequest) {
   try {
     const auth = await requireUser()
     if (!auth.ok) return auth.response
 
-    const { target_market, step, problem, current_solution, report } = await request.json()
+    const { target_market, step, problem, current_solution, report, problem_details } = await request.json()
 
     if (!target_market || !step) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
@@ -92,69 +83,57 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Generation failed' }, { status: 500 })
     }
 
-    if (step === 'mechanisms') {
+    if (step === 'mechanisms' || step === 'mechanisms_stream') {
       if (!problem) {
         return NextResponse.json({ error: 'Missing problem for mechanism generation' }, { status: 400 })
       }
 
-      const genericSolutionContext = current_solution
-        ? `Current common/generic solution people use: ${current_solution}`
-        : `Current common/generic solution: (not specified — assume the most widely-used conventional approach for this problem)`
+      // The whole chosen problem card, not just its title: the mechanisms
+      // are only as sharp as what Sol knows about why the usual fix fails.
+      const d = (problem_details && typeof problem_details === 'object' ? problem_details : {}) as Record<string, unknown>
+      const text = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : undefined)
+      const input: MechanismInput = {
+        targetMarket: target_market,
+        problem,
+        currentSolution: text(current_solution),
+        realQuestion: text(d.real_question),
+        signs: Array.isArray(d.signs) ? d.signs.filter((x): x is string => typeof x === 'string').slice(0, 8) : undefined,
+        currentAttempts: text(d.current_attempts),
+        proofOfDemand: text(d.proof_of_demand),
+        desiredOutcome: text(d.desired_outcome),
+      }
 
-      prompt = `Act as a world-class direct response copywriter and best-selling non-fiction author.
+      // Plain JSON, for a browser still on the previous page bundle.
+      if (step === 'mechanisms') {
+        for await (const ev of streamMechanisms(input, auth.user.id, request.signal)) {
+          if (ev.type === 'done') return NextResponse.json({ data: ev.cards.items, recommended: ev.cards.recommended })
+        }
+        return NextResponse.json({ error: 'Generation failed' }, { status: 500 })
+      }
 
-Your task is to create 5 powerful, marketable Unique Mechanisms for a non-fiction digital product.
-
-INPUT:
-- Target Market: ${target_market}
-- Problem: ${problem}
-- ${genericSolutionContext}
-
-INSTRUCTIONS FOR EACH MECHANISM:
-1. First, identify WHY the common solution is flawed, ineffective, or incomplete. Be specific and emotionally sharp.
-2. Introduce a NEW BELIEF that challenges what most people think about this problem.
-   Use this structure: "Most people think [X]… but the truth is [Y]."
-3. Create a UNIQUE MECHANISM that:
-   - Feels new and different (NOT a rewording of common advice)
-   - Is easy to understand
-   - Sounds like a named system, method, or framework
-4. Give the mechanism a NAME that is:
-   - Memorable and simple
-   - Marketable (usable in ads, e-book titles, hooks)
-   - Specific enough to feel proprietary
-5. Explain HOW the mechanism works in exactly 3–5 simple, actionable steps
-6. Create exactly 3 "aha statements" — short, quotable, emotionally punchy insights
-7. Write a short positioning statement: "This is not about [old way]… this is about [new way]."
-
-QUALITY FILTER — each mechanism must pass ALL of these:
-- Is this NEW? (not a slight rewording of common advice)
-- Is this MEMORABLE? (would someone repeat this at dinner?)
-- Is this MARKETABLE? (could this be a paid product title?)
-If it fails any test, generate a better one.
-
-Return a JSON object with this EXACT structure — the key must be "items":
-{
-  "items": [
-    {
-      "name": "The [Memorable Name] Method/System/Framework",
-      "old_way_fails": "Specific reason why the common solution is flawed or incomplete",
-      "new_belief": "Most people think [X]… but the truth is [Y].",
-      "core_idea": "What makes this mechanism fundamentally different",
-      "steps": ["Step 1 — specific action", "Step 2 — specific action", "Step 3 — specific action"],
-      "aha_statements": ["Punchy insight 1", "Punchy insight 2", "Punchy insight 3"],
-      "positioning_line": "This is not about [old way]… this is about [new way]."
-    }
-  ]
-}
-
-Return exactly 5 items. Make them simple, emotionally compelling, and easy to explain to a beginner.
-
-LANGUAGE RULES — follow strictly:
-1. "name" and "positioning_line" MUST be in English. These are product/brand names and marketing statements — they must be universally marketable.
-2. All other fields (old_way_fails, new_belief, steps, aha_statements) should be written in natural, conversational Taglish — the way a real Filipino actually talks. Mix English and Tagalog naturally, like how someone would say it in a casual conversation.
-3. NEVER use deep, formal, or literary Tagalog (e.g. "kapansin-pansin", "pagkakataon", "pangangailangan", "nakatuon", "natutumbok"). Use everyday Filipino words that any Pinoy would say out loud.
-4. A good test: if a Filipino would feel awkward saying it out loud in conversation, rewrite it.
-${BANNED_WORDS_RULE}`
+      // NDJSON so the page can show each mechanism's name as Sol writes it.
+      const encoder = new TextEncoder()
+      const body = new ReadableStream<Uint8Array>({
+        async start(controller) {
+          const send = (ev: MechanismsEvent | { type: 'error'; message: string }) =>
+            controller.enqueue(encoder.encode(JSON.stringify(ev) + '\n'))
+          try {
+            for await (const ev of streamMechanisms(input, auth.user.id, request.signal)) send(ev)
+          } catch (err) {
+            console.error('[clarity] mechanisms_stream failed:', err)
+            send({ type: 'error', message: err instanceof Error ? err.message : 'Something went wrong. Please try again.' })
+          } finally {
+            controller.close()
+          }
+        },
+      })
+      return new Response(body, {
+        headers: {
+          'Content-Type': 'application/x-ndjson; charset=utf-8',
+          'Cache-Control': 'no-cache, no-transform',
+          'X-Accel-Buffering': 'no',
+        },
+      })
     }
 
     if (step === 'polish') {
@@ -188,71 +167,7 @@ Return JSON: { "sentence": "..." }`
       return NextResponse.json({ sentence: polished.sentence || '' })
     }
 
-    const completion = await openai.chat.completions.create({
-      model: AI_MODEL,
-      messages: [{ role: 'user', content: prompt }],
-      response_format: { type: 'json_object' },
-      temperature: 0.7,
-    })
-    logAiUsage({ userId: auth.user.id, route: 'clarity', model: AI_MODEL, usage: completion.usage })
-
-    let content = completion.choices[0].message.content || '{}'
-
-    // ── Post-generation banned word scan ──────────────────────────────────────
-    // If the AI slipped any banned words into its output, auto-correct before
-    // returning to the user. One silent correction pass — invisible to the user.
-    const bannedFound = findBannedWords(content)
-    if (bannedFound.length > 0) {
-      console.warn(`[clarity] Banned words found: ${bannedFound.join(', ')} — running auto-correction`)
-      const correctionCompletion = await openai.chat.completions.create({
-        model: AI_MODEL,
-        messages: [
-          { role: 'user', content: prompt },
-          { role: 'assistant', content: content },
-          { role: 'user', content: buildCorrectionPrompt(content, bannedFound) },
-        ],
-        response_format: { type: 'json_object' },
-        temperature: 0.5,
-      })
-      logAiUsage({ userId: auth.user.id, route: 'clarity', model: AI_MODEL, usage: correctionCompletion.usage })
-      content = correctionCompletion.choices[0].message.content || content
-    }
-
-    const parsed = JSON.parse(content)
-
-    // OpenAI json_object format always wraps in an object.
-    // Prompt explicitly asks for { "items": [...] } — check that key first,
-    // then fall back to any other known key, then scan all values recursively.
-    let result: unknown[]
-    if (Array.isArray(parsed)) {
-      result = parsed
-    } else {
-      const p = parsed as Record<string, unknown>
-      const knownKey =
-        p.items ??
-        p.problems ??
-        p.mechanisms ??
-        p.data ??
-        p.results ??
-        p.solutions ??
-        p.list
-      if (Array.isArray(knownKey)) {
-        result = knownKey
-      } else {
-        // Recursively find the first array anywhere in the object (handles one level of nesting)
-        let found: unknown[] | undefined
-        for (const val of Object.values(p)) {
-          if (Array.isArray(val)) { found = val; break }
-          if (val && typeof val === 'object') {
-            const inner = Object.values(val as Record<string, unknown>).find(v => Array.isArray(v))
-            if (Array.isArray(inner)) { found = inner; break }
-          }
-        }
-        result = found ?? []
-      }
-    }
-
-    return NextResponse.json({ data: result })
+    return NextResponse.json({ error: `Unknown step: ${step}` }, { status: 400 })
   } catch (error) {
     console.error('Clarity generation error:', error)
     return NextResponse.json({ error: 'Generation failed' }, { status: 500 })

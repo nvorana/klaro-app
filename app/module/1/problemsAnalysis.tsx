@@ -130,16 +130,16 @@ export async function readProblemsStream(
 }
 
 export function ProblemsProgress({ progress, market }: { progress: AnalysisProgress; market: string }) {
-  const [now, setNow] = useState(() => Date.now())
+  // Recomputed on a 500ms tick from the latest progress, read through a ref
+  // inside the timer (never during render). Never moves backwards, e.g. when
+  // a search event arrives after writing began.
+  const latest = useRef(progress)
+  useEffect(() => { latest.current = progress }, [progress])
+  const [pct, setPct] = useState(0)
   useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 500)
+    const t = setInterval(() => setPct(prev => Math.max(prev, analysisPercent(latest.current, Date.now()))), 500)
     return () => clearInterval(t)
   }, [])
-
-  // Never let the bar move backwards (e.g. a search event after writing began).
-  const highest = useRef(0)
-  const pct = Math.max(highest.current, analysisPercent(progress, now))
-  useEffect(() => { highest.current = pct })
 
   const order = ['research', 'writing', 'organizing'] as const
   const current = order.indexOf(progress.phase)

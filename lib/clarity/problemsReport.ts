@@ -243,7 +243,7 @@ function sliceJson(text: string): string {
 }
 
 // Rare, but a banned word in a student-facing card is worth one quick rewrite.
-async function fixBannedWords(json: string, userId: string | null): Promise<string> {
+export async function fixBannedWords(json: string, userId: string | null): Promise<string> {
   const banned = findBannedWords(json)
   if (banned.length === 0) return json
   try {
