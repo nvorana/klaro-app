@@ -2,6 +2,15 @@
 //
 // Five named, ownable frameworks for solving the student's chosen problem.
 //
+// Revised the same day after Jon compared a retirement set with ChatGPT's
+// (Retirement Gap Method, 3-Paycheck Retirement, 10-Year Rescue, Freedom
+// Ladder). Ours had metaphor names (X-Ray, Salbabida, Landing Strip), planner
+// jargon parts ("Debt Shadow", "Longevity Ring") and a padded acronym, because
+// the prompt handed Sol a quota of shapes and asked for an acronym. Now: start
+// from the reader's current thinking and flip it, plain-word names and parts,
+// a worked peso example, and the emotional shift. Style examples come from
+// other markets so tests on the benchmark topics can't just copy them.
+//
 // History (2026-10-05): rebuilt to match Jon's benchmark, a ChatGPT
 // (GPT-5.6 Sol) answer for recurring ticks. What made it work, and what the
 // old gpt-4o prompt lacked:
@@ -49,14 +58,16 @@ export function mechanismsPrompt(i: MechanismInput): string {
 
 ${context}
 
-A unique mechanism is a named, ownable framework that explains WHY the usual fix keeps failing and gives a new way to see and solve the problem. The reader should finish it thinking "so THAT's why it kept coming back."
+A unique mechanism is a named, ownable way of solving the problem that changes how the reader sees it. It starts from what they currently believe or do, flips it, and gives them a simple path they can follow. The reader should finish it thinking "ah, that's the real problem, and I can actually do this."
 
 FOR EACH MECHANISM:
-- Start from the insight. What does this market keep doing that only treats part of the problem? What do they not understand about why the problem returns or never gets solved?
-- Turn that insight into a framework the reader can picture and remember.
-- Use a DIFFERENT shape for each of the ${MECHANISM_COUNT}, for example: zones or areas to cover; a cycle or sequence over time; a diagnostic method or tool (a "hunt", checklist, tracker or map); layers of defense; an acronym protocol; a scorecard; a timeline. Never give two mechanisms the same shape.
-- Make one of them an acronym protocol whenever a short, natural word tied to the problem works (like T.I.C.K. for ticks: Treat, Inspect, Clear, Keep out). Each letter is one part. Skip it rather than force a clumsy acronym.
-- Name it so it is easy to say and picture, specific to this problem, and sounds ownable. Add ™ after the name. Avoid generic names like "The Ultimate X System" or "The X Blueprint".
+- Start from the reader's current thinking: the question they keep asking, the usual advice, or what they keep doing. Then flip it. "Instead of [what they do or believe now], [the new way]."
+- Speak to this reader's exact situation (their age, stage, money, constraints), not a generic person.
+- Choose the shape that genuinely fits THIS problem: stages over time, a simple formula with levers, separate income or resource sources, zones or places, levels or milestones, a cycle to break, a timeline with phases. The five must be genuinely different ideas, but never force a shape or wrap an idea in a metaphor just to be different.
+- Name it so a stranger can guess the idea from the name alone (style examples from other markets, never reuse their wording: "The 15-Minute Ulam System", "The Night-Before Exam Rescue", "The Utang Collection Calendar"). At most one name in the set may be built on a metaphor, and only if the meaning is instantly clear. Use an acronym only if every letter is a plain, natural step; never pad a letter to make a word. Add ™ after the name. Avoid "The Ultimate X System" or "The X Blueprint".
+- Name the parts in plain words this reader already uses (style examples: Plan, Prep, Cook; Spot it, Ask it, Collect it). No planner or industry jargon, no invented terms. Each part name must make sense on its own, before its description.
+- Make it concrete. When the problem involves money, time, counts, or other measurable things, include a short worked example with realistic Philippine numbers, clearly marked as an example (style example from another market: "Say your store lends ₱300 of utang a day: that's ₱9,000 a month sitting in other people's pockets.").
+- Say how it changes the way the reader feels: from overwhelmed to what.
 - Keep it honest. If health, safety, legal, or money decisions are involved, the e-book supports professional advice and never replaces it; say how in safety_note.
 
 Return ONLY JSON:
@@ -67,17 +78,21 @@ Return ONLY JSON:
     {
       "rank": 1,
       "name": "The <Name>™",
-      "shape": "zones | cycle | method | layers | acronym | scorecard | timeline | other",
-      "core_idea": "2-3 sentences. What most people in this market do, what they miss, and the new way to see it.",
-      "parts": [{ "label": "e.g. Zone 1: The Dog, or T: Treat the Dog", "description": "one sentence" }],
-      "big_idea": "One quotable sentence that captures the mechanism",
-      "why_it_stands_out": "1-2 sentences: what they already know or try, versus what this finally explains",
+      "shape": "stages | formula | sources | zones | levels | cycle | timeline | other",
+      "old_way": "What they believe or do now, in a few words",
+      "new_way": "The flip, in a few words",
+      "core_idea": "2-3 sentences. What most people in this market do, what that misses for someone in their situation, and the new way to see it.",
+      "parts": [{ "label": "Plain-word name", "description": "One sentence on what they do in this part" }],
+      "big_idea": "One quotable sentence that captures the flip",
+      "worked_example": "A short example with realistic numbers, or empty if the problem has nothing measurable",
+      "the_shift": "One sentence: how this changes the way the reader feels about the problem",
+      "why_it_stands_out": "1-2 sentences: what most books, advice, or people say, versus what this does differently",
       "aha_moment": "The moment it clicks, in their own words, in natural Taglish",
       "ebook_title": "The <Name>™",
-      "ebook_subtitle": "A specific, benefit-driven subtitle",
-      "tools": ["0 to 3 practical extras the e-book could include, e.g. a printable checklist or tracker"],
+      "ebook_subtitle": "A specific, benefit-driven subtitle that names the reader",
+      "tools": ["0 to 3 practical extras the e-book could include, e.g. a printable tracker or checklist"],
       "safety_note": "One sentence, or empty if not needed",
-      "strength": "2 to 5 words, e.g. Easiest to understand, Most memorable, Strongest why-it-failed story",
+      "strength": "2 to 5 words, e.g. Easiest to sell, Most measurable, Most hopeful",
       "strength_reason": "One sentence"
     }
   ]
@@ -96,9 +111,13 @@ export interface MechanismCard {
   rank: number
   name: string
   shape: string
+  old_way: string
+  new_way: string
   core_idea: string
   parts: Array<{ label: string; description: string }>
   big_idea: string
+  worked_example: string
+  the_shift: string
   why_it_stands_out: string
   aha_moment: string
   ebook_title: string
@@ -192,9 +211,13 @@ function normalizeMechanisms(raw: unknown): MechanismCards {
         rank: i + 1,
         name: s(it.name),
         shape: s(it.shape),
+        old_way: s(it.old_way).replace(/^instead of\s+/i, ''),
+        new_way: s(it.new_way),
         core_idea: s(it.core_idea),
         parts,
         big_idea: bigIdea,
+        worked_example: s(it.worked_example),
+        the_shift: s(it.the_shift),
         why_it_stands_out: s(it.why_it_stands_out),
         aha_moment: aha,
         ebook_title: s(it.ebook_title),

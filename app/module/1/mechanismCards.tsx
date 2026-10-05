@@ -7,9 +7,13 @@ export interface Mechanism {
   rank?: number
   name: string
   shape?: string
+  old_way?: string
+  new_way?: string
   core_idea?: string
   parts?: Array<{ label: string; description: string }>
   big_idea?: string
+  worked_example?: string
+  the_shift?: string
   why_it_stands_out?: string
   aha_moment?: string
   ebook_title?: string
@@ -190,6 +194,13 @@ export function MechanismCard({
         )}
       </div>
 
+      {m.old_way && m.new_way && (
+        <div className="rounded-lg bg-[#F8F9FA] px-3 py-2 mb-2.5 text-xs leading-relaxed">
+          <p className="text-gray-500"><span className="font-semibold text-gray-400 uppercase tracking-wide text-[10px]">Instead of </span>{m.old_way}</p>
+          <p className="text-[#1A1F36] mt-0.5"><span className="font-semibold text-[#B8860B] uppercase tracking-wide text-[10px]">Do this </span>{m.new_way}</p>
+        </div>
+      )}
+
       {m.big_idea && (
         <p className="text-sm text-[#1A1F36] font-semibold leading-snug mb-2">&ldquo;{m.big_idea}&rdquo;</p>
       )}
@@ -201,7 +212,7 @@ export function MechanismCard({
               <span className="w-4 h-4 rounded-full bg-[#F4B942] text-[#1A1F36] text-[9px] font-black flex items-center justify-center shrink-0 mt-0.5">{k + 1}</span>
               <p className="text-xs text-gray-600 leading-relaxed">
                 <span className="font-semibold text-[#1A1F36]">{p.label}</span>
-                {isOpen && p.description ? `: ${p.description}` : ''}
+                {p.description ? `: ${p.description}` : ''}
               </p>
             </div>
           ))}
@@ -210,6 +221,17 @@ export function MechanismCard({
 
       {isOpen && (
         <div className="mt-3 pt-3 border-t border-gray-100 flex flex-col gap-3">
+          {m.worked_example && (
+            <div className="rounded-lg bg-[#F8F9FA] p-3">
+              <p className="text-[11px] font-bold text-[#1A1F36] uppercase tracking-wide mb-1">Example</p>
+              <p className="text-xs text-gray-600 leading-relaxed">{m.worked_example.replace(/^example:\s*/i, '')}</p>
+            </div>
+          )}
+          {m.the_shift && (
+            <p className="text-xs text-gray-600 leading-relaxed">
+              <span className="font-semibold text-[#1A1F36]">How it changes things: </span>{m.the_shift}
+            </p>
+          )}
           {m.core_idea && (
             <div>
               <p className="text-[11px] font-bold text-[#1A1F36] uppercase tracking-wide mb-1">The core idea</p>
