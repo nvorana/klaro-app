@@ -595,11 +595,13 @@ async function generateStandardChapterMultiPass(
   chapter: ChapterOutline,
   _allChapters: ChapterOutline[],
   marketHint = '',
-  userId: string | null = null
+  userId: string | null = null,
+  onStep?: (index: number) => void,
 ): Promise<ChapterDraft> {
   console.log(`[ebook-agent] Chapter ${chapter.number} multi-pass — starting`)
 
   // Pass 0 + Pass 1 in parallel (both are independent)
+  onStep?.(0)
   const [previewData, quoteData] = await Promise.all([
     callOpenAI(pass0_PreviewPrompt(chapter), [], 300, marketHint, userId) as Promise<{ chapter_preview: string }>,
     callOpenAI(pass1_QuotePrompt(chapter), [], 400, marketHint, userId) as Promise<{ quote: { text: string; author: string } }>,
@@ -607,12 +609,14 @@ async function generateStandardChapterMultiPass(
   console.log(`[ebook-agent] Chapter ${chapter.number} — preview + quote done`)
 
   // Pass 2: Story Starter
+  onStep?.(1)
   const storyData = await callOpenAI(pass2_StoryPrompt(project, bookTitle, chapter), [], 1500, marketHint, userId) as {
     story_starter: string
   }
   console.log(`[ebook-agent] Chapter ${chapter.number} — story done`)
 
   // Pass 3: Core Lessons (story as context)
+  onStep?.(2)
   const lessonsData = await callOpenAI(
     pass3_LessonsPrompt(project, chapter, storyData.story_starter),
     [{ role: 'assistant', content: JSON.stringify(storyData) }],
@@ -623,6 +627,7 @@ async function generateStandardChapterMultiPass(
   console.log(`[ebook-agent] Chapter ${chapter.number} — lessons done`)
 
   // Pass 4: Practical Steps (story + lessons as context)
+  onStep?.(3)
   const stepsData = await callOpenAI(
     pass4_StepsPrompt(project, chapter, storyData.story_starter, lessonsData.core_lessons),
     [
@@ -636,6 +641,7 @@ async function generateStandardChapterMultiPass(
   console.log(`[ebook-agent] Chapter ${chapter.number} — steps done`)
 
   // Pass 5: Quick Win
+  onStep?.(4)
   const quickWinData = await callOpenAI(pass5_QuickWinPrompt(chapter), [], 1500, marketHint, userId) as {
     quick_win: QuickWin
   }
@@ -852,44 +858,84 @@ export async function POST(request: NextRequest) {
         const allChapters  = data.all_chapters as ChapterOutline[]
         const chapterType  = chapter.chapter_type ?? 'standard'
 
-        let result: ChapterDraft
+        const writeDraft = async (onStep?: (index: number) => void): Promise<ChapterDraft> => {
+          let result: ChapterDraft
 
-        if (chapterType === 'standard') {
-          result = await generateStandardChapterMultiPass(project, bookTitle, chapter, allChapters, marketHint, userId)
+          if (chapterType === 'standard') {
+            result = await generateStandardChapterMultiPass(project, bookTitle, chapter, allChapters, marketHint, userId, onStep)
 
-          // ── Editor pass (standard chapters only, server-side) ────────────
-          // Tier 1 validators always run; Tier 2 + reviser only fire if Tier 1
-          // flags. Failures here never break the route — fall back to the
-          // original chapter. The full report is admin-only debug telemetry.
-          try {
-            const edited = await editChapter(result as unknown as ChapterShape, {
-              outline: {
-                title: chapter.title,
-                goal: chapter.goal,
-                quick_win_outcome: chapter.quick_win_outcome,
-              },
-            })
-            if (edited.report.reviser_ran && edited.report.reviser_succeeded) {
-              result = edited.chapter as unknown as ChapterDraft
+            onStep?.(5)
+
+            // ── Editor pass (standard chapters only, server-side) ────────────
+            // Tier 1 validators always run; Tier 2 + reviser only fire if Tier 1
+            // flags. Failures here never break the route — fall back to the
+            // original chapter. The full report is admin-only debug telemetry.
+            try {
+              const edited = await editChapter(result as unknown as ChapterShape, {
+                outline: {
+                  title: chapter.title,
+                  goal: chapter.goal,
+                  quick_win_outcome: chapter.quick_win_outcome,
+                },
+              })
+              if (edited.report.reviser_ran && edited.report.reviser_succeeded) {
+                result = edited.chapter as unknown as ChapterDraft
+              }
+              if (edited.report.total_issues_found > 0) {
+                console.log(
+                  `[ebook-agent] Editor: chapter ${chapter.number} — ${edited.report.total_issues_found} found, ${edited.report.total_issues_remaining} remaining, reviser ${edited.report.reviser_ran ? (edited.report.reviser_succeeded ? 'succeeded' : 'failed') : 'skipped'}`
+                )
+              }
+            } catch (editErr) {
+              console.error('[ebook-agent] editor pass threw, returning unedited chapter:', editErr)
             }
-            if (edited.report.total_issues_found > 0) {
-              console.log(
-                `[ebook-agent] Editor: chapter ${chapter.number} — ${edited.report.total_issues_found} found, ${edited.report.total_issues_remaining} remaining, reviser ${edited.report.reviser_ran ? (edited.report.reviser_succeeded ? 'succeeded' : 'failed') : 'skipped'}`
-              )
-            }
-          } catch (editErr) {
-            console.error('[ebook-agent] editor pass threw, returning unedited chapter:', editErr)
+          } else {
+            onStep?.(0)
+            result = await callOpenAI(
+              singlePassChapterPrompt(project, bookTitle, chapter, allChapters),
+              [],
+              4500,
+              marketHint,
+              userId
+            ) as ChapterDraft
           }
-        } else {
-          result = await callOpenAI(
-            singlePassChapterPrompt(project, bookTitle, chapter, allChapters),
-            [],
-            4500,
-            marketHint,
-            userId
-          ) as ChapterDraft
+
+          return result
         }
 
+        // Streamed progress (2026-10-05): on gpt-5.6-sol a standard chapter
+        // takes ~90s, and the old spinner said "20-30 seconds", so students
+        // read it as frozen. With data.stream the page gets an event as each
+        // section starts. Standard chapters: 0 preview + quote, 1 story,
+        // 2 lessons, 3 steps, 4 quick win, 5 quality check. Other types are
+        // one pass (step 0). Without data.stream: plain JSON as before.
+        if (data.stream === true) {
+          const kind = chapterType === 'standard' ? 'standard' : 'single'
+          const encoder = new TextEncoder()
+          const body = new ReadableStream<Uint8Array>({
+            async start(controller) {
+              const send = (ev: Record<string, unknown>) => controller.enqueue(encoder.encode(JSON.stringify(ev) + '\n'))
+              try {
+                const draft = await writeDraft(index => send({ type: 'step', index, kind }))
+                send({ type: 'done', data: draft })
+              } catch (err) {
+                console.error('[ebook-agent] streamed chapter failed:', err)
+                send({ type: 'error', message: 'Failed to write this chapter. Please try again.' })
+              } finally {
+                controller.close()
+              }
+            },
+          })
+          return new Response(body, {
+            headers: {
+              'Content-Type': 'application/x-ndjson; charset=utf-8',
+              'Cache-Control': 'no-cache, no-transform',
+              'X-Accel-Buffering': 'no',
+            },
+          })
+        }
+
+        const result = await writeDraft()
         return NextResponse.json({ stage, data: result })
       }
 

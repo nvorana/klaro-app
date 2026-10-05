@@ -9,6 +9,10 @@ import StepBar from '@/components/StepBar'
 import { CompletionBanner, UpNextCard, BackToDashboardLink } from '@/components/CompletionBanner'
 import { isModuleUnlockedForStudent } from '@/lib/modules'
 import { RichText } from '@/components/RichText'
+import {
+  GenerationProgress, readChapterStream,
+  STANDARD_CHAPTER_STEPS, SINGLE_PASS_CHAPTER_STEPS, OUTLINE_STEPS, FRONTMATTER_STEPS,
+} from './generationProgress'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -40,6 +44,8 @@ interface ChapterOutline {
   title: string
   goal: string
   quick_win_outcome: string
+  // standard | myth_truth | case_study | worksheet | template (from the outline)
+  chapter_type?: string
 }
 
 interface PracticalStep {
@@ -100,6 +106,10 @@ export default function Module2Page() {
   const [selectedTitleIndex, setSelectedTitleIndex] = useState(0)
   const [chapterOutlines, setChapterOutlines] = useState<ChapterOutline[]>([])
   const [generatingOutline, setGeneratingOutline] = useState(false)
+  // Progress screens (see generationProgress.tsx)
+  const [outlineStartedAt, setOutlineStartedAt] = useState(0)
+  const [frontmatterStartedAt, setFrontmatterStartedAt] = useState(0)
+  const [chapterProgress, setChapterProgress] = useState<{ current: number; kind: 'standard' | 'single'; stepStartedAt: number } | null>(null)
 
   // Chapter-by-chapter state
   const [currentChapterIndex, setCurrentChapterIndex] = useState(0)
@@ -226,9 +236,37 @@ export default function Module2Page() {
     return json.data
   }, [clarity, router])
 
+  // Stage 'chapter' with streamed progress: the server sends an event as each
+  // section starts, then the finished draft.
+  const callChapterStream = useCallback(async (data: Record<string, unknown>) => {
+    if (!clarity) throw new Error('No clarity data')
+    const res = await fetch('/api/generate/ebook-agent', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        stage: 'chapter',
+        project: {
+          target_market: clarity.target_market,
+          problem: clarity.core_problem,
+          unique_mechanism: clarity.unique_mechanism,
+        },
+        data: { ...data, stream: true },
+      }),
+    })
+    if (res.status === 402) {
+      router.push('/upgrade')
+      throw new Error('lite_workshop_paywall')
+    }
+    if (!res.ok || !res.body) throw new Error('Agent request failed')
+    return readChapterStream<ChapterDraft>(res.body, (index, kind) =>
+      setChapterProgress({ current: index, kind, stepStartedAt: Date.now() }),
+    )
+  }, [clarity, router])
+
   // ─── Generate outline ──────────────────────────────────────────────────────
 
   async function generateOutline() {
+    setOutlineStartedAt(Date.now())
     setGeneratingOutline(true)
     setError('')
     try {
@@ -261,13 +299,18 @@ export default function Module2Page() {
     }
     setError('')
     setCurrentDraft(null)
+    setChapterProgress({
+      current: 0,
+      kind: (chapter.chapter_type ?? 'standard') === 'standard' ? 'standard' : 'single',
+      stepStartedAt: Date.now(),
+    })
 
     try {
-      const draft = await callAgent('chapter', {
+      const draft = await callChapterStream({
         book_title: selectedTitle.title,
         chapter,
         all_chapters: chapterOutlines,
-      }) as ChapterDraft
+      })
 
       setCurrentDraft(draft)
       setStep('chapter_review')
@@ -308,6 +351,7 @@ export default function Module2Page() {
   // ─── Write intro + conclusion ──────────────────────────────────────────────
 
   async function writeFrontmatter(drafts: ChapterDraft[]) {
+    setFrontmatterStartedAt(Date.now())
     setStep('writing_frontmatter')
     setError('')
     const selectedTitle = titleOptions[selectedTitleIndex]
@@ -540,13 +584,23 @@ export default function Module2Page() {
               <p className="text-gray-500 text-sm mb-8 max-w-sm mx-auto">
                 The AI will generate 3 title options and an 8–10 chapter outline based on your clarity sentence.
               </p>
-              <button
-                onClick={generateOutline}
-                disabled={generatingOutline}
-                className="bg-[#F4B942] text-[#1A1F36] font-bold px-8 py-3 rounded-xl disabled:opacity-50"
-              >
-                {generatingOutline ? 'Generating outline...' : 'Generate My E-Book Outline'}
-              </button>
+              {generatingOutline ? (
+                <GenerationProgress
+                  eyebrow="E-book outline"
+                  title="Planning your e-book"
+                  steps={OUTLINE_STEPS}
+                  current={0}
+                  stepStartedAt={outlineStartedAt}
+                  note="Usually about 20 seconds. Keep this tab open."
+                />
+              ) : (
+                <button
+                  onClick={generateOutline}
+                  className="bg-[#F4B942] text-[#1A1F36] font-bold px-8 py-3 rounded-xl"
+                >
+                  Generate My E-Book Outline
+                </button>
+              )}
             </div>
           ) : (
             <div>
@@ -605,78 +659,17 @@ export default function Module2Page() {
 
       {/* ── WRITING CHAPTER (also shows during regenerate) ── */}
       {(step === 'writing_chapter' || (step === 'chapter_review' && regenerating)) && (
-        <div className="flex-1 flex flex-col items-center justify-center px-6 pb-10 text-center">
-
-          {/* Premium spinner */}
-          <div className="relative w-20 h-20 mb-8">
-            <svg className="w-full h-full" viewBox="0 0 80 80">
-              <circle cx="40" cy="40" r="32" fill="none" stroke="#e5e7eb" strokeWidth="3"/>
-              <circle
-                cx="40" cy="40" r="32"
-                fill="none"
-                stroke="#F4B942"
-                strokeWidth="3"
-                strokeLinecap="round"
-                strokeDasharray="50 150"
-                style={{ animation: 'chapterSpin 1.4s cubic-bezier(0.4,0,0.2,1) infinite', transformOrigin: '40px 40px' }}
-              />
-            </svg>
-            <div className="absolute inset-0 flex items-center justify-center">
-              {regenerating ? (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F4B942" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="23 4 23 10 17 10"/>
-                  <polyline points="1 20 1 14 7 14"/>
-                  <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
-                </svg>
-              ) : (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F4B942" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
-                </svg>
-              )}
-            </div>
-          </div>
-
-          {/* Animated writing lines */}
-          <div className="flex flex-col gap-2.5 w-44 mb-8">
-            {[0, 1, 2].map(i => (
-              <div
-                key={i}
-                className="h-px bg-yellow-400 rounded-full"
-                style={{
-                  animation: 'writingLine 1.8s ease-in-out infinite',
-                  animationDelay: `${i * 0.28}s`,
-                  transformOrigin: 'left center',
-                }}
-              />
-            ))}
-          </div>
-
-          <h2 className="text-base font-bold text-[#1A1F36] mb-2 tracking-wide">
-            {regenerating
-              ? `Rewriting Chapter ${currentChapterIndex + 1}…`
-              : `Writing Chapter ${currentChapterIndex + 1} of ${chapterOutlines.length}`}
-          </h2>
-          {chapterOutlines[currentChapterIndex] && (
-            <p className="text-[#F4B942] text-sm mb-3 font-medium">
-              &ldquo;{chapterOutlines[currentChapterIndex].title}&rdquo;
-            </p>
-          )}
-          <p className="text-gray-500 text-xs max-w-xs leading-relaxed">
-            {regenerating
-              ? 'Generating a fresh version — this takes about 20–30 seconds…'
-              : 'Writing all 5 sections — this takes about 20–30 seconds…'}
-          </p>
-
-          <style>{`
-            @keyframes chapterSpin {
-              from { transform: rotate(0deg); }
-              to   { transform: rotate(360deg); }
-            }
-            @keyframes writingLine {
-              0%, 100% { transform: scaleX(0.2); opacity: 0.15; }
-              50%       { transform: scaleX(1);   opacity: 0.65; }
-            }
-          `}</style>
+        <div className="flex-1 flex flex-col items-center justify-center px-6 pb-10">
+          <GenerationProgress
+            eyebrow={regenerating
+              ? `Rewriting chapter ${currentChapterIndex + 1}`
+              : `Chapter ${currentChapterIndex + 1} of ${chapterOutlines.length}`}
+            title={chapterOutlines[currentChapterIndex]?.title ?? 'Writing your chapter'}
+            steps={chapterProgress?.kind === 'single' ? SINGLE_PASS_CHAPTER_STEPS : STANDARD_CHAPTER_STEPS}
+            current={chapterProgress?.current ?? 0}
+            stepStartedAt={chapterProgress?.stepStartedAt ?? Date.now()}
+            note="Each chapter takes about 1 to 2 minutes. Keep this tab open."
+          />
         </div>
       )}
 
@@ -830,47 +823,15 @@ export default function Module2Page() {
 
       {/* ── WRITING FRONTMATTER ── */}
       {step === 'writing_frontmatter' && (
-        <div className="flex-1 flex flex-col items-center justify-center px-6 pb-10 text-center">
-
-          {/* Premium spinner */}
-          <div className="relative w-20 h-20 mb-8">
-            <svg className="w-full h-full" viewBox="0 0 80 80">
-              <circle cx="40" cy="40" r="32" fill="none" stroke="#e5e7eb" strokeWidth="3"/>
-              <circle
-                cx="40" cy="40" r="32"
-                fill="none"
-                stroke="#F4B942"
-                strokeWidth="3"
-                strokeLinecap="round"
-                strokeDasharray="50 150"
-                style={{ animation: 'chapterSpin 1.4s cubic-bezier(0.4,0,0.2,1) infinite', transformOrigin: '40px 40px' }}
-              />
-            </svg>
-            <div className="absolute inset-0 flex items-center justify-center">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F4B942" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
-              </svg>
-            </div>
-          </div>
-
-          {/* Animated writing lines */}
-          <div className="flex flex-col gap-2.5 w-44 mb-8">
-            {[0, 1, 2].map(i => (
-              <div
-                key={i}
-                className="h-px bg-yellow-400 rounded-full"
-                style={{
-                  animation: 'writingLine 1.8s ease-in-out infinite',
-                  animationDelay: `${i * 0.28}s`,
-                  transformOrigin: 'left center',
-                }}
-              />
-            ))}
-          </div>
-
-          <h2 className="text-base font-bold text-[#1A1F36] mb-2 tracking-wide">Almost there…</h2>
-          <p className="text-[#F4B942] text-sm mb-3 font-medium">Writing your Introduction &amp; Conclusion</p>
-          <p className="text-gray-500 text-xs max-w-xs leading-relaxed">Putting the finishing touches on your e-book — just a few more seconds.</p>
+        <div className="flex-1 flex flex-col items-center justify-center px-6 pb-10">
+          <GenerationProgress
+            eyebrow="Almost done"
+            title="Finishing your e-book"
+            steps={FRONTMATTER_STEPS}
+            current={0}
+            stepStartedAt={frontmatterStartedAt}
+            note="Usually about 20 to 30 seconds. Keep this tab open."
+          />
         </div>
       )}
 
