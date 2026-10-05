@@ -11,6 +11,12 @@ import {
   Footer,
   BorderStyle,
   PageBreak,
+  Table,
+  TableRow,
+  TableCell,
+  WidthType,
+  ShadingType,
+  VerticalAlign,
 } from 'docx'
 import { requireUser } from '@/lib/apiAuth'
 
@@ -43,7 +49,10 @@ interface ChapterDraft {
   core_lessons: string
   practical_steps: PracticalStep[]
   quick_win: QuickWin
-  references?: string[]
+  // Usually strings, but the single-pass chapter types sometimes return
+  // objects ({ title, source, url }); see referenceText().
+  references?: Array<string | Record<string, unknown>>
+
 }
 
 interface EbookData {
@@ -68,8 +77,11 @@ function splitIntoShortParagraphs(text: string): string[] {
     .replace(/\bStep\s+\d+\./gi, match => match.replace('.', '§'))
     .replace(/\b\d+\./g, match => match.replace('.', '§')) // numbered list items
 
-  // Split on sentence boundaries: end punctuation followed by space + capital letter (or end of string)
-  const sentenceRegex = /[^.!?]*[.!?]+(?:\s+(?=[A-ZÁÉÍÓÚ])|$)/g
+  // Split on sentence boundaries: end punctuation followed by space + capital letter (or end of string).
+  // Closing quotes and brackets stay with their sentence, and the next sentence
+  // may open with a quote: without this a quoted sentence was cut between its
+  // period and its closing ”, leaving a paragraph that started with a stray ”.
+  const sentenceRegex = /[^.!?]*[.!?]+["”’')\]]*(?:\s+(?=["“‘(]?[A-ZÁÉÍÓÚ])|$)/g
   const sentences = protected$.match(sentenceRegex) || [protected$]
 
   // Restore protected periods
@@ -146,9 +158,134 @@ function sectionLabel(label: string, color: string): Paragraph {
   })
 }
 
+// A reference as one readable line. Objects used to print as "[object Object]".
+function referenceText(ref: string | Record<string, unknown>): string {
+  if (typeof ref === 'string') return plain(ref)
+  const pick = (...keys: string[]) => keys.map(k => ref[k]).find(v => typeof v === 'string' && v.trim()) as string | undefined
+  const parts = [pick('title', 'name', 'text'), pick('source', 'publisher', 'author', 'organization'), pick('url', 'link')].filter(Boolean)
+  return plain(parts.length ? parts.join(', ') : JSON.stringify(ref))
+}
+
 // Empty spacer paragraph
 function spacer(pts = 160): Paragraph {
   return new Paragraph({ children: [], spacing: { after: pts } })
+}
+
+// ─── Quick Win worksheet ──────────────────────────────────────────────────────
+// 2026-10-06: every chapter's Quick Win prints as its own designed worksheet
+// page. Jon compared this with AI-generated worksheet images (~$0.04 each, a
+// picture students can't edit, and the cheaper model garbled the peso sign)
+// and chose this: built from real Word tables and text, so it costs nothing,
+// the words are always right, and students can type into it, edit it, or
+// print it and write by hand.
+
+const WS_NAVY = '1A1F36'
+const WS_GOLD = 'F4B942'
+const WS_CREAM = 'FFF8E8'
+const WS_LINE = 'C9CDD6'
+
+const noBorder = { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' }
+const noBorders = { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder }
+const lineBorder = { style: BorderStyle.SINGLE, size: 4, color: WS_LINE }
+
+// A blank line to write on: an empty paragraph with a bottom rule.
+function writingLine(): Paragraph {
+  return new Paragraph({
+    children: [new TextRun({ text: ' ', size: 24 })],
+    spacing: { before: 280, after: 0 },
+    border: { bottom: { style: BorderStyle.SINGLE, size: 4, color: WS_LINE, space: 1 } },
+  })
+}
+
+function quickWinWorksheet(qw: QuickWin, chapterNumber: number): (Paragraph | Table)[] {
+  const out: (Paragraph | Table)[] = []
+  const meta = [
+    qw.minutes ? `About ${qw.minutes} minutes` : 'About 10 minutes',
+    qw.you_need ? `You need: ${plain(qw.you_need)}` : '',
+  ].filter(Boolean).join('  ·  ')
+
+  // New page, so the worksheet prints on its own.
+  out.push(new Paragraph({ children: [], pageBreakBefore: true, spacing: { after: 0 } }))
+
+  // Header band
+  out.push(new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    borders: { ...noBorders, insideHorizontal: noBorder, insideVertical: noBorder },
+    rows: [new TableRow({ children: [new TableCell({
+      shading: { type: ShadingType.CLEAR, color: 'auto', fill: WS_NAVY },
+      borders: noBorders,
+      margins: { top: 260, bottom: 260, left: 320, right: 320 },
+      children: [
+        new Paragraph({ children: [new TextRun({ text: `CHAPTER ${chapterNumber}  ·  YOUR QUICK WIN`, bold: true, size: 18, font: 'Arial', color: WS_GOLD })], spacing: { after: 80 } }),
+        new Paragraph({ children: [new TextRun({ text: plain(qw.name || 'Your Quick Win'), bold: true, size: 36, font: 'Arial', color: 'FFFFFF' })], spacing: { after: 80 } }),
+        new Paragraph({ children: [new TextRun({ text: meta, size: 20, font: 'Arial', color: 'D7DAE3', italics: true })] }),
+      ],
+    })] })],
+  }))
+
+  if (qw.goal) {
+    out.push(new Paragraph({
+      children: [new TextRun({ text: plain(qw.goal), bold: true, size: 24, font: 'Georgia', color: WS_NAVY })],
+      spacing: { before: 240, after: 200 },
+    }))
+  }
+
+  // Steps: gold number cell + the step and two lines to write on.
+  const steps = (qw.instructions ?? []).map(i => i.replace(/^\d+[.)]\s*/, '').trim()).filter(Boolean)
+  if (steps.length > 0) {
+    out.push(new Table({
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      borders: { top: lineBorder, bottom: lineBorder, left: lineBorder, right: lineBorder, insideHorizontal: lineBorder, insideVertical: noBorder },
+      rows: steps.map((step, i) => new TableRow({ children: [
+        new TableCell({
+          width: { size: 10, type: WidthType.PERCENTAGE },
+          shading: { type: ShadingType.CLEAR, color: 'auto', fill: WS_GOLD },
+          verticalAlign: VerticalAlign.CENTER,
+          margins: { top: 120, bottom: 120, left: 80, right: 80 },
+          children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: String(i + 1), bold: true, size: 32, font: 'Arial', color: WS_NAVY })] })],
+        }),
+        new TableCell({
+          width: { size: 90, type: WidthType.PERCENTAGE },
+          margins: { top: 160, bottom: 200, left: 240, right: 240 },
+          children: [
+            new Paragraph({ children: richRuns(step, { size: 24, font: 'Georgia' }), spacing: { after: 40 } }),
+            writingLine(),
+            writingLine(),
+          ],
+        }),
+      ] })),
+    }))
+  }
+
+  // Watch out
+  if (qw.watch_out) {
+    out.push(spacer(200))
+    out.push(new Table({
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      borders: { ...noBorders, insideHorizontal: noBorder, insideVertical: noBorder },
+      rows: [new TableRow({ children: [new TableCell({
+        shading: { type: ShadingType.CLEAR, color: 'auto', fill: WS_CREAM },
+        borders: { ...noBorders, left: { style: BorderStyle.SINGLE, size: 24, color: WS_GOLD } },
+        margins: { top: 160, bottom: 160, left: 240, right: 240 },
+        children: [new Paragraph({ children: [
+          new TextRun({ text: 'Watch out: ', bold: true, size: 22, font: 'Arial', color: WS_NAVY }),
+          new TextRun({ text: plain(qw.watch_out), size: 22, font: 'Arial', color: '333333' }),
+        ] })],
+      })] })],
+    }))
+  }
+
+  // Done
+  out.push(new Paragraph({
+    children: [
+      new TextRun({ text: '\u2610  ', size: 32, font: 'Segoe UI Symbol', color: WS_NAVY }),
+      new TextRun({ text: 'Done! ', bold: true, size: 24, font: 'Arial', color: '1A7A3C' }),
+      new TextRun({ text: plain(qw.immediate_result), size: 22, font: 'Arial', color: '1A7A3C' }),
+    ],
+    spacing: { before: 320, after: 200 },
+  }))
+
+  return out
 }
 
 // ─── Document builder ─────────────────────────────────────────────────────────
@@ -326,78 +463,9 @@ function buildDocument(ebook: EbookData): Document {
       }
     }
 
-    // Quick Win
+    // Quick Win: its own designed worksheet page (see quickWinWorksheet)
     if (ch.quick_win) {
-      children.push(sectionLabel('Quick Win', 'b8860b'))
-      children.push(spacer(80))
-
-      // Named quick win title
-      if (ch.quick_win.name) {
-        children.push(new Paragraph({
-          children: [new TextRun({ text: plain(ch.quick_win.name), bold: true, size: 28, font: 'Arial', color: 'b8860b' })],
-          spacing: { after: 100 },
-        }))
-      }
-
-      // Time and what they need
-      if (ch.quick_win.minutes || ch.quick_win.you_need) {
-        const meta = [
-          ch.quick_win.minutes ? `About ${ch.quick_win.minutes} minutes` : '',
-          ch.quick_win.you_need ? `You need: ${plain(ch.quick_win.you_need)}` : '',
-        ].filter(Boolean).join('  ·  ')
-        children.push(new Paragraph({
-          children: [new TextRun({ text: meta, size: 22, font: 'Arial', color: '555555', italics: true })],
-          spacing: { after: 100 },
-        }))
-      }
-
-      // Goal
-      if (ch.quick_win.goal) {
-        children.push(new Paragraph({
-          children: [new TextRun({ text: plain(ch.quick_win.goal), bold: true, size: 24, font: 'Georgia' })],
-          spacing: { after: 120 },
-        }))
-      }
-
-      // Instructions as numbered list — manually numbered to avoid Word counter bleed
-      if (ch.quick_win.instructions?.length > 0) {
-        ch.quick_win.instructions.forEach((inst, i) => {
-          // Strip any leading "1." or "1)" the AI may have added
-          const cleanInst = inst.replace(/^\d+[\.\)]\s*/, '').trim()
-          children.push(new Paragraph({
-            children: [
-              new TextRun({ text: `${i + 1}.  `, bold: true, size: 24, font: 'Arial', color: 'b8860b' }),
-              new TextRun({ text: plain(cleanInst), size: 24, font: 'Georgia' }),
-            ],
-            spacing: { after: 100 },
-            indent: { left: 360 },
-          }))
-        })
-      }
-
-      children.push(spacer(80))
-
-      // Watch out
-      if (ch.quick_win.watch_out) {
-        children.push(new Paragraph({
-          children: [
-            new TextRun({ text: 'Watch out: ', bold: true, size: 22, font: 'Arial', color: 'c0392b' }),
-            new TextRun({ text: plain(ch.quick_win.watch_out), size: 22, font: 'Arial', color: 'c0392b' }),
-          ],
-          spacing: { after: 100 },
-        }))
-      }
-
-      // Done when
-      if (ch.quick_win.immediate_result) {
-        children.push(new Paragraph({
-          children: [
-            new TextRun({ text: '✓ Done when: ', bold: true, size: 22, font: 'Arial', color: '1a7a3c' }),
-            new TextRun({ text: plain(ch.quick_win.immediate_result), size: 22, font: 'Arial', color: '1a7a3c', italics: true }),
-          ],
-          spacing: { after: 160 },
-        }))
-      }
+      children.push(...quickWinWorksheet(ch.quick_win, ch.number))
     }
 
     // References
@@ -410,7 +478,7 @@ function buildDocument(ebook: EbookData): Document {
       }))
       ch.references.forEach((ref, i) => {
         children.push(new Paragraph({
-          children: [new TextRun({ text: `${i + 1}.  ${ref}`, size: 18, font: 'Georgia', color: '888888', italics: true })],
+          children: [new TextRun({ text: `${i + 1}.  ${referenceText(ref)}`, size: 18, font: 'Georgia', color: '888888', italics: true })],
           spacing: { after: 80 },
           indent: { left: 320, hanging: 320 },
         }))
