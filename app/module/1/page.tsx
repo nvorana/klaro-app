@@ -689,7 +689,7 @@ export default function Module1Page() {
             <div>
               <h2 className="text-xl font-bold text-[#1A1F36] mb-1">Pick their biggest problem</h2>
               <p className="text-sm text-gray-500 mb-5">
-                Ranked by urgency, demand, and e-book potential for <strong className="text-[#1A1F36]">{targetMarket}</strong>. Tap a card to pick it.
+                Ranked by how many have it, how urgent it is, and how much they already spend, for <strong className="text-[#1A1F36]">{targetMarket}</strong>. Tap a card to pick it.
               </p>
 
               {/* Our #1 pick */}

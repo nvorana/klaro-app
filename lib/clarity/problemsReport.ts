@@ -45,7 +45,7 @@ Find the top ${PROBLEM_COUNT} problems this market has, judged on three things:
 1. BIGGEST: how many people in this market have it
 2. MOST URGENT: how badly they want it solved right now
 3. HIGHEST DEMAND: how much they already spend, search, and ask for help with it
-Rank by all three together. Look at it through one lens: which problem could become a strong PAID e-book for this market?
+Rank by all three together. Score reach, urgency, and demand on the evidence alone. How well a problem would work as a PAID e-book is a separate judgment: it goes only in ebook_potential and in your top pick.
 
 HOW TO WORK
 - Start from what you know about this market's day-to-day life in the Philippines. Then search the web to sharpen EACH problem with specific evidence: how common it is (official figures, surveys, share of the market affected, how often it comes up in their communities), recent posts, what people already spend (products, services, prices in pesos), official warnings. Search problem by problem, for specific things. Not one general search.
@@ -79,6 +79,12 @@ Return ONLY JSON, no other text:
     }
   ]
 }
+
+SCORING: score each problem RELATIVE TO THE OTHER ${PROBLEM_COUNT - 1} in your list, using the full 1 to 5 range. They are all real problems; the scores exist to show which matter most.
+- reach_score (how many people in this market have it): 5 = nearly everyone in the market, backed by a figure or because it comes with their situation; 4 = most of them; 3 = a large minority; 2 = one specific segment; 1 = a small niche. If you found neither a figure nor a credible source (vets, official bodies, researchers) saying it is common, reach_score is 3 at most.
+- urgency_score (how badly they need it fixed now): 5 = health, safety, income, or a big expense at stake within days; 4 = causing real damage or cost this month; 3 = a constant frustration they keep putting off; 2 = annoying but livable; 1 = nice to have.
+- demand_score (how much they already spend and ask for help): 5 = they repeatedly pay for products, services, or professionals AND ask for help constantly; 4 = regular spending or constant questions; 3 = some spending and frequent questions; 2 = mostly free fixes and occasional questions; 1 = they rarely spend or ask.
+- Across the list, at most 3 problems may score 5 on the same rating, and each rating must use at least 3 different values.
 
 PROBLEM TITLES: plain conversational English, in the words this market actually uses for the problem: the concrete thing going wrong, the way they'd describe it to a friend. Keep a local term only where it is the word they really use. Save Taglish for real_question. The examples below are from other markets, to show the style only. Never reuse their wording.
 ✓ "Tomato plants keep dying in the summer heat"   ✗ "Gardeners face crop management challenges"
@@ -357,12 +363,30 @@ function normalizeCards(raw: unknown, seenUrls: Set<string>): ProblemCards {
       ease_of_selling: potential >= 4 ? 'Easy' : potential === 3 ? 'Moderate' : 'Hard',
       common_phrases: realQuestion,
     }
-  }).filter(it => it.problem).slice(0, PROBLEM_COUNT)
+  })
 
-  const pickRank = Number(parsed.top_pick_rank)
-  const top_pick = Number.isInteger(pickRank) && pickRank >= 1 && pickRank <= items.length
-    ? { rank: pickRank, reason: str(parsed.top_pick_reason) }
+  // Order by the scores, in code. Sol's own ordering and its scores were set
+  // independently and disagreed: in testing up to 7 pairs of cards had a
+  // lower-ranked card with higher scores, and Jon's dog-owner run put chronic
+  // itching (ChatGPT's #1, heavy repeat spending) at #10 below grooming. The
+  // three things Jon ranks on are weighted equally; e-book potential only
+  // breaks ties, then Sol's order.
+  const solPickIndex = Number(parsed.top_pick_rank) - 1
+  const ranked = items
+    .map((card, solIndex) => ({ card, solIndex }))
+    .filter(({ card }) => card.problem)
+    .sort((a, b) => {
+      const total = (c: ProblemCard) => c.reach_score + c.urgency_score + c.demand_score
+      return total(b.card) - total(a.card)
+        || b.card.ebook_potential - a.card.ebook_potential
+        || a.solIndex - b.solIndex
+    })
+    .slice(0, PROBLEM_COUNT)
+
+  const pickPosition = ranked.findIndex(r => r.solIndex === solPickIndex)
+  const top_pick = pickPosition >= 0
+    ? { rank: pickPosition + 1, reason: str(parsed.top_pick_reason) }
     : null
 
-  return { items, top_pick }
+  return { items: ranked.map(({ card }, i) => ({ ...card, rank: i + 1 })), top_pick }
 }
