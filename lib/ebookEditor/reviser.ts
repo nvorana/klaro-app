@@ -6,7 +6,9 @@
 // Returns null on any failure (invalid JSON, missing required fields, LLM
 // error). The orchestrator falls back to the original chapter on null.
 
-import { openai, AI_MODEL } from '../openai'
+// Same model as the writer: a different model "fixing" a chapter rewrites its
+// voice along with the issue it was asked to fix.
+import { openai, EBOOK_MODEL, samplingParams, tokenLimit } from '../openai'
 import { logAiUsage } from '../aiUsage'
 import { findBannedWords } from '../bannedWords'
 import { getMarketLanguageHintForUser } from '../marketLanguage'
@@ -16,7 +18,7 @@ const REVISER_SYSTEM = `You are an expert ebook editor for the Philippine digita
 
 WRITING RULES — same rules as the original generator:
 - Write at an entry level for beginners. Be practical, specific, simple.
-- WRITING REGISTER (strictly enforced): body content is ~70% English / ~30% Tagalog. The narrative prose, explanations, and instructions are written in English. Tagalog appears as warmth, internal thoughts, dialogue snippets, and short emotional beats — never as the carrying language. ✓ Right: "He caught his reflection. Lumolobo na talaga, he thought." ✗ Too heavy: "Si Mang Ramon ay tumitingin sa salamin..."
+- VOICE: keep the chapter's conversational Taglish exactly as written. Tagalog may carry the story and everyday actions; English carries the insights and instructions. Keep the short one-line beats and any **bold** lines. Never rewrite Tagalog narration into English, and never merge short lines into long paragraphs, unless an issue below specifically asks for it.
 - VARY sentence length. Short punchy sentences after important points.
 - BANNED WORDS — never use: unlock, unleash, discover, transform your life, revolutionize, ultimate guide, game-changing, next-level, powerful secrets, tap into, harness, ignite, amplify, supercharge, delve, realm, tapestry, testament, pivotal, robust, garner, foster, alignment, landscape, meticulous, multifaceted, nuanced, profound, holistic, comprehensive, streamline, empower, leverage.
 - Preserve the JSON structure exactly. Same keys, same shape. Only modify what the issues call out.
@@ -47,16 +49,16 @@ Return the corrected chapter as valid JSON only — same keys, same shape. No ex
 
   try {
     const completion = await openai.chat.completions.create({
-      model: AI_MODEL,
+      model: EBOOK_MODEL,
       messages: [
         { role: 'system', content: REVISER_SYSTEM + marketHint },
         { role: 'user', content: userPrompt },
       ],
       response_format: { type: 'json_object' },
-      temperature: 0.5,
-      max_tokens: 4500,
+      ...samplingParams(EBOOK_MODEL, 0.5),
+      ...tokenLimit(EBOOK_MODEL, 4500),
     })
-    logAiUsage({ userId: null, route: 'ebook-editor-reviser', model: AI_MODEL, usage: completion.usage })
+    logAiUsage({ userId: null, route: 'ebook-editor-reviser', model: EBOOK_MODEL, usage: completion.usage })
 
     const raw = completion.choices[0].message.content ?? ''
     let parsed: ChapterShape

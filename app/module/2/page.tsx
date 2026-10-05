@@ -8,6 +8,7 @@ import GoldConfetti from '@/components/GoldConfetti'
 import StepBar from '@/components/StepBar'
 import { CompletionBanner, UpNextCard, BackToDashboardLink } from '@/components/CompletionBanner'
 import { isModuleUnlockedForStudent } from '@/lib/modules'
+import { RichText } from '@/components/RichText'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -708,7 +709,7 @@ export default function Module2Page() {
               <span className="text-[#F4B942] text-xs font-bold uppercase tracking-wide">Introduction</span>
             </div>
             <div className="bg-white border border-gray-100 rounded-xl p-4">
-              <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-line">{currentDraft.story_starter}</p>
+              <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-line"><RichText text={currentDraft.story_starter} /></p>
             </div>
           </div>
 
@@ -718,7 +719,7 @@ export default function Module2Page() {
               <span className="text-blue-500 text-xs font-bold uppercase tracking-wide">Core Lessons</span>
             </div>
             <div className="bg-white border border-gray-100 rounded-xl p-4">
-              <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-line">{currentDraft.core_lessons}</p>
+              <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-line"><RichText text={currentDraft.core_lessons} /></p>
             </div>
           </div>
 
@@ -732,7 +733,7 @@ export default function Module2Page() {
                 {currentDraft.practical_steps.map((s) => (
                   <div key={s.step_number} className="bg-white border border-gray-100 rounded-xl p-4">
                     <p className="text-[#1A1F36] text-sm font-semibold mb-1">Step {s.step_number}: {s.title}</p>
-                    <p className="text-gray-600 text-sm">{s.what_to_do}</p>
+                    <p className="text-gray-600 text-sm"><RichText text={s.what_to_do} /></p>
                     <p className="text-gray-400 text-xs mt-1 italic">Why: {s.why_it_matters}</p>
                     <p className="text-red-500 text-xs mt-1">Common mistake: {s.common_mistake}</p>
                   </div>
@@ -900,7 +901,7 @@ export default function Module2Page() {
               </button>
               {expandedChapter === -1 && (
                 <div className="bg-gray-50 border border-gray-100 border-t-0 rounded-b-xl p-4">
-                  <p className="text-gray-600 text-sm leading-relaxed whitespace-pre-line">{introduction}</p>
+                  <p className="text-gray-600 text-sm leading-relaxed whitespace-pre-line"><RichText text={introduction} /></p>
                 </div>
               )}
             </div>
@@ -931,11 +932,11 @@ export default function Module2Page() {
                     )}
                     <div>
                       <p className="text-xs text-[#F4B942] font-bold uppercase tracking-wide mb-1">Introduction</p>
-                      <p className="text-gray-600 text-sm leading-relaxed whitespace-pre-line">{ch.story_starter}</p>
+                      <p className="text-gray-600 text-sm leading-relaxed whitespace-pre-line"><RichText text={ch.story_starter} /></p>
                     </div>
                     <div>
                       <p className="text-xs text-blue-500 font-bold uppercase tracking-wide mb-1">Core Lessons</p>
-                      <p className="text-gray-600 text-sm leading-relaxed whitespace-pre-line">{ch.core_lessons}</p>
+                      <p className="text-gray-600 text-sm leading-relaxed whitespace-pre-line"><RichText text={ch.core_lessons} /></p>
                     </div>
                     {ch.practical_steps?.length > 0 && (
                       <div>
@@ -944,7 +945,7 @@ export default function Module2Page() {
                           {ch.practical_steps.map((s) => (
                             <div key={s.step_number} className="bg-white border border-gray-100 rounded-lg p-3">
                               <p className="text-[#1A1F36] text-sm font-semibold">Step {s.step_number}: {s.title}</p>
-                              <p className="text-gray-600 text-xs mt-1">{s.what_to_do}</p>
+                              <p className="text-gray-600 text-xs mt-1"><RichText text={s.what_to_do} /></p>
                               <p className="text-gray-400 text-xs mt-1 italic">Why: {s.why_it_matters}</p>
                               <p className="text-red-500 text-xs mt-1">{s.common_mistake}</p>
                             </div>
@@ -997,7 +998,7 @@ export default function Module2Page() {
               </button>
               {expandedChapter === -2 && (
                 <div className="bg-gray-50 border border-gray-100 border-t-0 rounded-b-xl p-4">
-                  <p className="text-gray-600 text-sm leading-relaxed whitespace-pre-line">{conclusion}</p>
+                  <p className="text-gray-600 text-sm leading-relaxed whitespace-pre-line"><RichText text={conclusion} /></p>
                 </div>
               )}
             </div>

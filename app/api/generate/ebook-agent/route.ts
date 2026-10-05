@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { openai, AI_MODEL } from '@/lib/openai'
+import { openai, EBOOK_MODEL, samplingParams, tokenLimit } from '@/lib/openai'
 import { logAiUsage } from '@/lib/aiUsage'
 import { findBannedWords, buildCorrectionPrompt } from '@/lib/bannedWords'
 import { buildVocabularyHint } from '@/lib/preferredVocabulary'
 import { getMarketLanguageHintForUser } from '@/lib/marketLanguage'
 import { editChapter, type ChapterShape } from '@/lib/ebookEditor'
 import { createClient } from '@/lib/supabase/server'
+
+// A standard chapter is six sequential model calls plus the editor pass. On
+// gpt-5.6-sol each call takes ~15-40s, so a chapter can run 2+ minutes.
+export const maxDuration = 300
 
 // ─── MASTER SYSTEM PROMPT ────────────────────────────────────────────────────
 
@@ -18,14 +22,19 @@ WRITING RULES — follow these strictly:
 - Be practical and specific. Every lesson must have a clear "what to do."
 - Do NOT use hype, exaggerated claims, or fake testimonials.
 - Do NOT include advanced strategies — keep it simple and executable.
-- Do NOT use academic or formal language. Write conversationally.
-- VARY sentence length deliberately. Mix long explanatory sentences with punchy 3–6 word sentences. Short sentences land harder. Use them after important points.
-- Use simple words.
-- Clarity over cleverness. Done beats perfect.
-- WRITING REGISTER (strictly enforced): body content is ~70% English / ~30% Tagalog. The narrative prose, explanations, and instructions are written in English. Tagalog appears as warmth, internal thoughts, dialogue snippets, and short emotional beats — never as the carrying language. A Filipino-American reader should follow the prose without translation. ✓ Right: "He caught his reflection. Lumolobo na talaga, he thought." ✗ Too heavy: "Si Mang Ramon ay tumitingin sa salamin, hindi makapaniwala na lumobo na ang kanyang katawan."
+- Never invent statistics, studies, surveys, quotes, or the author's personal experiences. Use a number only if you are sure it is real and widely documented; otherwise describe the situation without one.
 - TITLES AND SUBTITLES must be 100% English — no Tagalog or Filipino words whatsoever.
 - Chapter titles must also be 100% English.
-- The character can BE Filipino without the PROSE being Tagalog. If a passage reads as ~90% Tagalog, you have failed the register rule.
+
+VOICE (2026-10-05, Jon's reference: a ChatGPT chapter opening about recurring ticks).
+Write like a Filipino coach talking to one friend over coffee:
+- Conversational Taglish. Tagalog can carry the story and everyday actions ("Pinaliguan. Tinanggal isa-isa ang garapata. Nilinis ang higaan."). English carries the insights, lessons, and instructions. Switch at sentence or phrase boundaries, the way people really talk. Never sprinkle Tagalog words in for flavor and never force a ratio: plain English is fine wherever it sounds natural.
+- Short paragraphs. In stories and chapter openings, most paragraphs are a single short line of 3 to 10 words, and each action in a sequence gets its own line ("Pinaliguan." / "Tinanggal isa-isa ang garapata." / "Nilinis ang higaan."). In teaching sections, keep paragraphs to 1 to 3 short sentences. Repetition is fine when it builds ("Another shampoo." / "Another treatment." / "Another round of cleaning.").
+- Show, don't tell. Write what people see, do, and say, not labels for their feelings ("she felt overwhelmed").
+- Talk to the reader as "you". Take the blame off them: their effort was not the problem, nobody showed them the whole picture.
+- Bold (**like this**) the lines that carry the key insight: 2 to 4 in a chapter opening, 1 or 2 in other sections. Bold a whole line, never part of a sentence. Only bold inside opening, lesson, introduction, and conclusion text: never in titles, quotes, step fields, or quick wins.
+- Casual Filipino forms: yung, di, wag, pag, kasi, naman, pala. No apostrophes on shortened Tagalog words (yan, yung, di, wag, to); English contractions keep theirs (don't, you're). No em dashes. No deep or formal Tagalog.
+- No fake cliffhangers ("what she learned would change everything"). End sections on a specific idea, not on suspense.
 
 WHAT READERS BUY: People don't buy information. They buy relief. They buy clarity, speed, and confidence. Every section must make the reader feel: "I can do this."
 
@@ -127,13 +136,13 @@ async function callOpenAIWithUsage(
   ]
 
   const completion = await openai.chat.completions.create({
-    model: AI_MODEL,
+    model: EBOOK_MODEL,
     messages,
     response_format: { type: 'json_object' },
-    temperature: 0.78,
-    max_tokens: maxTokens,
+    ...samplingParams(EBOOK_MODEL, 0.78),
+    ...tokenLimit(EBOOK_MODEL, maxTokens),
   })
-  logAiUsage({ userId, route: 'ebook-agent', model: AI_MODEL, usage: completion.usage })
+  logAiUsage({ userId, route: 'ebook-agent', model: EBOOK_MODEL, usage: completion.usage })
 
   let content = completion.choices[0].message.content || '{}'
   const usage: TokenUsage = {
@@ -147,17 +156,17 @@ async function callOpenAIWithUsage(
   if (bannedFound.length > 0) {
     console.warn(`[ebook-agent] Banned words: ${bannedFound.join(', ')} — auto-correcting`)
     const correction = await openai.chat.completions.create({
-      model: AI_MODEL,
+      model: EBOOK_MODEL,
       messages: [
         ...messages,
         { role: 'assistant' as const, content },
         { role: 'user' as const, content: buildCorrectionPrompt(content, bannedFound) },
       ],
       response_format: { type: 'json_object' },
-      temperature: 0.5,
-      max_tokens: maxTokens,
+      ...samplingParams(EBOOK_MODEL, 0.5),
+      ...tokenLimit(EBOOK_MODEL, maxTokens),
     })
-    logAiUsage({ userId, route: 'ebook-agent', model: AI_MODEL, usage: correction.usage })
+    logAiUsage({ userId, route: 'ebook-agent', model: EBOOK_MODEL, usage: correction.usage })
     content = correction.choices[0].message.content || content
     usage.total_tokens += correction.usage?.total_tokens ?? 0
     usage.completion_tokens += correction.usage?.completion_tokens ?? 0
@@ -266,38 +275,34 @@ Return this exact JSON:
 }
 
 function pass2_StoryPrompt(project: Project, bookTitle: string, chapter: ChapterOutline): string {
-  return `TASK: Story-driven introduction for Chapter ${chapter.number} — "${chapter.title}"
+  // Rewritten 2026-10-05 to Jon's reference opening (recurring ticks). The old
+  // prompt asked for a "POWERFUL HOOK… persuasive sales copy strategy" and a
+  // "false hope, then a harder fall" beat, which produced fake cliffhangers
+  // ("what she learned would change everything"), formula drama, and novel-
+  // style paragraphs averaging 50 words. The reference averages 6.
+  return `TASK: Opening for Chapter ${chapter.number} — "${chapter.title}"
 
 Book: "${bookTitle}"
 Target Market: ${project.target_market}
 Problem: ${project.problem}
+Unique mechanism of the book: ${project.unique_mechanism}
 Chapter Goal: ${chapter.goal}
 
-Write an introduction for this chapter that uses a STORY.
+Write the chapter opening in this flow:
 
-The story must be: engaging, unique, intriguing, captivating, vivid.
-Use simple words that ${project.target_market} can relate to.
+1. THE SCENE (about half the length). One ordinary moment in a real person's day where the problem shows up. Give them a first name only, a fresh one that fits this market (not Maria, Mia, Juan, Carlos, or Marco). Show it beat by beat: what they notice, what they do, what they say. Then show the cycle: what they always try, the short relief, and the problem coming back, worse.
+2. THE MIRROR. Turn to the reader ("If this sounds familiar…") and name what it feels like, in their own words. Short lines.
+3. THE TURN. The one thing about this problem most people in this market miss, the idea this chapter teaches. Put it in a single **bold** line. Connect it to the book's unique mechanism where it fits naturally.
+4. NO BLAME. Their effort was not the problem; nobody showed them the whole picture.
+5. INTO THE CHAPTER. End on a specific promise of what this chapter will show them, a real idea, not suspense.
 
-End with a POWERFUL HOOK that keeps the reader hanging — they MUST keep reading.
-USE PERSUASIVE SALES COPY STRATEGY to make the reader read every line.
-Every paragraph pulls them to the next.
+Follow the VOICE rules: one-line beats, Tagalog carrying the scene, English carrying the insight, nothing invented.
 
-CHARACTER (the protagonist):
-- Fictional but hyper-realistic Filipino from ${project.target_market}
-- Full name, specific job, specific city, specific situation
-- Show their pain through sensory detail — what they saw, said, felt, did
-- Include one moment of false hope, followed by a harder fall
-
-VOICE:
-- Simple words. Conversational. ~70% English / ~30% Tagalog — narrative prose in English, Tagalog reserved for dialogue and short emotional beats.
-- Real dialogue in quotation marks — what people actually say (this is where Tagalog naturally lives)
-- Vary sentence length: long for tension, short for impact
-
-LENGTH: 300–500 words.
+LENGTH: 350–550 words.
 
 Return this exact JSON:
 {
-  "story_starter": "Full story text — use \\n\\n between paragraphs"
+  "story_starter": "Full opening text — use \\n\\n between paragraphs"
 }`
 }
 
@@ -334,7 +339,7 @@ STRUCTURE — every Core Lessons section MUST contain all four of the following,
 3. THE CORE CONCEPT SUB-SECTIONS (1–2 more sub-sections, ## headings required)
    - Teach the main principles of this chapter using the anchor example as proof
    - Name at least one real tool, platform, or resource per sub-section
-   - Include at least one data point or real-world statistic to build credibility
+   - Back it with real specifics: a named product, place, program, or price people would recognize. Use a statistic only if you are sure it is real and widely documented; never invent one.
 
 4. THE MISTAKE EVERYONE MAKES (final sub-section, ## heading required)
    - Dedicate a full sub-section to THE ONE MISTAKE that undoes everything else in this chapter
@@ -374,15 +379,15 @@ ${lessonsContent.slice(0, 600)}...
 Now write ONLY the Practical Steps. These must flow naturally from the lessons above.
 
 TONE RULE — THIS IS THE MOST IMPORTANT INSTRUCTION:
-Every step must sound like it came from real-world trial and error — NOT from a textbook, NOT from theory, NOT from "best practices."
-Write as if the author personally tried this, failed first, figured out what actually works, and is now passing on the hard-won version.
+Every step must sound like practical, street-level know-how — NOT a textbook, NOT theory, NOT generic "best practices." Specific actions, specific places, the shortcut that saves time, the mistake that wastes money.
+Never invent the author's personal experiences ("I tested this for six weeks", "I wasted three months"), results, or numbers. The student publishes this under their own name.
 
 The difference:
 ❌ Theoretical: "Research your target audience to understand their needs."
-✅ Trial and error: "Open a Facebook group where your target market hangs out — not to post, just to read. Scroll for 20 minutes and write down the exact words they use to describe their problem. Those words become your content. I wasted three months writing copy that sounded good to me but meant nothing to them."
+✅ Practical: "Open a Facebook group where your target market hangs out. Wag ka munang mag-post, magbasa ka lang. Scroll for 20 minutes and write down the exact words they use to describe their problem. Those words become your content."
 
 ❌ Theoretical: "Create a consistent posting schedule."
-✅ Trial and error: "Post at 7am or 8pm on weekdays — those are the two windows that actually get seen in Philippine feeds. I tested every time slot for six weeks. Everything else got buried."
+✅ Practical: "Pick two times a day you can actually keep, and post at those times for the next 30 days. Write them in your phone calendar now. Consistency you can keep beats a perfect schedule you abandon in a week."
 
 RULES:
 - 4–5 steps (never fewer, never more)
@@ -507,7 +512,7 @@ SECTION 2 — MYTH vs. TRUTH (800–1000 words): Present exactly 4 myths with th
 - MYTH: State it as confidently as most people believe it
 - THE TRUTH: Flip it with a specific, evidence-backed truth
 - WHY IT MATTERS: Real-world consequence of believing the myth
-- Include a real industry example, statistic, or named tool per myth
+- Include a real example or named tool per myth (a statistic only if you are sure it is real; never invent one)
 
 Use ## Heading format for each myth heading.
 
@@ -573,7 +578,7 @@ ${jsonTemplate}`
   // Fallback standard (shouldn't reach here normally)
   return `${header}
 
-SECTION 1 — STORY STARTER (300–500 words): Cinematic. Short punchy sentences for impact. Named Filipino character. Narrative prose in English (~80%); Tagalog appears in dialogue and short emotional beats (~20%) — not as the carrying language.
+SECTION 1 — STORY STARTER (350–550 words): One ordinary moment where the problem shows up, the cycle of what they try, a turn to the reader, the key insight in one **bold** line, then into the chapter. First name only. Follow the VOICE rules.
 SECTION 2 — CORE LESSONS (600–900 words): 3–4 sub-sections with ## headings. Specific examples and tools.
 SECTION 3 — PRACTICAL STEPS (4–5 steps).
 ${quickWinRule}
@@ -687,7 +692,7 @@ STEP 3 — BUILD THE INTRODUCTION WITH THIS EXACT STRUCTURE:
 WRITING RULES:
 - Short paragraphs (2–4 sentences max, then vary with single punchy lines)
 - Conversational — trusted friend explaining something life-changing
-- ~70% English / ~30% Tagalog. Tagalog as warmth and emotional accent only — narrative prose stays English.
+- Follow the VOICE rules: one-line beats, Tagalog carrying the scenes, English carrying the insight.
 - NEVER use hype, fake promises, or clichés
 
 Return this exact JSON:

@@ -83,6 +83,17 @@ function splitIntoShortParagraphs(text: string): string[] {
   return chunks.length > 0 ? chunks : [text]
 }
 
+// The writer bolds key insight lines with **markdown** (2026-10-05 voice).
+// Render those as bold runs and drop any stray markers, so asterisks never
+// reach the reader.
+function richRuns(text: string, base: { size: number; font: string; color?: string; italics?: boolean }): TextRun[] {
+  return text.split(/(\*\*[^*]+\*\*)/g).filter(Boolean).map(part => {
+    const bold = /^\*\*[^*]+\*\*$/.test(part)
+    return new TextRun({ ...base, text: (bold ? part.slice(2, -2) : part).replace(/\*\*/g, ''), bold })
+  })
+}
+const plain = (t: string | null | undefined) => (t ?? '').replace(/\*\*/g, '')
+
 // Split a block of text into Paragraphs (one per line break, max 3 sentences each)
 // Lines starting with "## " are rendered as bold sub-headings.
 function textToParagraphs(text: string, extraSpacing = false): Paragraph[] {
@@ -104,11 +115,18 @@ function textToParagraphs(text: string, extraSpacing = false): Paragraph[] {
       continue
     }
 
+    // A whole-line **bold** insight stays bold even if it is long enough to
+    // be split into sentences below.
+    const lineBold = /^\*\*[^*]+\*\*$/.test(line)
+    const body = lineBold ? line.slice(2, -2) : line
+
     // Only apply sentence splitting to longer lines
-    const chunks = line.split(' ').length > 30 ? splitIntoShortParagraphs(line) : [line]
+    const chunks = body.split(' ').length > 30 ? splitIntoShortParagraphs(body) : [body]
     for (const chunk of chunks) {
       paragraphs.push(new Paragraph({
-        children: [new TextRun({ text: chunk, size: 24, font: 'Georgia' })],
+        children: lineBold
+          ? [new TextRun({ text: plain(chunk), bold: true, size: 24, font: 'Georgia' })]
+          : richRuns(chunk, { size: 24, font: 'Georgia' }),
         spacing: { after: extraSpacing ? 200 : 140, line: 320 },
       }))
     }
@@ -227,7 +245,7 @@ function buildDocument(ebook: EbookData): Document {
     // Chapter Preview
     if (ch.chapter_preview) {
       children.push(new Paragraph({
-        children: [new TextRun({ text: ch.chapter_preview, size: 22, font: 'Georgia', color: '555555', italics: true })],
+        children: [new TextRun({ text: plain(ch.chapter_preview), size: 22, font: 'Georgia', color: '555555', italics: true })],
         spacing: { before: 0, after: 400, line: 320 },
         border: {
           left: { style: BorderStyle.SINGLE, size: 6, color: 'dddddd', space: 12 },
@@ -287,7 +305,7 @@ function buildDocument(ebook: EbookData): Document {
           children.push(new Paragraph({
             children: [
               new TextRun({ text: 'Why this matters: ', bold: true, size: 22, font: 'Arial', color: '444444' }),
-              new TextRun({ text: step.why_it_matters, size: 22, font: 'Arial', color: '444444', italics: true }),
+              new TextRun({ text: plain(step.why_it_matters), size: 22, font: 'Arial', color: '444444', italics: true }),
             ],
             spacing: { after: 80 },
           }))
@@ -297,7 +315,7 @@ function buildDocument(ebook: EbookData): Document {
           children.push(new Paragraph({
             children: [
               new TextRun({ text: '⚠ Common mistake: ', bold: true, size: 22, font: 'Arial', color: 'c0392b' }),
-              new TextRun({ text: step.common_mistake, size: 22, font: 'Arial', color: 'c0392b' }),
+              new TextRun({ text: plain(step.common_mistake), size: 22, font: 'Arial', color: 'c0392b' }),
             ],
             spacing: { after: 120 },
           }))
@@ -313,7 +331,7 @@ function buildDocument(ebook: EbookData): Document {
       // Named quick win title
       if (ch.quick_win.name) {
         children.push(new Paragraph({
-          children: [new TextRun({ text: ch.quick_win.name, bold: true, size: 28, font: 'Arial', color: 'b8860b' })],
+          children: [new TextRun({ text: plain(ch.quick_win.name), bold: true, size: 28, font: 'Arial', color: 'b8860b' })],
           spacing: { after: 100 },
         }))
       }
@@ -321,7 +339,7 @@ function buildDocument(ebook: EbookData): Document {
       // Goal
       if (ch.quick_win.goal) {
         children.push(new Paragraph({
-          children: [new TextRun({ text: ch.quick_win.goal, bold: true, size: 24, font: 'Georgia' })],
+          children: [new TextRun({ text: plain(ch.quick_win.goal), bold: true, size: 24, font: 'Georgia' })],
           spacing: { after: 120 },
         }))
       }
@@ -334,7 +352,7 @@ function buildDocument(ebook: EbookData): Document {
           children.push(new Paragraph({
             children: [
               new TextRun({ text: `${i + 1}.  `, bold: true, size: 24, font: 'Arial', color: 'b8860b' }),
-              new TextRun({ text: cleanInst, size: 24, font: 'Georgia' }),
+              new TextRun({ text: plain(cleanInst), size: 24, font: 'Georgia' }),
             ],
             spacing: { after: 100 },
             indent: { left: 360 },
@@ -349,7 +367,7 @@ function buildDocument(ebook: EbookData): Document {
         children.push(new Paragraph({
           children: [
             new TextRun({ text: '✓ Result: ', bold: true, size: 22, font: 'Arial', color: '1a7a3c' }),
-            new TextRun({ text: ch.quick_win.immediate_result, size: 22, font: 'Arial', color: '1a7a3c', italics: true }),
+            new TextRun({ text: plain(ch.quick_win.immediate_result), size: 22, font: 'Arial', color: '1a7a3c', italics: true }),
           ],
           spacing: { after: 160 },
         }))

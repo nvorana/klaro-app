@@ -79,6 +79,13 @@ const DEFAULT_UTILITY  = USE_OPENROUTER ? 'openai/gpt-4o-mini' : 'gpt-4o-mini'
 export const AI_MODEL         = process.env.AI_MODEL         || DEFAULT_CREATIVE
 export const AI_MODEL_UTILITY = process.env.AI_MODEL_UTILITY || DEFAULT_UTILITY
 
+// The ebook writer (Module 2) and its reviser. gpt-5.6-sol since 2026-10-05:
+// in a side-by-side on Jon's reference chapter opening, gpt-4o kept 38-word
+// paragraphs and overshot to 41% Tagalog markers; Sol matched the reference
+// (8-word beats vs 6, 19% vs 19%, 3 bold lines vs 4). Override with
+// AI_MODEL_ROUTE_EBOOK_AGENT.
+export const EBOOK_MODEL = modelForRoute('ebook-agent', 'creative', 'gpt-5.6-sol')
+
 /** Embeddings always run on OpenAI (see openaiDirect). */
 export const EMBEDDING_MODEL = process.env.AI_EMBEDDING_MODEL || 'text-embedding-3-small'
 
@@ -127,6 +134,21 @@ export function isReasoningModel(model: string): boolean {
  * chat.completions.create(): the temperature for classic models, a reasoning
  * effort for reasoning models.
  */
+/**
+ * Output-length param valid for `model`. Reasoning models reject max_tokens
+ * and count their hidden reasoning against max_completion_tokens, so a limit
+ * sized for the visible text (e.g. 300 for a chapter preview) would cut the
+ * answer off. They get the visible budget plus reasoning headroom.
+ */
+export function tokenLimit(
+  model: string,
+  visibleTokens: number,
+): { max_tokens: number } | { max_completion_tokens: number } {
+  return isReasoningModel(model)
+    ? { max_completion_tokens: visibleTokens + 6000 }
+    : { max_tokens: visibleTokens }
+}
+
 export function samplingParams(
   model: string,
   temperature: number,
