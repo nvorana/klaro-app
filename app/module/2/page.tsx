@@ -57,9 +57,13 @@ interface PracticalStep {
 }
 
 interface QuickWin {
+  name?: string
+  minutes?: number
+  you_need?: string
   goal: string
   instructions: string[]
-  immediate_result: string
+  watch_out?: string
+  immediate_result: string   // shown as "Done when"
 }
 
 interface ChapterDraft {
@@ -742,6 +746,16 @@ export default function Module2Page() {
                 <span className="text-[#F4B942] text-xs font-bold uppercase tracking-wide">Quick Win</span>
               </div>
               <div className="bg-[#F4B942]/5 border border-[#F4B942]/20 rounded-xl p-4">
+                {currentDraft.quick_win.name && (
+                  <p className="text-[#1A1F36] text-base font-bold mb-1">{currentDraft.quick_win.name}</p>
+                )}
+                {(currentDraft.quick_win.minutes || currentDraft.quick_win.you_need) && (
+                  <p className="text-gray-500 text-xs italic mb-2">
+                    {currentDraft.quick_win.minutes ? `About ${currentDraft.quick_win.minutes} minutes` : ''}
+                    {currentDraft.quick_win.minutes && currentDraft.quick_win.you_need ? ' · ' : ''}
+                    {currentDraft.quick_win.you_need ? `You need: ${currentDraft.quick_win.you_need}` : ''}
+                  </p>
+                )}
                 <p className="text-[#1A1F36] text-sm font-medium mb-2">{currentDraft.quick_win.goal}</p>
                 <ul className="space-y-1 mb-2">
                   {currentDraft.quick_win.instructions?.map((inst, i) => (
@@ -751,8 +765,11 @@ export default function Module2Page() {
                     </li>
                   ))}
                 </ul>
+                {currentDraft.quick_win.watch_out && (
+                  <p className="text-red-500 text-xs mb-1"><span className="font-semibold">Watch out: </span>{currentDraft.quick_win.watch_out}</p>
+                )}
                 {currentDraft.quick_win.immediate_result && (
-                  <p className="text-green-600 text-xs italic">Result: {currentDraft.quick_win.immediate_result}</p>
+                  <p className="text-green-600 text-xs"><span className="font-semibold">Done when: </span>{currentDraft.quick_win.immediate_result}</p>
                 )}
               </div>
             </div>
@@ -918,6 +935,7 @@ export default function Module2Page() {
                       <div>
                         <p className="text-xs text-[#F4B942] font-bold uppercase tracking-wide mb-2">Quick Win</p>
                         <div className="bg-[#F4B942]/5 border border-[#F4B942]/20 rounded-lg p-3">
+                          {ch.quick_win.name && <p className="text-[#1A1F36] text-sm font-bold mb-0.5">{ch.quick_win.name}</p>}
                           <p className="text-[#1A1F36] text-sm font-medium mb-1">{ch.quick_win.goal}</p>
                           <ul className="space-y-0.5">
                             {ch.quick_win.instructions?.map((inst, i) => (
@@ -926,8 +944,11 @@ export default function Module2Page() {
                               </li>
                             ))}
                           </ul>
+                          {ch.quick_win.watch_out && (
+                            <p className="text-red-500 text-xs mt-1"><span className="font-semibold">Watch out: </span>{ch.quick_win.watch_out}</p>
+                          )}
                           {ch.quick_win.immediate_result && (
-                            <p className="text-green-600 text-xs mt-1 italic">{ch.quick_win.immediate_result}</p>
+                            <p className="text-green-600 text-xs mt-1"><span className="font-semibold">Done when: </span>{ch.quick_win.immediate_result}</p>
                           )}
                         </div>
                       </div>

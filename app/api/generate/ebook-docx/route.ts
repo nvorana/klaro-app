@@ -26,9 +26,12 @@ interface PracticalStep {
 
 interface QuickWin {
   name?: string
+  minutes?: number
+  you_need?: string
   goal: string
   instructions: string[]
-  immediate_result: string
+  watch_out?: string
+  immediate_result: string   // "Done when"
 }
 
 interface ChapterDraft {
@@ -336,6 +339,18 @@ function buildDocument(ebook: EbookData): Document {
         }))
       }
 
+      // Time and what they need
+      if (ch.quick_win.minutes || ch.quick_win.you_need) {
+        const meta = [
+          ch.quick_win.minutes ? `About ${ch.quick_win.minutes} minutes` : '',
+          ch.quick_win.you_need ? `You need: ${plain(ch.quick_win.you_need)}` : '',
+        ].filter(Boolean).join('  ·  ')
+        children.push(new Paragraph({
+          children: [new TextRun({ text: meta, size: 22, font: 'Arial', color: '555555', italics: true })],
+          spacing: { after: 100 },
+        }))
+      }
+
       // Goal
       if (ch.quick_win.goal) {
         children.push(new Paragraph({
@@ -362,11 +377,22 @@ function buildDocument(ebook: EbookData): Document {
 
       children.push(spacer(80))
 
-      // Result
+      // Watch out
+      if (ch.quick_win.watch_out) {
+        children.push(new Paragraph({
+          children: [
+            new TextRun({ text: 'Watch out: ', bold: true, size: 22, font: 'Arial', color: 'c0392b' }),
+            new TextRun({ text: plain(ch.quick_win.watch_out), size: 22, font: 'Arial', color: 'c0392b' }),
+          ],
+          spacing: { after: 100 },
+        }))
+      }
+
+      // Done when
       if (ch.quick_win.immediate_result) {
         children.push(new Paragraph({
           children: [
-            new TextRun({ text: '✓ Result: ', bold: true, size: 22, font: 'Arial', color: '1a7a3c' }),
+            new TextRun({ text: '✓ Done when: ', bold: true, size: 22, font: 'Arial', color: '1a7a3c' }),
             new TextRun({ text: plain(ch.quick_win.immediate_result), size: 22, font: 'Arial', color: '1a7a3c', italics: true }),
           ],
           spacing: { after: 160 },

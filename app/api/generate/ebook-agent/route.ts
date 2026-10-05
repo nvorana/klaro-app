@@ -83,9 +83,12 @@ interface PracticalStep {
 
 interface QuickWin {
   name?: string
+  minutes?: number
+  you_need?: string
   goal: string
-  instructions: string[]
-  immediate_result: string
+  instructions: string[]     // at most 3 (Option A)
+  watch_out?: string
+  immediate_result: string   // shown as "Done when"
 }
 
 interface ChapterDraft {
@@ -362,80 +365,43 @@ Return this exact JSON:
 }`
 }
 
-function pass4_StepsPrompt(project: Project, chapter: ChapterOutline, storyContent: string, lessonsContent: string): string {
-  return `TASK: Practical Steps for Chapter ${chapter.number} — "${chapter.title}"
+// One Quick Win ends every chapter (Option A, 2026-10-06). It replaces the
+// old 4-5 practical steps plus a 7-9 step quick win: up to 14 actions per
+// chapter, ~120 per book. Jon: the point of the tool is a small, easy win so
+// each chapter ends with "I did something today", not homework. The how-to
+// detail lives in the lessons. The win now also sees those lessons; before,
+// it was written blind to them.
+function pass5_QuickWinPrompt(project: Project, chapter: ChapterOutline, lessonsContent: string): string {
+  return `TASK: The Quick Win that ends Chapter ${chapter.number} — "${chapter.title}"
 
 Target Market: ${project.target_market}
 Chapter Goal: ${chapter.goal}
-
-Already written — Story:
----
-${storyContent.slice(0, 400)}...
----
-Already written — Core Lessons (summary):
----
-${lessonsContent.slice(0, 600)}...
----
-
-Now write ONLY the Practical Steps. These must flow naturally from the lessons above.
-
-TONE RULE — THIS IS THE MOST IMPORTANT INSTRUCTION:
-Every step must sound like practical, street-level know-how — NOT a textbook, NOT theory, NOT generic "best practices." Specific actions, specific places, the shortcut that saves time, the mistake that wastes money.
-Never invent the author's personal experiences ("I tested this for six weeks", "I wasted three months"), results, or numbers. The student publishes this under their own name.
-
-The difference:
-❌ Theoretical: "Research your target audience to understand their needs."
-✅ Practical: "Open a Facebook group where your target market hangs out. Wag ka munang mag-post, magbasa ka lang. Scroll for 20 minutes and write down the exact words they use to describe their problem. Those words become your content."
-
-❌ Theoretical: "Create a consistent posting schedule."
-✅ Practical: "Pick two times a day you can actually keep, and post at those times for the next 30 days. Write them in your phone calendar now. Consistency you can keep beats a perfect schedule you abandon in a week."
-
-RULES:
-- 4–5 steps (never fewer, never more)
-- Each step must be specific enough that the reader can do it WITHOUT googling anything extra
-- Name actual tools, platforms, apps, or websites where relevant (e.g. "Open Canva at canva.com", "Go to Facebook Creator Studio")
-- what_to_do: the exact action — written with the authority of someone who has done this before and knows the shortcut
-- why_it_matters: one honest sentence — ground it in a real consequence, not a vague benefit ("skipping this means you'll redo the whole thing later" beats "this is important for success")
-- common_mistake: write it as if you personally watched someone make this exact mistake and saw what it cost them — be specific and a little blunt
-
-Return this exact JSON:
-{
-  "practical_steps": [
-    {
-      "step_number": 1,
-      "title": "Step title here",
-      "what_to_do": "Exact instruction with the authority of someone who has done this before",
-      "why_it_matters": "One honest sentence grounded in a real consequence",
-      "common_mistake": "The specific mistake you've personally seen — and what it costs"
-    }
-  ]
-}`
-}
-
-function pass5_QuickWinPrompt(chapter: ChapterOutline): string {
-  return `TASK: Quick Win for Chapter ${chapter.number} — "${chapter.title}"
 Quick Win Outcome: ${chapter.quick_win_outcome}
 
-Design a named, step-by-step Quick Win the reader can complete TODAY in 10–15 minutes.
+The lessons this chapter just taught:
+---
+${lessonsContent}
+---
+
+The reader should finish this chapter feeling "I did something today", never overwhelmed. Design ONE small win that puts this chapter's main lesson into action.
 
 RULES:
-- Give it a catchy, specific name (e.g. "The 24-Hour Parasite Reset Starter", "The 10-Minute Niche Clarity Test")
-- 7–9 numbered steps — specific enough to follow without any extra research
-- Each step is one clear action, 1–2 sentences max
-- Steps must build on each other — completing one makes the next easier
-- The immediate_result must describe a tangible, visible thing the reader will HAVE when done
-- Tone: energetic but practical — not a pep talk, a protocol
+- One action, done in about 10 minutes, with things they already have (phone, paper, a recent payslip or receipt).
+- At most 3 steps. Each step is one short sentence and one physical action.
+- watch_out: the one mistake that would make this win fail, in one sentence.
+- immediate_result: the visible thing they now have when they are done (a written number, a short list, something set up).
+- A short, specific name. Follow the VOICE rules. Never invent statistics.
 
 Return this exact JSON:
 {
   "quick_win": {
-    "name": "Catchy name for this Quick Win",
-    "goal": "One sentence: what the reader will accomplish",
-    "instructions": [
-      "Step instruction here — specific, clear, no vague verbs",
-      "Next step here"
-    ],
-    "immediate_result": "The specific, tangible thing they will have or see when they finish all steps"
+    "name": "Short, specific name",
+    "minutes": 10,
+    "you_need": "What they need, e.g. Your phone and one recent payslip",
+    "goal": "One sentence: what they will accomplish",
+    "instructions": ["Step 1", "Step 2", "Step 3"],
+    "watch_out": "The one mistake to avoid",
+    "immediate_result": "The visible thing they now have when they are done"
   }
 }`
 }
@@ -464,10 +430,9 @@ Chapter Type: ${type}
 OPENING QUOTE: Find a powerful, relevant quote by a well-known public figure that directly connects to this chapter's topic.`
 
   const quickWinRule = `
-QUICK WIN (completable in 10–15 minutes)
-Give it a catchy specific name. Design 7–9 concrete steps the reader can do right now.
-State the goal clearly. Each instruction must be specific enough to follow without googling.
-Describe the immediate tangible result they will have when done.`
+QUICK WIN (ends the chapter; the reader should feel "I did something today", never overwhelmed)
+One action in about 10 minutes with things they already have. At most 3 steps, each one short sentence and one physical action.
+Give it a short, specific name. Include what they need (you_need), the one mistake that would make it fail (watch_out), and the visible thing they will have when done (immediate_result).`
 
   const closingRule = `
 CONFIDENCE CLOSE (2–3 short paragraphs)
@@ -484,20 +449,14 @@ Return this exact JSON:
   "quote": { "text": "...", "author": "Full Name, Title" },
   "story_starter": "...",
   "core_lessons": "## Sub-heading\\n\\nContent...\\n\\n## Sub-heading\\n\\nContent...",
-  "practical_steps": [
-    {
-      "step_number": 1,
-      "title": "Step title",
-      "what_to_do": "Exact specific instruction naming real tools",
-      "why_it_matters": "One honest sentence",
-      "common_mistake": "What beginners get wrong"
-    }
-  ],
   "quick_win": {
-    "name": "Catchy Quick Win name",
+    "name": "Short, specific name",
+    "minutes": 10,
+    "you_need": "What they need",
     "goal": "What the reader will accomplish",
-    "instructions": ["Specific step", "Next step"],
-    "immediate_result": "The tangible thing they will have when done"
+    "instructions": ["Step 1", "Step 2", "Step 3"],
+    "watch_out": "The one mistake to avoid",
+    "immediate_result": "The visible thing they will have when done"
   },
   "references": []
 }`
@@ -516,8 +475,6 @@ SECTION 2 — MYTH vs. TRUTH (800–1000 words): Present exactly 4 myths with th
 - Include a real example or named tool per myth (a statistic only if you are sure it is real; never invent one)
 
 Use ## Heading format for each myth heading.
-
-SECTION 3 — PRACTICAL STEPS (4–5 steps): Specific steps to act on the truths revealed.
 ${quickWinRule}
 ${closingRule}
 ${jsonTemplate}`
@@ -535,8 +492,6 @@ SECTION 2 — THE TURNING POINT (200–300 words): What they tried first. What f
 SECTION 3 — STEP-BY-STEP BREAKDOWN (500–700 words): Exactly what they did, with specific tools and timeline. Include one setback they overcame.
 
 SECTION 4 — RESULTS + LESSON (200–300 words): Concrete specific result (use numbers). The single most important lesson.
-
-SECTION 5 — PRACTICAL STEPS (4–5 steps): Exact steps to replicate what the character did.
 ${quickWinRule}
 ${closingRule}
 ${jsonTemplate}`
@@ -552,8 +507,6 @@ SECTION 1 — OPENING REFRAME (150–200 words): Why most people skip self-asses
 SECTION 2 — THE SELF-ASSESSMENT (600–800 words): A practical self-assessment tool — scored quiz, diagnostic checklist, or fill-in-the-blank reflection. Provide interpretation guide.
 
 SECTION 3 — WHAT YOUR RESULTS MEAN (300–400 words): Walk through main result categories with specific actionable guidance and tools for each.
-
-SECTION 4 — PRACTICAL STEPS (4–5 steps): Based on what readers discovered.
 ${quickWinRule}
 ${closingRule}
 ${jsonTemplate}`
@@ -569,8 +522,6 @@ SECTION 1 — WHY TEMPLATES MATTER (150–200 words): The pain of starting from 
 SECTION 2 — THE TEMPLATES (700–1000 words): 3–4 ready-to-use templates, scripts, or checklists. For each: name, when/how to use it, full template with [BRACKETS], one filled-in example.
 
 SECTION 3 — HOW TO CUSTOMIZE (200–300 words): 3–5 tips for adapting templates to their own voice. Common mistakes when using templates.
-
-SECTION 4 — PRACTICAL STEPS (4–5 steps): Walk through using one template right now.
 ${quickWinRule}
 ${closingRule}
 ${jsonTemplate}`
@@ -581,7 +532,6 @@ ${jsonTemplate}`
 
 SECTION 1 — STORY STARTER (350–550 words): One ordinary moment where the problem shows up, the cycle of what they try, a turn to the reader, the key insight in one **bold** line, then into the chapter. First name only. Follow the VOICE rules.
 SECTION 2 — CORE LESSONS (600–900 words): 3–4 sub-sections with ## headings. Specific examples and tools.
-SECTION 3 — PRACTICAL STEPS (4–5 steps).
 ${quickWinRule}
 ${closingRule}
 ${jsonTemplate}`
@@ -626,23 +576,15 @@ async function generateStandardChapterMultiPass(
   ) as { core_lessons: string }
   console.log(`[ebook-agent] Chapter ${chapter.number} — lessons done`)
 
-  // Pass 4: Practical Steps (story + lessons as context)
+  // Pass 4 (was 5): the chapter's one Quick Win, built on the lessons.
   onStep?.(3)
-  const stepsData = await callOpenAI(
-    pass4_StepsPrompt(project, chapter, storyData.story_starter, lessonsData.core_lessons),
-    [
-      { role: 'assistant', content: JSON.stringify(storyData) },
-      { role: 'assistant', content: JSON.stringify(lessonsData) },
-    ],
-    2000,
+  const quickWinData = await callOpenAI(
+    pass5_QuickWinPrompt(project, chapter, lessonsData.core_lessons),
+    [],
+    1200,
     marketHint,
     userId
-  ) as { practical_steps: PracticalStep[] }
-  console.log(`[ebook-agent] Chapter ${chapter.number} — steps done`)
-
-  // Pass 5: Quick Win
-  onStep?.(4)
-  const quickWinData = await callOpenAI(pass5_QuickWinPrompt(chapter), [], 1500, marketHint, userId) as {
+  ) as {
     quick_win: QuickWin
   }
   console.log(`[ebook-agent] Chapter ${chapter.number} — quick win done`)
@@ -654,9 +596,20 @@ async function generateStandardChapterMultiPass(
     quote:            quoteData.quote,
     story_starter:    storyData.story_starter,
     core_lessons:     lessonsData.core_lessons,
-    practical_steps:  stepsData.practical_steps,
+    practical_steps:  [],
     quick_win:        quickWinData.quick_win,
     references:       [],
+  }
+}
+
+// Option A: one Quick Win per chapter, no practical steps, at most 3 win
+// steps, whatever a model returns (single-pass chapter types included).
+function normalizeChapterEnding(d: ChapterDraft): ChapterDraft {
+  const qw = d.quick_win
+  return {
+    ...d,
+    practical_steps: [],
+    quick_win: qw ? { ...qw, instructions: (qw.instructions ?? []).slice(0, 3) } : qw,
   }
 }
 
@@ -864,7 +817,7 @@ export async function POST(request: NextRequest) {
           if (chapterType === 'standard') {
             result = await generateStandardChapterMultiPass(project, bookTitle, chapter, allChapters, marketHint, userId, onStep)
 
-            onStep?.(5)
+            onStep?.(4)
 
             // ── Editor pass (standard chapters only, server-side) ────────────
             // Tier 1 validators always run; Tier 2 + reviser only fire if Tier 1
@@ -900,14 +853,14 @@ export async function POST(request: NextRequest) {
             ) as ChapterDraft
           }
 
-          return result
+          return normalizeChapterEnding(result)
         }
 
         // Streamed progress (2026-10-05): on gpt-5.6-sol a standard chapter
         // takes ~90s, and the old spinner said "20-30 seconds", so students
         // read it as frozen. With data.stream the page gets an event as each
         // section starts. Standard chapters: 0 preview + quote, 1 story,
-        // 2 lessons, 3 steps, 4 quick win, 5 quality check. Other types are
+        // 2 lessons, 3 quick win, 4 quality check. Other types are
         // one pass (step 0). Without data.stream: plain JSON as before.
         if (data.stream === true) {
           const kind = chapterType === 'standard' ? 'standard' : 'single'
@@ -986,17 +939,9 @@ export async function POST(request: NextRequest) {
             maxTokens = 3000
             context   = ctxStory ? [{ role: 'assistant', content: JSON.stringify({ story_starter: ctxStory }) }] : []
             break
-          case 'steps':
-            prompt    = pass4_StepsPrompt(project, chapter, ctxStory ?? '', ctxLessons ?? '')
-            maxTokens = 2000
-            context   = [
-              ...(ctxStory   ? [{ role: 'assistant' as const, content: JSON.stringify({ story_starter: ctxStory }) }] : []),
-              ...(ctxLessons ? [{ role: 'assistant' as const, content: JSON.stringify({ core_lessons: ctxLessons }) }] : []),
-            ]
-            break
           case 'quickwin':
-            prompt    = pass5_QuickWinPrompt(chapter)
-            maxTokens = 1500
+            prompt    = pass5_QuickWinPrompt(project, chapter, ctxLessons ?? '')
+            maxTokens = 1200
             break
           default:
             return NextResponse.json({ error: `Unknown section: ${section}` }, { status: 400 })

@@ -18,14 +18,14 @@ export interface ProgressStep {
 }
 
 // Standard chapters: the order generateStandardChapterMultiPass runs in.
-// Durations from a gpt-5.6-sol test chapter (86s total).
+// Durations from gpt-5.6-sol test chapters. Practical steps were dropped on
+// 2026-10-06 (Option A: one Quick Win per chapter).
 export const STANDARD_CHAPTER_STEPS: ProgressStep[] = [
-  { label: 'Chapter preview and opening quote', weight: 10, expectedSecs: 10 },
-  { label: 'Opening story', weight: 20, expectedSecs: 17 },
-  { label: 'Lessons', weight: 34, expectedSecs: 30 },
-  { label: 'Practical steps', weight: 18, expectedSecs: 15 },
-  { label: 'Quick win', weight: 12, expectedSecs: 10 },
-  { label: 'Final quality check', weight: 6, expectedSecs: 6 },
+  { label: 'Chapter preview and opening quote', weight: 12, expectedSecs: 8 },
+  { label: 'Opening story', weight: 24, expectedSecs: 19 },
+  { label: 'Lessons', weight: 42, expectedSecs: 25 },
+  { label: 'Your quick win', weight: 15, expectedSecs: 12 },
+  { label: 'Final quality check', weight: 7, expectedSecs: 6 },
 ]
 
 // Myth vs truth, case study, worksheet and template chapters: one pass.
