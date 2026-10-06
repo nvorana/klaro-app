@@ -6,7 +6,8 @@
     "dev": "set HTTPS_PROXY=& set https_proxy=& set HTTP_PROXY=& set http_proxy=& next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:weekly-pending-digest": "node --test tests/weekly-pending-digest.test.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.0",
