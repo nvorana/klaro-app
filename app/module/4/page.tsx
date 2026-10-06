@@ -52,6 +52,9 @@ interface HeadlineData {
   options: string[]
   recommended: number
   recommended_reason: string
+  // The 4U breakdown per option (lib/salesPage/headline.ts). Missing on
+  // headlines generated before 2026-10-06.
+  four_u?: Array<{ useful: string; urgent: string; unique: string; ultra_specific: string }>
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -740,8 +743,14 @@ export default function Module4Page() {
           {generating && (
             <div className="text-center py-14">
               <div className="w-12 h-12 border-4 border-[#F4B942] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-              <p className="text-sm font-medium text-[#1A1F36]">Writing your {sec?.label} section…</p>
-              <p className="text-xs text-gray-500 mt-1">Using your offer data for context</p>
+              <p className="text-sm font-medium text-[#1A1F36]">
+                {isHeadline ? 'Writing your headline options…' : `Writing your ${sec?.label} section…`}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                {isHeadline
+                  ? 'Each option is checked against all four parts of the 4U formula. This takes about a minute.'
+                  : 'Using your offer data for context'}
+              </p>
             </div>
           )}
 
@@ -796,6 +805,20 @@ export default function Module4Page() {
                       </div>
                       <p className="text-sm font-bold text-[#1A1F36] leading-snug">{lines[0]}</p>
                       {lines[1] && <p className="text-sm text-gray-600 mt-1 leading-snug">{lines[1]}</p>}
+                      {headlineData.four_u?.[i] && (
+                        <div className="mt-3 pt-2.5 border-t border-gray-100 grid gap-1">
+                          {([
+                            ['Useful', headlineData.four_u[i].useful],
+                            ['Urgent', headlineData.four_u[i].urgent],
+                            ['Unique', headlineData.four_u[i].unique],
+                            ['Ultra-specific', headlineData.four_u[i].ultra_specific],
+                          ] as const).map(([label, text]) => (
+                            <p key={label} className="text-[11px] text-gray-500 leading-snug">
+                              <span className="font-semibold text-green-700">✓ {label}:</span> {text}
+                            </p>
+                          ))}
+                        </div>
+                      )}
                     </button>
                   )
                 })}

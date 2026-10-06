@@ -3,8 +3,11 @@ import { openai, AI_MODEL } from '@/lib/openai'
 import { logAiUsage } from '@/lib/aiUsage'
 import { getMarketLanguageHintForUser } from '@/lib/marketLanguage'
 import { requireUser } from '@/lib/apiAuth'
+import { generateHeadlines } from '@/lib/salesPage/headline'
 
-export const maxDuration = 60
+// The headline now writes, checks and grades its options (and rewrites any
+// that fail the 4U formula), which can take over a minute on gpt-5.6-sol.
+export const maxDuration = 300
 
 // CHILLYONARYO section keys
 export type SectionKey =
@@ -70,6 +73,9 @@ Guarantee: ${guarantee}
 `
 
   const sectionPrompts: Record<SectionKey, string> = {
+    // NOT USED since 2026-10-06: the headline goes through
+    // lib/salesPage/headline.ts (4U enforced). Kept only because the Record
+    // type requires every key; remove when the other sections are reworked.
     headline: `
 ${styleRules}
 ${context}
@@ -302,6 +308,18 @@ export async function POST(request: NextRequest) {
 
     if (!section || !target_market || !problem || !mechanism || !ebook_title) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+    }
+
+    // Headline: 4U enforced (written per U, checked in code, graded, only
+    // passing options returned). See lib/salesPage/headline.ts.
+    if (section === 'headline') {
+      try {
+        const result = await generateHeadlines(auth.user.id, { target_market, problem, mechanism, ebook_title, bonuses })
+        return NextResponse.json({ data: result })
+      } catch (err) {
+        console.error('[sales-page] headline generation failed:', err)
+        return NextResponse.json({ error: err instanceof Error ? err.message : 'Generation failed' }, { status: 500 })
+      }
     }
 
     const marketHint = await getMarketLanguageHintForUser()
