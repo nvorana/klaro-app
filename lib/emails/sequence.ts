@@ -45,7 +45,7 @@ export interface Email {
 }
 
 interface Bonus { name: string; value: number; description: string; objection: string }
-interface Chapter { number: number; title: string; win: string; winResult: string }
+interface Chapter { number: number; title: string; win: string; winSteps: string[]; winResult: string }
 
 interface Material {
   author: string
@@ -113,9 +113,10 @@ async function loadMaterial(userId: string, req: EmailRequest): Promise<Material
     })).filter(b => b.name),
     chapters: rawChapters.map((c, i) => {
       const qw = (c.quick_win ?? {}) as Record<string, unknown>
-      return { number: Number(c.number) || i + 1, title: s(c.title), win: s(qw.name), winResult: s(qw.immediate_result) }
+      const steps = Array.isArray(qw.instructions) ? (qw.instructions as unknown[]).map(s).filter(Boolean) : []
+      return { number: Number(c.number) || i + 1, title: s(c.title), win: s(qw.name), winSteps: steps, winResult: s(qw.immediate_result) }
     }).filter(c => c.title),
-    theirWords: [...(ml.emotional_words ?? []), ...(ml.everyday_phrases ?? [])].slice(0, 12),
+    theirWords: [...(ml.everyday_phrases ?? []), ...(ml.emotional_words ?? [])].map(s).filter(Boolean),
     alreadyTry: vf.existing_solutions ?? [],
     alreadySpend: s(vf.buying_behavior),
     transformation: s(offer?.transformation),
@@ -142,16 +143,28 @@ function valueChapter(m: Material, day: number): Chapter | null {
   return m.chapters[idx]
 }
 
+// The market's phrases are shared out so each email leans on different ones;
+// written in parallel, the seven otherwise all reach for the same line
+// ("parang kulang pa rin" appeared in 5 of 7 on 2026-10-06).
+function phrasesFor(m: Material, day: number): string[] {
+  const w = m.theirWords
+  if (w.length === 0) return []
+  return [0, 1].map(k => w[((day - 1) * 2 + k) % w.length]).filter((x, i, a) => a.indexOf(x) === i)
+}
+
 function dayBrief(m: Material, day: number): { type: 'value' | 'selling'; brief: string } {
   const ch = day <= 4 ? valueChapter(m, day) : null
+  // The reader hasn't heard of the ebook until Day 5, so the value emails
+  // teach the chapter's idea as the author's own advice. The exercise is
+  // given step by step so the email matches what the book says.
   const teach = ch
-    ? `Teach ONE idea from the book: Chapter ${ch.number}, "${ch.title}".${ch.win ? ` End by giving them its small win to try today: "${ch.win}"${ch.winResult ? ` (they end with: ${ch.winResult})` : ''}.` : ''}`
-    : 'Teach ONE practical idea that helps with the problem today.'
+    ? `Teach ONE idea: the core of "${ch.title}". The reader does not know about the ebook yet, so do NOT mention the book, a chapter, or the method's name; give it as your own advice.${ch.win ? ` End with this small exercise to try today, "${ch.win}", keeping its steps as written:\n${ch.winSteps.map((st, i) => `  ${i + 1}. ${st}`).join('\n')}${ch.winResult ? `\n  They end with: ${ch.winResult}` : ''}` : ''}`
+    : 'Teach ONE practical idea that helps with the problem today. Do not mention the ebook yet.'
   switch (day) {
-    case 1: return { type: 'value', brief: `DAY 1, VALUE. Open with an everyday moment where this problem shows up in their life, so they feel seen. ${teach} No selling, no link.` }
-    case 2: return { type: 'value', brief: `DAY 2, VALUE. Show the root cause they haven't considered, the reason the usual fixes don't stick. ${teach} No selling, no link.` }
-    case 3: return { type: 'value', brief: `DAY 3, VALUE. Bust one common belief or piece of advice this market follows that keeps them stuck. ${teach} No selling, no link.` }
-    case 4: return { type: 'value', brief: `DAY 4, VALUE. The shift in thinking that makes the way forward obvious, tied to the book's method (${m.mechanism}). ${teach} End with one line saying tomorrow you'll share something that pulls it all together. No selling, no link.` }
+    case 1: return { type: 'value', brief: `DAY 1, VALUE. Open with an everyday moment where this problem shows up in their life, so they feel seen. ${teach}\nNo selling, no link.` }
+    case 2: return { type: 'value', brief: `DAY 2, VALUE. Show the root cause they haven't considered, the reason the usual fixes don't stick. ${teach}\nNo selling, no link.` }
+    case 3: return { type: 'value', brief: `DAY 3, VALUE. Bust one common belief or piece of advice this market follows that keeps them stuck. ${teach}\nNo selling, no link.` }
+    case 4: return { type: 'value', brief: `DAY 4, VALUE. The shift in thinking that makes the way forward obvious. ${teach}\nEnd with one line saying tomorrow you'll share something that pulls it all together. No selling, no link.` }
     case 5: return { type: 'selling', brief: `DAY 5, SOFT INTRODUCTION. Introduce the ebook "${m.ebookTitle}": who it is for, the problem it solves, and what they will be able to do after reading (use the real chapters below). Mention the price once and the link once. Low pressure.` }
     case 6: return { type: 'selling', brief: `DAY 6, THE BIGGEST OBJECTION. Name the objection this market is most likely to have (time, money, "baka hindi para sa akin", or having tried other things). Answer it with the book's real contents, the guarantee, and how the price compares to what they already spend trying to fix this. Link once.` }
     default: return { type: 'selling', brief: `DAY 7, FINAL EMAIL. Recap exactly what they get: the ebook and EVERY bonus with its value, the total value, the price, and the guarantee, using ONLY the OFFER FACTS. Describe their next three months with and without acting. Honest urgency only: the cost of waiting, never a fake deadline or limited stock. Clear link.` }
@@ -175,7 +188,7 @@ ${m.guarantee ? `- Guarantee: ${m.guarantee}` : ''}
 
 THE READER: ${m.market}
 THEIR PROBLEM: ${m.problem}
-${m.theirWords.length ? `THEIR OWN WORDS: ${m.theirWords.join(', ')}` : ''}
+${phrasesFor(m, req.day).length ? `THEIR OWN WORDS FOR TODAY (said in their first-person voice; lean on these, and if you echo one, turn it to speak TO the reader: "Yung ipon ko kulang" becomes "Yung ipon mo, kulang"): ${phrasesFor(m, req.day).map(p => `"${p}"`).join(', ')}` : ''}
 ${m.alreadyTry.length ? `WHAT THEY ALREADY TRY: ${m.alreadyTry.join('; ')}` : ''}
 ${m.alreadySpend ? `WHAT THEY ALREADY SPEND ON: ${m.alreadySpend}` : ''}
 THE BOOK'S METHOD: ${m.mechanism}
@@ -188,9 +201,20 @@ HONESTY (strict):
 - Never invent testimonials, students, results, statistics, studies, or income claims.
 - In selling emails, never state a price, value, bonus, discount, community, or feature that is not in OFFER FACTS. The ONLY peso amounts allowed are the ones in OFFER FACTS; describe anything else they spend in words, without a peso figure.
 
+POINT OF VIEW (strict):
+- You are talking TO the reader. Everything about the reader's life is "you": mo, ka, kang, iyo/sayo; for the reader and spouse together, ninyo/kayo. Never ko, ako, namin, kami, I, my or our for the reader's money, fears, family or thoughts.
+- WRONG: "Pero yung retirement fund ko parang kulang pa rin, di ba?"  RIGHT: "Pero yung retirement fund mo, parang kulang pa rin, di ba?"
+- WRONG: Napapaisip ka: "Hindi pa ako ready."  RIGHT: Napapaisip ka kung ready ka na ba talaga.
+- Don't quote the reader's inner thoughts in first person; describe them in "you" form. The only quotes allowed are words someone says out loud to the reader (for example the spouse).
+- Use "I"/"ko" only for the author's own actions in this email ("bukas, may ishe-share ako").
+
+LANGUAGE:
+- Mostly English, about 70 to 75 percent. Tagalog carries feelings, reactions, family moments and the connectors (kasi, tapos, pero, naman, lang, pala, eh, di ba). English carries the insight, the advice and the steps.
+- Each sentence commits to one base language; switch at sentence or clause boundaries. If a sentence sounds natural in English, keep it English. Never force Tagalog in.
+- Casual, spoken Tagalog only, the way a 40-year-old Filipino talks over coffee: pwede (not puwede), pag (not kapag), wag, yung, yun, di, pano, lang, sya. No formal or textbook words: never ibahagi/ibabahagi, ipagpaliban, repasuhin, idugtong, upang, subalit, sapagkat, nararapat, kinakailangan, nangangailangan, gayunpaman, samakatuwid. Use the plain word or English instead (share, i-delay, i-review).
+
 VOICE:
 - A trusted friend one step ahead, talking to one person. Not a marketer, not a motivational speaker.
-- Conversational Taglish: Tagalog can carry everyday moments and feelings, English carries the insight and the advice. Switch at sentence or phrase boundaries. Never sprinkle Tagalog for flavor and never force a ratio.
 - One-line paragraphs, heavy white space, written for a phone screen.
 - Show, don't tell: what they see, do, and say. Concrete details from their world, but no invented statistics.
 - Never reuse stock lines such as "I need to tell you something personal", "This is my last email about this", "There was a day when everything changed", "I hope this email finds you well", and never use a clock time like 7:43 PM. Find a fresh opening that fits THIS reader.
@@ -198,16 +222,59 @@ VOICE:
 
 LENGTH: 200 to 320 words in the body.
 SUBJECT LINES: two options for A/B testing, each a complete thought in 2 to 6 words (under 40 characters), curiosity-driven, no clickbait.
-SIGN-OFF: "To your (a short aspiration that fits this reader)," then on the next line "${m.author || '[Your Name]'}".
+SIGN-OFF: "To your (a short aspiration tied to TODAY's topic, not a generic one)," then on the next line "${m.author || '[Your Name]'}".
 ${problems ? `\nYour previous draft was rejected. Fix these problems:\n${problems}\n` : ''}
 Return ONLY JSON:
 { "email": { "day": ${req.day}, "type": "${type}", "subject_a": "...", "subject_b": "...", "body": "use \\n between lines", "cta": ${type === 'selling' ? `"${req.sales_page_url}"` : 'null'} } }`
 }
 
+// Textbook Tagalog -> the way people actually type it (Taglish rules).
+// Only one-to-one swaps that are safe in any sentence.
+const CASUAL: Record<string, string> = {
+  puwede: 'pwede', puwedeng: 'pwedeng', kapag: 'pag', huwag: 'wag', iyon: 'yun', iyan: 'yan',
+  noong: 'nung', doon: 'dun', nandoon: 'nandun', lamang: 'lang', paano: 'pano', siya: 'sya', niya: 'nya',
+}
+function casualize(t: string): string {
+  return t.replace(/\b(puwedeng|puwede|kapag|huwag|iyon|iyan|noong|nandoon|doon|lamang|paano|siya|niya)\b/gi, w => {
+    const c = CASUAL[w.toLowerCase()]
+    return w[0] === w[0].toUpperCase() ? c[0].toUpperCase() + c.slice(1) : c
+  })
+}
+
 function cleanText(t: string): string {
-  return t
-    .replace(/\s*—\s*/g, ', ')
-    .replace(/(^|[\s"(])[‘'](yan|yung|yun|di|wag|to|nung|pag)\b/gi, '$1$2')
+  return casualize(t
+    .replace(/\*\*(.+?)\*\*/g, '$1') // pasted into Systeme as plain text
+    .replace(/\s*[—–]\s*/g, ', ')
+    .replace(/(^|[\s"(“])[‘'](yan|yung|yun|di|wag|to|nung|pag)\b/gi, '$1$2'))
+}
+
+const FORMAL_TAGALOG = /\b(ibahagi|ibabahagi|ibinabahagi|ipagpaliban|ipagpapaliban|repasuhin|rerepasuhin|idugtong|magdudugtong|upang|subalit|datapwat|sapagkat|nararapat|kinakailangan|nangangailangan|gayunpaman|samakatuwid|bagkus|pinanghahawakan|kalakaran|kamalayan)\b/gi
+
+// The reader's life must be "you". Catches the market's first-person phrases
+// pasted in as-is ("yung retirement fund ko parang kulang pa rin") and the
+// reader's thoughts quoted in first person.
+const FIRST_PERSON = /\b([Kk]o|[Kk]ong|[Aa]ko|[Aa]kong|[Kk]ami|[Kk]aming|[Nn]amin|[Nn]aming|I|I'm|I’m|I've|[Mm]y|[Oo]ur)\b/
+const READER_THINGS = /\b(fund|ipon|savings|pera|sweldo|sahod|pamilya|asawa|misis|mister|anak|utang|bills?|account|budget|negosyo|buhay|future|retirement|gastos|expenses|trabaho)\s+(ko|namin)\b/i
+function povProblems(body: string, m: Material): string[] {
+  const out: string[] = []
+  const exclusiveWe = body.match(/\b(kami|kaming|namin|naming)\b/i)
+  if (exclusiveWe) out.push(`it says "${exclusiveWe[0]}"; the reader's household is "kayo/ninyo"`)
+  const possessive = body.match(READER_THINGS)
+  if (possessive) out.push(`it says "${possessive[0]}"; the reader's things are "mo/ninyo"`)
+  // Names the student chose (ebook, bonuses, chapters) may say "Our"/"My".
+  const names = [m.ebookTitle, ...m.bonuses.map(b => b.name), ...m.chapters.map(c => c.title)].map(x => x.toLowerCase())
+  for (const q of body.match(/[“"][^”"]{3,}[”"]/g) ?? []) {
+    if (names.includes(q.slice(1, -1).trim().toLowerCase())) continue
+    if (FIRST_PERSON.test(q)) { out.push(`it quotes the reader's thoughts in first person (${q}); say it in "you" form instead`); break }
+  }
+  const words = (x: string) => new Set(x.toLowerCase().match(/[a-zñ-]{4,}/g) ?? [])
+  for (const sentence of body.split(/(?<=[.!?])\s+|\n+/)) {
+    if (!/\b(ko|ako|kong|akong)\b/i.test(sentence)) continue
+    const sw = words(sentence)
+    const echo = m.theirWords.find(p => /\b(ko|ako|kong|akong)\b/i.test(p) && [...words(p)].filter(w => sw.has(w)).length >= 3)
+    if (echo) { out.push(`"${sentence.trim()}" is their own first-person phrase pasted in; turn it to "mo/ka"`); break }
+  }
+  return out
 }
 
 // Hard checks in code; returns the problems, empty when the email passes.
@@ -217,10 +284,16 @@ function check(e: Email, m: Material, req: EmailRequest): string[] {
   if (words < 170) problems.push(`the body is only ${words} words (aim for 200 to 320)`)
   if (words > 380) problems.push(`the body is ${words} words (aim for 200 to 320)`)
   if (!e.subject_a || !e.subject_b) problems.push('it needs two subject lines')
-  const banned = findBannedWords(`${e.subject_a} ${e.subject_b} ${e.body}`)
+  // Words from the student's own offer (bonus names/descriptions) are theirs to keep.
+  const offerText = [m.ebookTitle, ...m.bonuses.flatMap(b => [b.name, b.description])].join(' ').toLowerCase()
+  const banned = findBannedWords(`${e.subject_a} ${e.subject_b} ${e.body}`).filter(w => !offerText.includes(w.toLowerCase()))
   if (banned.length) problems.push(`it uses banned words: ${banned.join(', ')}`)
   if (/\b\d{1,2}:\d{2}\b/.test(e.body)) problems.push('it uses a clock time; use a fresh, non-stock detail')
   if (/\[(?!Your Name\])[^\]]+\]/.test(e.body)) problems.push('it left a [placeholder] in brackets')
+  problems.push(...povProblems(e.body, m))
+  const formal = [...new Set((e.body.match(FORMAL_TAGALOG) ?? []).map(w => w.toLowerCase()))]
+  if (formal.length) problems.push(`it uses formal Tagalog: ${formal.join(', ')}. Use the casual word or English`)
+  if (e.type === 'value' && /\b(ebook|e-book|chapter|kabanata)\b/i.test(e.body)) problems.push('a value email mentions the ebook or a chapter; the reader has not heard of it yet')
   if (e.type === 'selling') {
     const allowed = allowedPesos(m)
     const stated = statedPesos(`${e.subject_a} ${e.subject_b} ${e.body}`)
