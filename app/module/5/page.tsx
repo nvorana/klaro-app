@@ -87,7 +87,6 @@ export default function Module5Page() {
 
   // Emails step
   const [generatingEmails, setGeneratingEmails] = useState(false)
-  const [writingDay, setWritingDay] = useState<number | null>(null)
   const [emails, setEmails] = useState<Email[]>([])
   const [reusablePrompt, setReusablePrompt] = useState('')
   const [expandedDay, setExpandedDay] = useState<number | null>(1)
@@ -199,32 +198,66 @@ export default function Module5Page() {
     return data.email || null
   }
 
-  // ── Generate all 7 emails (one at a time) ────────────────────
+  // Insert or replace one day, keeping the list in day order.
+  function putEmail(email: Email) {
+    setEmails(prev => [...prev.filter(e => e.day !== email.day), email].sort((a, b) => a.day - b.day))
+  }
+
+  // ── Write the given days in parallel ─────────────────────────
+  // Each email is planned from the ebook and offer, not from the previous
+  // email, so all seven are written at once (~30-60s instead of ~7 × 30s).
+  // A day that fails is retried once before it is reported as missing.
+  async function writeDays(days: number[]): Promise<number[]> {
+    const failed: number[] = []
+    await Promise.all(days.map(async day => {
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          const email = await generateSingleEmail(day)
+          if (email) { putEmail(email); return }
+        } catch { /* retry once, then report */ }
+      }
+      failed.push(day)
+    }))
+    return failed.sort((a, b) => a - b)
+  }
+
+  function reportMissing(failed: number[]) {
+    if (failed.length > 0) {
+      setError(`Could not write Day ${failed.join(', ')}. Tap "Write Missing Emails" to try again.`)
+    }
+  }
+
+  // ── Generate all 7 emails ────────────────────────────────────
   async function handleGenerateEmails() {
     if (!clarity) return
     setError('')
     setGeneratingEmails(true)
     setStep('emails')
     setEmails([])
-
-    const builtEmails: Email[] = []
+    setExpandedDay(1)
 
     try {
-      for (let day = 1; day <= 7; day++) {
-        setWritingDay(day)
-        const email = await generateSingleEmail(day)
-        if (email) {
-          builtEmails.push(email)
-          setEmails([...builtEmails])
-          if (day === 1) setExpandedDay(1)
-        }
+      const failed = await writeDays([1, 2, 3, 4, 5, 6, 7])
+      if (failed.length === 7) {
+        setError('Could not generate your email sequence. Please try again.')
+        setStep('url')
+      } else {
+        reportMissing(failed)
       }
-    } catch {
-      setError('Could not generate your email sequence. Please try again.')
-      if (builtEmails.length === 0) setStep('url')
     } finally {
       setGeneratingEmails(false)
-      setWritingDay(null)
+    }
+  }
+
+  async function handleWriteMissing() {
+    const missing = [1, 2, 3, 4, 5, 6, 7].filter(d => !emails.some(e => e.day === d))
+    if (missing.length === 0) return
+    setError('')
+    setGeneratingEmails(true)
+    try {
+      reportMissing(await writeDays(missing))
+    } finally {
+      setGeneratingEmails(false)
     }
   }
 
@@ -235,9 +268,7 @@ export default function Module5Page() {
     setError('')
     try {
       const newEmail = await generateSingleEmail(day)
-      if (newEmail) {
-        setEmails(prev => prev.map(e => e.day === day ? newEmail : e))
-      }
+      if (newEmail) putEmail(newEmail)
     } catch {
       setError(`Could not rewrite Day ${day}. Please try again.`)
     } finally {
@@ -534,7 +565,7 @@ export default function Module5Page() {
                 <div className="bg-white rounded-xl p-4 space-y-1" style={{ border: '1px solid #e5e7eb' }}>
                   {[1, 2, 3, 4, 5, 6, 7].map(day => {
                     const isDone = emails.some(e => e.day === day)
-                    const isWriting = writingDay === day
+                    const isWriting = generatingEmails && !isDone
                     const dayLabel = day <= 4 ? 'Value Email' : day === 5 ? 'Soft Sell' : day === 6 ? 'Medium Sell' : 'Final Close'
 
                     return (
@@ -594,6 +625,16 @@ export default function Module5Page() {
             {/* Emails ready */}
             {!generatingEmails && emails.length > 0 && (
               <div>
+                {emails.length < 7 && (
+                  <button
+                    onClick={handleWriteMissing}
+                    className="w-full py-3 rounded-xl font-semibold text-sm mb-4"
+                    style={{ background: '#F4B942', color: '#1A1F36' }}
+                  >
+                    Write Missing Emails ({7 - emails.length})
+                  </button>
+                )}
+
                 {/* Copy all */}
                 <button
                   onClick={() => copyToClipboard(buildCopyAllText(), 'all')}
@@ -766,7 +807,7 @@ export default function Module5Page() {
             style={{ background: '#F3F4F6', color: '#9CA3AF', border: '1px solid #e5e7eb' }}
           >
             <div className="w-4 h-4 border-2 border-gray-500 border-t-transparent rounded-full animate-spin" />
-            Writing Day {writingDay || 1} of 7…
+            Writing your emails… {emails.length} of 7
           </div>
         )}
 
