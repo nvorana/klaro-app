@@ -26,9 +26,13 @@ import { isPostCutoffAPProfile } from '@/lib/apKlaroPolicy'
 // Returns JSON with counts + per-student results so the audit log can show
 // exactly what the sweep did.
 
-// Vercel can take up to 60s on Pro for one sweep; allow it.
-export const maxDuration = 60
+// Pass 2 looks up ~110 students in Systeme.io on top of the pending sweep, so
+// the old 60s cap could cut a run off midway. Passes stop at TIME_BUDGET_MS
+// and the next run (every 3h) picks up the rest; candidates are shuffled so
+// the same students aren't always the ones left out.
+export const maxDuration = 300
 export const dynamic = 'force-dynamic'
+const TIME_BUDGET_MS = 240_000
 
 const EDGAR_COACH_ID = 'e5d6cc0d-ae70-4e58-967b-f61a957eb442'
 const SYSTEME_API_BASE = process.env.SYSTEME_API_BASE_URL || 'https://api.systeme.io/api'
@@ -37,6 +41,22 @@ const TEST_ACCOUNT_PATTERNS = [/^nvorana\+/i, /\+test\d*@/i]
 function isTestAccount(email: string): boolean {
   return TEST_ACCOUNT_PATTERNS.some(p => p.test(email))
 }
+
+// Full access without a paid tag, by design: team members and the owner's
+// comped friends. Pass 2 never locks or changes these.
+const NEVER_PAYMENT_GATED = new Set([
+  'nvorana@gmail.com', 'frimando@negosyouniversity.com', 'ferdie.negosyo@gmail.com', 'mikenegosyo@gmail.com',
+  'rlontoc.negosyouniversity@gmail.com', 'edgar.negosyouniversity@gmail.com', 'coachmafenu@gmail.com',
+  'shurewin@gmail.com', 'shiee.villafuerte@gmail.com',
+  'romerly059@gmail.com', 'jhun27@gmail.com', 'richcabansag@gmail.com',
+])
+
+// Audit sources that mean "locked for non-payment". Pass 2 only lifts locks
+// that came from one of these; anything else (e.g. the coach/admin suspend
+// toggle, which audits as 'unknown') stays locked until a person lifts it.
+const PAYMENT_LOCK_SOURCES = new Set([
+  'webhook_systeme', 'cron_sweep_pending', 'admin_overdue_lock', 'admin_suspend_overdue', 'ap_overdue_gate_rollout',
+])
 
 // Systeme.io's contacts API intermittently returns empty results for
 // contacts that actually exist (caught real-world: Mary Angelica Bonifacio,
@@ -179,6 +199,7 @@ async function handle(request: NextRequest) {
   }
 
   const admin = createAdminClient()
+  const startedAt = Date.now()
 
   // Set audit context up front so all activations in this sweep are attributed
   // to 'cron_sweep_pending' source.
@@ -189,9 +210,9 @@ async function handle(request: NextRequest) {
     .select('id, email, full_name, created_at')
     .eq('access_level', 'pending')
 
-  if (!pending || pending.length === 0) {
-    return NextResponse.json({ ok: true, scanned: 0, activated: 0, message: 'No pending accounts' })
-  }
+  // No early return when nothing is pending: Pass 2 (payment sync) must still
+  // run. It used to return here, which skipped the payment sync entirely.
+  const pendingList = pending ?? []
 
   const results: Array<{ email: string; name: string | null; status: string; action: string; error?: string }> = []
   let activated = 0
@@ -200,7 +221,8 @@ async function handle(request: NextRequest) {
   let skippedNotInSysteme = 0
   let errors = 0
 
-  for (const p of pending) {
+  for (const p of pendingList) {
+    if (Date.now() - startedAt > TIME_BUDGET_MS / 2) break  // leave room for Pass 2
     const email = p.email ?? ''
     if (!email) {
       skippedTest++
@@ -258,70 +280,121 @@ async function handle(request: NextRequest) {
     await new Promise(r => setTimeout(r, 150))
   }
 
-  console.log(`[cron-sweep-pending] scanned=${pending.length} activated=${activated} skipped=${skippedLead + skippedTest + skippedNotInSysteme} errors=${errors}`)
+  console.log(`[cron-sweep-pending] scanned=${pendingList.length} activated=${activated} skipped=${skippedLead + skippedTest + skippedNotInSysteme} errors=${errors}`)
 
-  // ── Pass 2: AP payment-state sync for already-enrolled students ────────────
-  // Webhooks can miss events (manual tag-adds in the Systeme.io UI don't
-  // fire). This pass reconciles: enrolled AP students who are FULLY_PAID in
-  // Systeme get upgraded to full_access; ones tagged overdue/unsettled get
-  // suspended. Restores are NOT done here (webhook pay-settled/tag-removed
-  // events or admin toggle handle those) so a manual admin suspension is
-  // never silently undone by the cron.
-  const apSync: Array<{ email: string; action: string }> = []
-  const { data: apEnrolled } = await admin
-    .from('profiles')
-    .select('id, email, full_name, access_suspended')
-    .eq('program_type', 'accelerator')
-    .eq('access_level', 'enrolled')
+  // ── Pass 2: payment-state sync (AP + TOPIS + tier students) ─────────────────
+  // Webhooks miss events: tags edited by hand in the Systeme.io UI don't fire
+  // them. Until 2026-11 this pass only looked at AP 'enrolled' students and
+  // never restored anyone, which left two holes:
+  //   - 9 overdue students (TOPIS 79, plus AP students on tier1) kept full use
+  //     of KLARO for weeks; they were locked by hand on 2026-11-02.
+  //   - Marichu Sevilla paid in full and stayed locked for 11 days, because
+  //     the PAY_3 / FULLY_PAID tags were added by hand and the webhook that
+  //     restores access never fired.
+  // So this pass now reconciles every student who isn't fully paid or is
+  // locked:
+  //   overdue in Systeme, not locked         → lock (payment hold)
+  //   locked, no longer overdue in Systeme   → unlock, but ONLY if their lock
+  //       came from a payment source. A coach/admin lock (toggle-suspension,
+  //       audited as 'unknown') is never undone here.
+  //   fully paid, still 'enrolled'           → upgrade to full_access
+  // Fully paid wins over a stale overdue tag left behind in Systeme.
+  const paymentSync: Array<{ email: string; action: string }> = []
 
-  const isDelinquent = (tags: string[]) =>
+  const isOverdue = (tags: string[]) =>
     tags.some(t =>
       /^AP \| PAYMENT \| OVERDUE$/i.test(t.trim()) ||
+      /^TOPIS \| PAYMENT \| OVERDUE$/i.test(t.trim()) ||
+      /^TOPIS \d+ Overdue$/i.test(t.trim()) ||
       /^Unsettled - AP$/i.test(t.trim()) ||
       /^Accel-Unsettled-\d+$/i.test(t.trim())
     )
-  const isApFullyPaid = (tags: string[]) =>
-    tags.some(t => /accel.full.payment/i.test(t) || /ap \| payment \| fully_paid/i.test(t))
+  const isFullyPaid = (tags: string[]) =>
+    tags.some(t =>
+      /^AP \| PAYMENT \| FULLY_PAID$/i.test(t.trim()) ||
+      /^Accel-Full-Payment/i.test(t.trim()) ||
+      /^TOPIS \| \d+ \| PAYMENT \| FULLY_PAID$/i.test(t.trim()) ||
+      /^TOPIS-\d+-Full-Payment/i.test(t.trim())
+    )
 
-  for (const p of apEnrolled ?? []) {
-    const email = p.email ?? ''
-    if (!email || isTestAccount(email)) continue
-    const tags = await fetchSystemeTags(email)
-    if (tags === null || tags.length === 0) continue  // lookup failed / not found — leave alone
+  // Not fully set up yet, or locked. full_access students are fully paid by
+  // definition (team and comp accounts below are the exceptions), and
+  // lite_workshop is the free tier, so neither needs a payment check.
+  const { data: candidates } = await admin
+    .from('profiles')
+    .select('id, email, access_level, program_type, access_suspended')
+    .eq('role', 'student')
+    .not('access_level', 'in', '("pending","lite_workshop")')
+    .or('access_level.neq.full_access,access_suspended.eq.true')
 
-    if (isApFullyPaid(tags)) {
-      await admin.rpc('set_audit_context', { p_user: null, p_source: 'cron_sweep_pending' })
-      const { error } = await admin
-        .from('profiles')
-        .update({
-          access_level: 'full_access',
-          access_suspended: false,
-          full_access_granted_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', p.id)
-      apSync.push({ email, action: error ? `upgrade_error: ${error.message}` : 'upgraded_full_access' })
-    } else if (isDelinquent(tags) && !p.access_suspended) {
-      await admin.rpc('set_audit_context', { p_user: null, p_source: 'cron_sweep_pending' })
-      const { error } = await admin
-        .from('profiles')
-        .update({ access_suspended: true, updated_at: new Date().toISOString() })
-        .eq('id', p.id)
-      apSync.push({ email, action: error ? `suspend_error: ${error.message}` : 'suspended_overdue' })
+  // Why each locked student was locked: the latest audit row that set
+  // access_suspended = true.
+  const lockedIds = (candidates ?? []).filter(p => p.access_suspended).map(p => p.id)
+  const lockSource = new Map<string, string>()
+  if (lockedIds.length > 0) {
+    const { data: lockRows } = await admin
+      .from('profile_audit_log')
+      .select('profile_id, source, after_value, changed_at')
+      .eq('field', 'access_suspended')
+      .in('profile_id', lockedIds)
+      .order('changed_at', { ascending: false })
+    for (const r of lockRows ?? []) {
+      if (r.after_value === true && !lockSource.has(r.profile_id)) lockSource.set(r.profile_id, r.source)
     }
-    await new Promise(r => setTimeout(r, 150))
   }
 
-  if (apSync.length > 0) console.log(`[cron-sweep-pending] ap_sync: ${JSON.stringify(apSync)}`)
+  // Shuffled so a run that hits the time budget doesn't always skip the same tail.
+  const queue = [...(candidates ?? [])].sort(() => Math.random() - 0.5)
+  let paymentChecked = 0
+  for (const p of queue) {
+    if (Date.now() - startedAt > TIME_BUDGET_MS) break
+    const email = (p.email ?? '').toLowerCase()
+    if (!email || isTestAccount(email) || NEVER_PAYMENT_GATED.has(email)) continue
+    const tags = await fetchSystemeTags(email)
+    paymentChecked++
+    await new Promise(r => setTimeout(r, 150))
+    if (tags === null || tags.length === 0) continue  // lookup failed / not found — leave alone
+
+    const fullyPaid = isFullyPaid(tags)
+    const overdue = !fullyPaid && isOverdue(tags)
+    const update: Record<string, unknown> = {}
+
+    if (overdue && !p.access_suspended) {
+      update.access_suspended = true
+    } else if (!overdue && p.access_suspended) {
+      const source = lockSource.get(p.id) ?? 'unknown'
+      if (PAYMENT_LOCK_SOURCES.has(source)) update.access_suspended = false
+      else paymentSync.push({ email, action: `kept_locked_manual_lock(${source})` })
+    }
+    if (fullyPaid && p.access_level === 'enrolled' && (p.program_type === 'accelerator' || p.program_type === 'topis')) {
+      update.access_level = 'full_access'
+      update.full_access_granted_at = new Date().toISOString()
+    }
+    if (Object.keys(update).length === 0) continue
+
+    await admin.rpc('set_audit_context', { p_user: null, p_source: 'cron_sweep_pending' })
+    const { error } = await admin
+      .from('profiles')
+      .update({ ...update, updated_at: new Date().toISOString() })
+      .eq('id', p.id)
+    const action = [
+      update.access_suspended === true && 'locked_overdue',
+      update.access_suspended === false && 'unlocked_paid',
+      update.access_level === 'full_access' && 'upgraded_full_access',
+    ].filter(Boolean).join('+')
+    paymentSync.push({ email, action: error ? `error(${action}): ${error.message}` : action })
+  }
+
+  console.log(`[cron-sweep-pending] payment_sync checked=${paymentChecked}/${queue.length} changes=${JSON.stringify(paymentSync)}`)
 
   return NextResponse.json({
     ok: true,
     ran_at: new Date().toISOString(),
-    scanned: pending.length,
+    scanned: pendingList.length,
     activated,
     skipped: { leads: skippedLead, tests: skippedTest, not_in_systeme: skippedNotInSysteme },
     errors,
     results,
-    ap_sync: apSync,
+    payment_sync: paymentSync,
   })
 }
