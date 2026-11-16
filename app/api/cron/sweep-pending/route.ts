@@ -52,10 +52,14 @@ const NEVER_PAYMENT_GATED = new Set([
 ])
 
 // Audit sources that mean "locked for non-payment". Pass 2 only lifts locks
-// that came from one of these; anything else (e.g. the coach/admin suspend
-// toggle, which audits as 'unknown') stays locked until a person lifts it.
+// that came from one of these. Anything else stays locked until a person lifts
+// it: 'manual_toggle' (the coach/admin suspend button) and 'unknown' (locks
+// written before set_payment_state existed, whose label was lost).
+// 'admin_relabel_payment_lock' marks old 'unknown' locks that were confirmed
+// by hand to be payment locks (the 2026-05-30 TOPIS 77 overdue batch).
 const PAYMENT_LOCK_SOURCES = new Set([
   'webhook_systeme', 'cron_sweep_pending', 'admin_overdue_lock', 'admin_suspend_overdue', 'ap_overdue_gate_rollout',
+  'admin_relabel_payment_lock',
 ])
 
 // Systeme.io's contacts API intermittently returns empty results for
@@ -298,24 +302,20 @@ async function handle(request: NextRequest) {
   //       came from a payment source. A coach/admin lock (toggle-suspension,
   //       audited as 'unknown') is never undone here.
   //   fully paid, still 'enrolled'           → upgrade to full_access
-  // Fully paid wins over a stale overdue tag left behind in Systeme.
+  // Each program is judged on its own tags. A full payment only cancels an
+  // overdue tag for the SAME program: Anabel Mendi is fully paid for the
+  // Accelerator but overdue on her TOPIS 77 installments, and the first
+  // version of this pass treated her as fully paid across the board.
+  // Every write goes through set_payment_state so the audit row is labelled
+  // 'cron_sweep_pending'; see migrations/set_payment_state_rpc.sql for why.
   const paymentSync: Array<{ email: string; action: string }> = []
 
-  const isOverdue = (tags: string[]) =>
-    tags.some(t =>
-      /^AP \| PAYMENT \| OVERDUE$/i.test(t.trim()) ||
-      /^TOPIS \| PAYMENT \| OVERDUE$/i.test(t.trim()) ||
-      /^TOPIS \d+ Overdue$/i.test(t.trim()) ||
-      /^Unsettled - AP$/i.test(t.trim()) ||
-      /^Accel-Unsettled-\d+$/i.test(t.trim())
-    )
-  const isFullyPaid = (tags: string[]) =>
-    tags.some(t =>
-      /^AP \| PAYMENT \| FULLY_PAID$/i.test(t.trim()) ||
-      /^Accel-Full-Payment/i.test(t.trim()) ||
-      /^TOPIS \| \d+ \| PAYMENT \| FULLY_PAID$/i.test(t.trim()) ||
-      /^TOPIS-\d+-Full-Payment/i.test(t.trim())
-    )
+  const has = (tags: string[], ...res: RegExp[]) => tags.some(t => res.some(re => re.test(t.trim())))
+  const apOverdue = (tags: string[]) => has(tags, /^AP \| PAYMENT \| OVERDUE$/i, /^Unsettled - AP$/i, /^Accel-Unsettled-\d+$/i)
+  const apFullyPaid = (tags: string[]) => has(tags, /^AP \| PAYMENT \| FULLY_PAID$/i, /^Accel-Full-Payment/i)
+  const topisOverdue = (tags: string[]) =>
+    has(tags, /^TOPIS \| PAYMENT \| OVERDUE$/i, /^TOPIS \d+ Overdue$/i, /^TOPIS[\s|-]+\d+[\s|-]+UNSETTLED$/i, /^TOPIS[\s|-]+UNSETTLED[\s|-]+\d+$/i)
+  const topisFullyPaid = (tags: string[]) => has(tags, /^TOPIS \| \d+ \| PAYMENT \| FULLY_PAID$/i, /^TOPIS-\d+-Full-Payment/i)
 
   // Not fully set up yet, or locked. full_access students are fully paid by
   // definition (team and comp accounts below are the exceptions), and
@@ -355,32 +355,41 @@ async function handle(request: NextRequest) {
     await new Promise(r => setTimeout(r, 150))
     if (tags === null || tags.length === 0) continue  // lookup failed / not found — leave alone
 
-    const fullyPaid = isFullyPaid(tags)
-    const overdue = !fullyPaid && isOverdue(tags)
-    const update: Record<string, unknown> = {}
+    // Judge the program this KLARO account is for. A fully paid Accelerator
+    // student who is behind on a separate TOPIS purchase keeps KLARO (Ranol
+    // Jalmasco), and the reverse holds for TOPIS students (Anabel Mendi).
+    // Students with no program (AP students on a Klaro tier) answer to both.
+    const apBehind = apOverdue(tags) && !apFullyPaid(tags)
+    const topisBehind = topisOverdue(tags) && !topisFullyPaid(tags)
+    const overdue =
+      p.program_type === 'accelerator' ? apBehind :
+      p.program_type === 'topis' ? topisBehind :
+      apBehind || topisBehind
+    const paidForOwnProgram =
+      (p.program_type === 'accelerator' && apFullyPaid(tags)) || (p.program_type === 'topis' && topisFullyPaid(tags))
+    let suspend: boolean | null = null
+    let accessLevel: string | null = null
 
     if (overdue && !p.access_suspended) {
-      update.access_suspended = true
+      suspend = true
     } else if (!overdue && p.access_suspended) {
       const source = lockSource.get(p.id) ?? 'unknown'
-      if (PAYMENT_LOCK_SOURCES.has(source)) update.access_suspended = false
+      if (PAYMENT_LOCK_SOURCES.has(source)) suspend = false
       else paymentSync.push({ email, action: `kept_locked_manual_lock(${source})` })
     }
-    if (fullyPaid && p.access_level === 'enrolled' && (p.program_type === 'accelerator' || p.program_type === 'topis')) {
-      update.access_level = 'full_access'
-      update.full_access_granted_at = new Date().toISOString()
-    }
-    if (Object.keys(update).length === 0) continue
+    if (paidForOwnProgram && p.access_level === 'enrolled') accessLevel = 'full_access'
+    if (suspend === null && accessLevel === null) continue
 
-    await admin.rpc('set_audit_context', { p_user: null, p_source: 'cron_sweep_pending' })
-    const { error } = await admin
-      .from('profiles')
-      .update({ ...update, updated_at: new Date().toISOString() })
-      .eq('id', p.id)
+    const { error } = await admin.rpc('set_payment_state', {
+      p_student_id: p.id,
+      p_suspended: suspend,
+      p_access_level: accessLevel,
+      p_source: 'cron_sweep_pending',
+    })
     const action = [
-      update.access_suspended === true && 'locked_overdue',
-      update.access_suspended === false && 'unlocked_paid',
-      update.access_level === 'full_access' && 'upgraded_full_access',
+      suspend === true && 'locked_overdue',
+      suspend === false && 'unlocked_paid',
+      accessLevel === 'full_access' && 'upgraded_full_access',
     ].filter(Boolean).join('+')
     paymentSync.push({ email, action: error ? `error(${action}): ${error.message}` : action })
   }

@@ -28,10 +28,14 @@ export async function POST(request: NextRequest) {
     if (!studentId || typeof suspend !== 'boolean') {
       return NextResponse.json({ error: 'Missing studentId or suspend flag' }, { status: 400 })
     }
-    await adminClient
-      .from('profiles')
-      .update({ access_suspended: suspend, updated_at: new Date().toISOString() })
-      .eq('id', studentId)
+    // Labelled 'manual_toggle' so the payment-sync cron knows a person made
+    // this lock and never lifts it on its own.
+    await adminClient.rpc('set_payment_state', {
+      p_student_id: studentId,
+      p_suspended: suspend,
+      p_source: 'manual_toggle',
+      p_actor: user.id,
+    })
 
     return NextResponse.json({ success: true, studentId, suspended: suspend })
   } catch (err) {

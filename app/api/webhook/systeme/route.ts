@@ -290,12 +290,17 @@ export async function POST(request: NextRequest) {
     if (topis.isUnsettled) {
       const profile = await getProfile()
       if (profile) {
-        const updates: Record<string, unknown> = {
-          access_suspended: isAdded,
-          updated_at:       new Date().toISOString(),
+        // Lock/unlock through set_payment_state so the audit row is labelled
+        // 'webhook_systeme'; the payment-sync cron only lifts payment-labelled
+        // locks (migrations/set_payment_state_rpc.sql).
+        await supabase.rpc('set_payment_state', {
+          p_student_id: profile.id,
+          p_suspended: isAdded,
+          p_source: 'webhook_systeme',
+        })
+        if (topis.batchNumber) {
+          await supabase.from('profiles').update({ cohort_batch: topis.batchNumber }).eq('id', profile.id)
         }
-        if (topis.batchNumber) updates.cohort_batch = topis.batchNumber
-        await supabase.from('profiles').update(updates).eq('id', profile.id)
         await logAction(isAdded ? 'access_suspended_unsettled' : 'access_restored_unsettled_removed')
       } else {
         await logAction(isAdded ? 'suspend_pending_signup' : 'restore_pending_signup')
@@ -355,13 +360,11 @@ export async function POST(request: NextRequest) {
     if (isDelinquencyTag(tagName)) {
       const profile = await getProfile()
       if (profile) {
-        await supabase
-          .from('profiles')
-          .update({
-            access_suspended: isAdded,
-            updated_at:       new Date().toISOString(),
-          })
-          .eq('id', profile.id)
+        await supabase.rpc('set_payment_state', {
+          p_student_id: profile.id,
+          p_suspended: isAdded,
+          p_source: 'webhook_systeme',
+        })
         await logAction(isAdded ? 'access_suspended_overdue' : 'access_restored_overdue_removed')
       } else {
         await logAction(isAdded ? 'suspend_overdue_pending_signup' : 'restore_overdue_pending_signup')
