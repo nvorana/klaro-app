@@ -43,6 +43,10 @@ export interface ExpiryFields {
   created_at?: string | null
   enrolled_at?: string | null
   access_level?: string | null
+  // Coaches and admins never expire. Pass role wherever it's selected so
+  // display surfaces agree with middleware; Coach Mafe's profile page said
+  // "Access expired" (created_at + 90d) even though nothing ever blocked her.
+  role?: string | null
 }
 
 /** ISO timestamp for a fresh 90-day window starting now (or at `from`). */
@@ -52,6 +56,8 @@ export function newAccessWindow(from: Date = new Date()): string {
 
 /** The date this profile's access ends, or null if it never expires. */
 export function getAccessExpiry(profile: ExpiryFields): Date | null {
+  if (profile.role === 'coach' || profile.role === 'admin') return null
+
   // Access not granted yet → the window has not started. An explicit
   // access_expires_at still wins, so a manual grant is never overridden.
   if (profile.access_level === 'pending' && !profile.access_expires_at) return null

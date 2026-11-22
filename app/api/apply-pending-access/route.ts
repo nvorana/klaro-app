@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { DEFAULT_AP_COACH_ID } from '@/lib/coaches'
 
 // POST /api/apply-pending-access
 // Called during signup to apply any tier access that Systeme.io already sent
@@ -52,7 +53,7 @@ export async function POST(request: NextRequest) {
       // Accelerator enrollment
       if (action === 'accelerator_enrolled_pending_signup') {
         updates.program_type = 'accelerator'
-        updates.coach_id = 'e5d6cc0d-ae70-4e58-967b-f61a957eb442' // Edgar
+        updates.coach_id = DEFAULT_AP_COACH_ID
         updates.unlocked_modules = [1, 2] // AP students get modules 1 and 2 unlocked by default
         if (!updates.access_level) updates.access_level = 'enrolled'
         appliedAction = appliedAction || 'pending_access_applied_accelerator'

@@ -28,7 +28,8 @@ function isPostCutoffAPProfile(createdAt) {
 const SYSTEME_API_BASE = process.env.SYSTEME_API_BASE_URL || 'https://api.systeme.io/api'
 const SYSTEME_API_KEY = process.env.SYSTEME_API_KEY
 const RESEND_API_KEY = process.env.RESEND_API_KEY
-const EDGAR_COACH_ID = 'e5d6cc0d-ae70-4e58-967b-f61a957eb442'
+// Coach Mafe (Marife Rosas) took over from Coach Edgar on 2026-11-22; keep in sync with lib/coaches.ts
+const DEFAULT_AP_COACH_ID = 'f55ae870-3ec5-44b0-b50c-615fcacb5fd1'
 
 const RESEND_FROM = 'KLARO <notify@notify.negosyouniversity.com>'
 const REPLY_TO = 'jon@negosyouniversity.com'
@@ -121,7 +122,7 @@ if (isAccelEnrolled) {
   payload = {
     access_level: isAccelFullPaid ? 'full_access' : 'enrolled',
     program_type: 'accelerator',
-    coach_id: EDGAR_COACH_ID,
+    coach_id: DEFAULT_AP_COACH_ID,
     unlocked_modules: [1, 2],
     enrolled_at: now,
     access_suspended: false,
@@ -177,7 +178,7 @@ if (error) {
 }
 console.log('\n✓ Activation applied:')
 for (const [k, v] of Object.entries(payload)) {
-  if (k === 'coach_id' && v === EDGAR_COACH_ID) console.log(`  ${k}: Edgar`)
+  if (k === 'coach_id' && v === DEFAULT_AP_COACH_ID) console.log(`  ${k}: Coach Mafe`)
   else console.log(`  ${k}: ${JSON.stringify(v)}`)
 }
 

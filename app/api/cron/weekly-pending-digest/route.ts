@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendWelcomeEmail } from '@/lib/email/sendWelcomeEmail'
 import { isPostCutoffAPProfile } from '@/lib/apKlaroPolicy'
+import { DEFAULT_AP_COACH_ID } from '@/lib/coaches'
 
 // ── /api/cron/weekly-pending-digest ──────────────────────────────────────────
 //
@@ -23,7 +24,6 @@ import { isPostCutoffAPProfile } from '@/lib/apKlaroPolicy'
 export const maxDuration = 60
 export const dynamic = 'force-dynamic'
 
-const EDGAR_COACH_ID = 'e5d6cc0d-ae70-4e58-967b-f61a957eb442'
 const SYSTEME_API_BASE = process.env.SYSTEME_API_BASE_URL || 'https://api.systeme.io/api'
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'nvorana@gmail.com'
 const RESEND_FROM = 'KLARO <notify@notify.negosyouniversity.com>'
@@ -82,7 +82,7 @@ function diagnose(tags: string[] | null): DiagnoseResult {
     const payload: Record<string, unknown> = {
       access_level: isAccelFullPaid ? 'full_access' : 'enrolled',
       program_type: 'accelerator',
-      coach_id: EDGAR_COACH_ID,
+      coach_id: DEFAULT_AP_COACH_ID,
       unlocked_modules: [1, 2],
       enrolled_at: now,
       access_suspended: false,

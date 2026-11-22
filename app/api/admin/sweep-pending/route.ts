@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { DEFAULT_AP_COACH_ID } from '@/lib/coaches'
 
 // POST /api/admin/sweep-pending
 // Mode: 'scan' (default) returns the diagnosis only, no changes.
@@ -29,7 +30,6 @@ interface PendingDiagnosis {
   recommended_payload?: Record<string, unknown>
 }
 
-const EDGAR_COACH_ID = 'e5d6cc0d-ae70-4e58-967b-f61a957eb442'
 const SYSTEME_API_BASE = process.env.SYSTEME_API_BASE_URL || 'https://api.systeme.io/api'
 
 // Test account marker — emails matching these patterns are kept regardless
@@ -99,7 +99,7 @@ function diagnose(tags: string[] | null): {
     const payload: Record<string, unknown> = {
       access_level: isAccelFullPaid ? 'full_access' : 'enrolled',
       program_type: 'accelerator',
-      coach_id: EDGAR_COACH_ID,
+      coach_id: DEFAULT_AP_COACH_ID,
       unlocked_modules: [1, 2],
       enrolled_at: new Date().toISOString(),
     }

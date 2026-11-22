@@ -14,14 +14,14 @@ import { createAdminClient } from '@/lib/supabase/admin'
 // used by the old client-side upserts could fail conflict resolution).
 //
 // POLICY: Accelerator Program students do NOT auto-unlock the next module.
-// Coach Edgar must manually unlock via /api/coach/unlock-modules. This is
+// The coach (see lib/coaches.ts) must unlock via /api/coach/unlock-modules. This is
 // true for both partial-pay (enrolled) and fully-paid (full_access) AP
 // students — payment status does not change the unlock policy.
 //
 // History: This endpoint previously auto-unlocked the next module for AP
 // students. That violated the program's pacing model — partial-pay students
 // could rush through all 7 modules without paying their installments, and
-// even fully-paid students bypassed Coach Edgar's progression decisions.
+// even fully-paid students bypassed the coach's progression decisions.
 // As of 2026-06-12, AP students are explicitly excluded from auto-unlock.
 //
 // No-op for:

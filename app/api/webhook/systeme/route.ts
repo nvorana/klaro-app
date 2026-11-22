@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendPreSignupWelcome } from '@/lib/email/sendPreSignupWelcome'
 import { isPostCutoffAPProfile, isPostCutoffAPNow } from '@/lib/apKlaroPolicy'
+import { DEFAULT_AP_COACH_ID } from '@/lib/coaches'
 
 // ─── Systeme.io Webhook Handler (LIVE endpoint) ─────────────────────────────
 //
@@ -12,7 +13,7 @@ import { isPostCutoffAPProfile, isPostCutoffAPNow } from '@/lib/apKlaroPolicy'
 //   Format B: { email, tag, data: { tag: { name }, contact: { email } } }
 //
 // Supported tags:
-//   TOPIS-Student              → enroll as TOPIS, assign to Edgar
+//   TOPIS-Student              → enroll as TOPIS (group-paced, no coach assigned)
 //   TOPIS-[N]-UNSETTLED        → suspend access
 //   TOPIS-[N]-2nd-Pay-Settled  → restore access
 //   TOPIS-[N]-Full-Payment     → full access
@@ -27,7 +28,6 @@ import { isPostCutoffAPProfile, isPostCutoffAPNow } from '@/lib/apKlaroPolicy'
 //   KLARO-ENROLLED             → enrolled (legacy)
 // ─────────────────────────────────────────────────────────────────────────────
 
-const EDGAR_COACH_ID = 'e5d6cc0d-ae70-4e58-967b-f61a957eb442'
 
 // Normalize Systeme.io tag names to a canonical form.
 // Handles: "TOPIS | Student", "TOPIS 77 Student", "TOPIS-Student", "TOPIS  -  Student"
@@ -260,7 +260,7 @@ export async function POST(request: NextRequest) {
 
         const updates: Record<string, unknown> = {
           program_type:     'accelerator',
-          coach_id:         EDGAR_COACH_ID,
+          coach_id:         DEFAULT_AP_COACH_ID,
           enrolled_at:      profile.enrolled_at || new Date().toISOString(),
           access_suspended: false,
           unlocked_modules: mergedUnlocked,
@@ -385,7 +385,7 @@ export async function POST(request: NextRequest) {
           .update({
             access_level:           'full_access',
             program_type:           'accelerator',
-            coach_id:               profile.coach_id ?? EDGAR_COACH_ID,
+            coach_id:               profile.coach_id ?? DEFAULT_AP_COACH_ID,
             access_suspended:       false,
             enrolled_at:            profile.enrolled_at || new Date().toISOString(),
             full_access_granted_at: new Date().toISOString(),

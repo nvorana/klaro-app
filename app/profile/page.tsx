@@ -49,7 +49,7 @@ export default function ProfilePage() {
 
       const { data } = await supabase
         .from('profiles')
-        .select('first_name, last_name, phone, access_level, enrolled_at, full_name, created_at, access_expires_at')
+        .select('first_name, last_name, phone, access_level, enrolled_at, full_name, created_at, access_expires_at, role')
         .eq('id', user.id)
         .single()
 

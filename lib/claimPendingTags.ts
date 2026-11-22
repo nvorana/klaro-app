@@ -16,8 +16,8 @@
 
 import { createAdminClient } from './supabase/admin'
 import { isPostCutoffAPProfile } from './apKlaroPolicy'
+import { DEFAULT_AP_COACH_ID } from '@/lib/coaches'
 
-const EDGAR_COACH_ID = 'e5d6cc0d-ae70-4e58-967b-f61a957eb442'
 
 export interface ClaimResult {
   claimed: number
@@ -130,7 +130,7 @@ export async function claimPendingTagsForUser(
       }
       updates.program_type = 'accelerator'
       updates.access_level = 'enrolled'
-      updates.coach_id = EDGAR_COACH_ID
+      updates.coach_id = DEFAULT_AP_COACH_ID
       updates.unlocked_modules = Array.from(
         new Set([...currentUnlocked, 1, 2])
       ).sort((a, b) => a - b)
