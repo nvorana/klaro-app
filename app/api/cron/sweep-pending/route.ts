@@ -243,10 +243,14 @@ async function handle(request: NextRequest) {
 
     if (d.action === 'activate' && d.payload) {
       // POLICY (July 1, 2026): new AP students no longer receive KLARO
-      // access. Skip activation for post-cutoff AP-diagnosed profiles.
+      // access automatically, EXCEPT when they're fully paid. Jon granted
+      // every fully paid post-cutoff AP student by hand when asked, and they
+      // sat on 'pending' for weeks until someone asked (Nemia Montiano: 2
+      // weeks, 2026-11-23). Fully paid ones are now activated here with the
+      // standard setup; partially paid ones still wait for a person.
       // TOPIS + tier customers are unaffected.
       const isAP = d.payload.program_type === 'accelerator'
-      if (isAP && isPostCutoffAPProfile(p.created_at)) {
+      if (isAP && isPostCutoffAPProfile(p.created_at) && d.status !== 'paid_accelerator_full') {
         results.push({ email, name: p.full_name, status: d.status, action: 'skip_ap_policy' })
         continue
       }

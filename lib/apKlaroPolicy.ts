@@ -18,6 +18,14 @@
 // TOPIS students, legacy KLARO-tier customers, and pre-cutoff AP
 // students are NOT affected.
 //
+// Exception (2026-11-23): FULLY PAID post-cutoff AP students are activated
+// by the 3-hourly cron sweep (app/api/cron/sweep-pending), with full access,
+// the default coach, Modules 1–2 and the welcome email. Every one of them
+// was being granted by hand on request anyway, after waiting weeks on
+// 'pending'. The webhook and claim paths still block, so activation
+// happens within ~3 hours of signup rather than instantly. Partially paid
+// post-cutoff AP students are still left for a person to decide.
+//
 // To revert the policy: change AP_KLARO_ENABLED_AGAIN to a Date after
 // the cutoff, or set AP_KLARO_ENABLED to true. Auto-activation resumes
 // for any NEW AP profiles created after that reactivation date.
